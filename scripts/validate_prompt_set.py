@@ -14,10 +14,18 @@ from compile_prompts import COMMON_MARKDOWN_ORDER
 # 这些文件构成 Skill 包和提示词路由的最小交付面。
 REQUIRED_FILES = (
     "SKILL.md",
+    "CHANGELOG.md",
     "agents/openai.yaml",
     "references/routing.md",
     "references/topic-selection.md",
     "references/universal-reference-prompt.md",
+    "references/common/academic-figures.md",
+    "references/figure-skills/academic-figure-routing.md",
+    "references/figure-skills/academic-svg-quality.md",
+    "skills/academic-figure-router/SKILL.md",
+    "skills/academic-svg-enhancer/SKILL.md",
+    "skills/academic-svg-enhancer/scripts/audit_svg.py",
+    "skills/academic-svg-enhancer/tests/test_audit_svg.py",
 )
 
 # 只扫描容易明确判定为脚手架的词，避免把正常的否定规则误判为占位内容。
@@ -90,6 +98,9 @@ def check_required_files(root: Path, report: ValidationReport) -> None:
         "references/common",
         "references/directions",
         "references/compiled-prompts",
+        "references/figure-skills",
+        "skills/academic-figure-router",
+        "skills/academic-svg-enhancer",
     )
     for dirname in required_directories:
         if not (root / dirname).is_dir():

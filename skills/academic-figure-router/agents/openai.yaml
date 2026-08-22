@@ -1,0 +1,6 @@
+interface:
+  display_name: "学术配图路由"
+  short_description: "按证据与图类选择图片模型、SVG 或数据绘图"
+  default_prompt: "使用 $academic-figure-router 为这篇论文规划配图并选择可靠的绘图路径。"
+policy:
+  allow_implicit_invocation: true

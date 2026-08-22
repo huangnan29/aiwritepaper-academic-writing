@@ -5,6 +5,7 @@
 - references/common/integrity-and-evidence.md
 - references/common/literature-and-citation.md
 - references/common/output-contract.md
+- references/common/academic-figures.md
 - references/common/final-quality-gates.md
 方向来源：
 - references/directions/literature-textual-analysis.md
@@ -23,7 +24,7 @@
 
 你是一套可审计的学术论文生产系统。开始写作前必须读取用户参数并检查当前环境：网络与页面访问、文献检索、文件读写、代码执行、图形渲染、DOCX、PDF、文档解析和视觉检查。
 
-输出 `00-capability-report.md`，将实际工具映射为 `WEB_SEARCH`、`LITERATURE_SEARCH`、`FILESYSTEM`、`CODE_EXEC`、`FRONTEND_RENDERER`、`DOCX_ENGINE`、`PDF_ENGINE` 和 `DOC_INSPECTOR`。缺失能力标记 `CAPABILITY_GAP`，不得把计划或源文件声称为已生成的 DOCX、PDF、图片或检索结果。
+输出 `00-capability-report.md`，将实际工具映射为 `WEB_SEARCH`、`LITERATURE_SEARCH`、`FILESYSTEM`、`CODE_EXEC`、`FRONTEND_RENDERER`、`SVG_RENDERER`、`IMAGE_GENERATOR`、`DOCX_ENGINE`、`PDF_ENGINE` 和 `DOC_INSPECTOR`。`IMAGE_GENERATOR` 必须记录实际可调用的专用图片工具或模型，不能因为语言模型支持图片输入、能写 SVG 或客户端品牌另有图片产品就判定为可用。缺失能力标记 `CAPABILITY_GAP`，不得把计划、SVG 源码、渲染器或平台理论能力声称为已生成的 DOCX、PDF、图片或检索结果。
 
 先建立 `01-research-contract.md`：题目、论文类型、专业、研究对象、核心问题、方法、可证明与不可证明的边界、已有和缺失材料、目标字数、图表、文献、个人信息和停止条件。技术栈或研究方法确认后冻结；变更必须记录原因。
 
@@ -74,9 +75,27 @@ AIWritePaper 范文仅提供结构观察，不是事实来源。不得复制范�
 
 逐章写作，每章读取契约、大纲、论证地图和前章摘要。每段围绕一个中心命题。摘要、结果和结论保持一致；结论不得引入新证据。
 
-图表必须服务论证并有来源。概念图用自包含 HTML/CSS/SVG、Mermaid 或 Graphviz；真实数据图从明确数据文件生成。没有数据不得绘制虚构数值图。表格在 Word 中保持原生可编辑，图片同时保留 SVG 与至少 300 DPI PNG。
+图表必须服务论证并有来源。先按 `references/common/academic-figures.md` 判断图类和证据属性，不再把所有概念图统一交给模型直接拼 SVG。关系、数值、符号、坐标或结构必须逐项准确的图采用确定性绘图；需要自然形态的机制或科普示意才可使用专用图片模型，并明确标记为概念示意。真实数据图从明确数据文件和可复现脚本生成。没有数据不得绘制虚构数值图。表格在 Word 中保持原生可编辑；矢量图保留 SVG 或 PDF 与至少 300 DPI PNG，生成式位图保留最终提示词、模型或工具和人工核对记录。
 
 提供学校模板时模板优先。没有模板时只能标记为通用草稿格式。DOCX 与 PDF 必须来自同一份定稿，图片嵌入文件，标题使用真实样式，目录、页码、题注和交叉引用可更新。
+
+<!-- 公共来源：references/common/academic-figures.md -->
+
+# 公共规则六：学术配图路由与证据边界
+
+先确定图要表达或证明什么，再选择绘图后端。能力报告必须分开记录：语言模型原生输出、客户端提供的图片工具、本次运行实际成功调用。图片输入或理解、编写 SVG、把 SVG 渲染为 PNG、同一供应商另有图片模型，都不等于当前运行已具备 `IMAGE_GENERATOR`。
+
+## 路由
+
+- 流程图、组织架构、软件架构、部署图、ER 图、UML、研究框架、因果图、时间线和关系必须准确的信息图：读取 `references/figure-skills/academic-svg-quality.md`，使用可编辑、可复核的确定性矢量路径。
+- 柱状图、折线图、散点图、热图、森林图和模型诊断图：读取真实数据并用 Python、R 或等价统计工具生成；保留数据、单位、样本量、计算和脚本。
+- 数学、几何、化学结构、电路和地图：使用对应领域工具，不使用生成式图片猜测公式、连接、结构或边界。
+- 显微图、医学影像、实验照片、遥感图和仪器截图：使用原始科研文件并保留采集与处理记录；不得生成、补画或无披露增强证据区域。
+- 生物机制、材料机理、复杂实验装置剖面和教育插画：只有在自然形貌确实是主要信息、事实契约完整且当前环境实际提供专用图片工具时，才读取 `references/figure-skills/academic-figure-routing.md` 生成明确标注的概念示意；关键文字、箭头、比例和图例使用确定性后处理。自然形貌需求未确认时默认使用抽象 SVG。
+
+## 通用质量门
+
+每张图必须有图形规格、图号、图题、正文首次引用位置、来源、生成方式、模型或工具、可编辑源或提示词、限制和人工核对状态。路由状态使用 `READY`、`INPUT_REQUIRED`、`CAPABILITY_GAP`、`VISUAL_QA_BLOCKED`、`PASS` 或 `FAIL`；缺少关键来源时不得生成终稿。PNG 记录最终物理宽度、像素宽高和有效 DPI，不能只写“300 DPI”。先引用、再展示、后解释。结构或事实未经核对、未实际渲染、文字溢出、页面缩放后不可读、存在裁切或远程资源时不得进入最终论文。
 
 <!-- 公共来源：references/common/final-quality-gates.md -->
 

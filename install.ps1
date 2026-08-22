@@ -1,66 +1,157 @@
 param(
-    [Parameter(Mandatory = $true)]
-    [ValidateSet("codex", "claude", "cursor", "gemini", "copilot", "opencode", "universal")]
     [string]$Agent,
-
-    [ValidateSet("user", "project")]
-    [string]$Scope = "user",
-
+    [string]$Scope,
     [switch]$Force
 )
 
-$ErrorActionPreference = "Stop"
-$SkillName = "aiwritepaper-agentic-skill"
-$RepoUrl = "https://github.com/huangnan29/aiwritepaper-agentic-skill.git"
-$HomePath = [Environment]::GetFolderPath("UserProfile")
+# AIWritePaper Agentic Skill Windows PowerShell 5.1 安装器。
+# 只从固定仓库克隆并复制完整 skill 目录，不执行远程脚本。
 
-# 根据客户端和安装范围选择标准技能目录。
-if ($Scope -eq "user") {
-    $Target = switch ($Agent) {
-        "codex" { Join-Path $HomePath ".codex/skills/$SkillName" }
-        "claude" { Join-Path $HomePath ".claude/skills/$SkillName" }
-        "cursor" { Join-Path $HomePath ".cursor/skills/$SkillName" }
-        "gemini" { Join-Path $HomePath ".gemini/skills/$SkillName" }
-        "copilot" { Join-Path $HomePath ".copilot/skills/$SkillName" }
-        "opencode" { Join-Path $HomePath ".config/opencode/skills/$SkillName" }
-        "universal" { Join-Path $HomePath ".agents/skills/$SkillName" }
+$ErrorActionPreference = 'Stop'
+$RepositoryUrl = 'https://github.com/huangnan29/aiwritepaper-agentic-skill.git'
+$SkillName = 'aiwritepaper-agentic-skill'
+$TempRoot = $null
+
+function Stop-Install {
+    param([string]$Message)
+
+    [Console]::Error.WriteLine(('错误：{0}' -f $Message))
+    exit 1
+}
+
+function Show-Usage {
+    @'
+用法：
+  .\install.ps1 -Agent <agent> -Scope <user|project> [-Force]
+
+Agent 可选值：codex、claude、cursor、gemini、antigravity、copilot、opencode、universal
+Scope 可选值：user、project
+-Force：目标目录已存在时，确认后覆盖
+'@
+}
+
+if ([string]::IsNullOrWhiteSpace($Agent)) {
+    Stop-Install '必须使用 -Agent 指定目标 agent。'
+}
+
+if ([string]::IsNullOrWhiteSpace($Scope)) {
+    Stop-Install '必须使用 -Scope 指定 user 或 project。'
+}
+
+$AgentKey = $Agent.ToLowerInvariant()
+$ScopeKey = $Scope.ToLowerInvariant()
+
+switch ($AgentKey) {
+    'codex' { }
+    'claude' { }
+    'cursor' { }
+    'gemini' { }
+    'antigravity' { }
+    'copilot' { }
+    'opencode' { }
+    'universal' { }
+    default {
+        Stop-Install ('不支持的 agent：{0}。可选值为 codex、claude、cursor、gemini、antigravity、copilot、opencode、universal。' -f $Agent)
+    }
+}
+
+if ($ScopeKey -ne 'user' -and $ScopeKey -ne 'project') {
+    Stop-Install ('不支持的 scope：{0}。可选值为 user 或 project。' -f $Scope)
+}
+
+$HomePath = [Environment]::GetFolderPath('UserProfile')
+if ([string]::IsNullOrWhiteSpace($HomePath)) {
+    Stop-Install '无法确定用户主目录。'
+}
+
+if ($ScopeKey -eq 'project') {
+    $BasePath = (Get-Location).Path
+} else {
+    $BasePath = $HomePath
+}
+
+if ($ScopeKey -eq 'user') {
+    switch ($AgentKey) {
+        'codex' { $InstallRoot = Join-Path $BasePath '.codex\skills' }
+        'claude' { $InstallRoot = Join-Path $BasePath '.claude\skills' }
+        'cursor' { $InstallRoot = Join-Path $BasePath '.cursor\skills' }
+        'gemini' { $InstallRoot = Join-Path $BasePath '.gemini\skills' }
+        'antigravity' { $InstallRoot = Join-Path $BasePath '.gemini\config\skills' }
+        'copilot' { $InstallRoot = Join-Path $BasePath '.copilot\skills' }
+        'opencode' { $InstallRoot = Join-Path $BasePath '.config\opencode\skills' }
+        'universal' { $InstallRoot = Join-Path $BasePath '.agents\skills' }
     }
 } else {
-    $Root = (Get-Location).Path
-    $Target = switch ($Agent) {
-        "codex" { Join-Path $Root ".agents/skills/$SkillName" }
-        "claude" { Join-Path $Root ".claude/skills/$SkillName" }
-        "cursor" { Join-Path $Root ".cursor/skills/$SkillName" }
-        "gemini" { Join-Path $Root ".gemini/skills/$SkillName" }
-        "copilot" { Join-Path $Root ".github/skills/$SkillName" }
-        "opencode" { Join-Path $Root ".opencode/skills/$SkillName" }
-        "universal" { Join-Path $Root ".agents/skills/$SkillName" }
+    switch ($AgentKey) {
+        'codex' { $InstallRoot = Join-Path $BasePath '.codex\skills' }
+        'claude' { $InstallRoot = Join-Path $BasePath '.claude\skills' }
+        'cursor' { $InstallRoot = Join-Path $BasePath '.cursor\skills' }
+        'gemini' { $InstallRoot = Join-Path $BasePath '.gemini\skills' }
+        'antigravity' { $InstallRoot = Join-Path $BasePath '.agents\skills' }
+        'copilot' { $InstallRoot = Join-Path $BasePath '.github\skills' }
+        'opencode' { $InstallRoot = Join-Path $BasePath '.opencode\skills' }
+        'universal' { $InstallRoot = Join-Path $BasePath '.agents\skills' }
     }
 }
 
-if (Test-Path $Target) {
-    if (-not $Force) {
-        throw "目标已存在，未覆盖：$Target。需要更新时请添加 -Force，旧目录会被备份。"
-    }
-    $Stamp = Get-Date -Format "yyyyMMddHHmmss"
-    $Backup = "$Target.backup.$Stamp"
-    Move-Item -Path $Target -Destination $Backup
-    Write-Host "旧版本已备份到：$Backup"
+$TargetPath = Join-Path $InstallRoot $SkillName
+$TargetExists = Test-Path -LiteralPath $TargetPath
+
+if ($TargetExists -and -not $Force) {
+    Stop-Install ('目标目录已存在：{0}。确认覆盖时请添加 -Force。' -f $TargetPath)
 }
 
-$TempRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("aiwritepaper-skill-" + [Guid]::NewGuid())
-$Source = Join-Path $TempRoot "source"
+if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+    Stop-Install '未找到 git，请先安装 git 后重试。'
+}
 
 try {
-    New-Item -ItemType Directory -Path $TempRoot -Force | Out-Null
-    git clone --depth 1 $RepoUrl $Source | Out-Null
-    Remove-Item -Recurse -Force (Join-Path $Source ".git")
-    New-Item -ItemType Directory -Path (Split-Path $Target -Parent) -Force | Out-Null
-    Copy-Item -Path $Source -Destination $Target -Recurse
-    Write-Host "安装完成：$Target"
-    Write-Host "请在目标 agent 中刷新技能列表或重新启动会话。"
-} finally {
-    if (Test-Path $TempRoot) {
-        Remove-Item -Recurse -Force $TempRoot
+    New-Item -ItemType Directory -Path $InstallRoot -Force | Out-Null
+} catch {
+    Stop-Install ('无法创建安装目录：{0}。' -f $InstallRoot)
+}
+
+try {
+    $TempRoot = Join-Path ([IO.Path]::GetTempPath()) ('aiwritepaper-agentic-skill-' + [Guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Path $TempRoot -ErrorAction Stop | Out-Null
+} catch {
+    Stop-Install '无法创建临时目录。'
+}
+
+$ClonePath = Join-Path $TempRoot $SkillName
+
+try {
+    & git clone --depth 1 $RepositoryUrl $ClonePath 1>$null 2>$null
+    if ($LASTEXITCODE -ne 0) {
+        Stop-Install ('无法从固定仓库克隆 skill：{0}' -f $RepositoryUrl)
     }
+} catch {
+    Stop-Install ('无法从固定仓库克隆 skill：{0}' -f $RepositoryUrl)
+}
+
+try {
+    if ($Force -and $TargetExists) {
+        Remove-Item -LiteralPath $TargetPath -Recurse -Force -ErrorAction Stop
+    }
+
+    New-Item -ItemType Directory -Path $TargetPath -Force -ErrorAction Stop | Out-Null
+
+    # 逐项复制完整目录，并用 -Force 保留隐藏文件。
+    Get-ChildItem -LiteralPath $ClonePath -Force | ForEach-Object {
+        Copy-Item -LiteralPath $_.FullName -Destination $TargetPath -Recurse -Force -ErrorAction Stop
+    }
+
+    # 安装结果不需要临时克隆产生的 Git 元数据，但保留所有 skill 内容。
+    $InstalledGitPath = Join-Path $TargetPath '.git'
+    if (Test-Path -LiteralPath $InstalledGitPath) {
+        Remove-Item -LiteralPath $InstalledGitPath -Recurse -Force -ErrorAction Stop
+    }
+} catch {
+    Stop-Install ('复制完整 skill 目录失败：{0}。' -f $TargetPath)
+}
+
+Write-Output ('安装完成：{0}' -f $TargetPath)
+
+if ($TempRoot -and (Test-Path -LiteralPath $TempRoot)) {
+    Remove-Item -LiteralPath $TempRoot -Recurse -Force -ErrorAction SilentlyContinue
 }

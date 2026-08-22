@@ -1,6 +1,6 @@
 interface:
   display_name: "AIWritePaper Agentic Paper"
-  short_description: "按选题路由学科与研究方法的可审计论文生产 Skill"
-  default_prompt: "请先判断我是否已有选题，再选择对应论文方向提示词。"
+  short_description: "按选题、证据与图表类型路由的可审计论文生产 Skill"
+  default_prompt: "使用 $aiwritepaper-agentic-skill 判断选题并选择论文方向提示词与学术配图路径。"
 policy:
   allow_implicit_invocation: true

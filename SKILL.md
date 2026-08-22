@@ -2,16 +2,17 @@
 name: aiwritepaper-agentic-skill
 description: 根据已有选题、专业细分方向和可用研究材料，为中文论文选择与 AIWritePaper 公开范文结构相匹配的可审计提示词；也可在用户没有确定选题时推荐 10 个可行题目。适用于毕业论文、期刊论文、文献综述、工程设计、实证研究、法学、人文和工作报告的选题路由与完整论文生产准备，不用于代替真实研究、编造数据或规避检测。
 license: MIT
-compatibility: 遵循 Agent Skills 开放规范；基础路由只需读取 Markdown，完整论文生产还需要当前 agent 具备网络检索、文件写入和相应文档工具。
 metadata:
   author: huangnan29
-  version: "0.1.0"
+  version: "0.2.0"
   repository: https://github.com/huangnan29/aiwritepaper-agentic-skill
 ---
 
 # AIWritePaper Agentic Skill
 
-本 Skill 负责两件事：先把题目收敛为可回答、可取证的研究问题，再只加载一个最匹配的方向提示词。不要默认加载全部方向文件。
+本 Skill 负责三件事：先把题目收敛为可回答、可取证的研究问题，再只加载一个最匹配的方向提示词，并在图表生产阶段依据证据属性选择生成式图片、确定性 SVG、数据绘图或原始科研图像。不要默认加载全部方向文件。
+
+运行兼容性：遵循 Agent Skills 开放规范；基础路由只需读取 Markdown，完整论文生产还需要当前 agent 具备网络检索、文件写入和相应文档工具。
 
 ## 启动判断
 
@@ -38,6 +39,7 @@ metadata:
 ## 加载规则
 
 - 正常执行只读取 `references/compiled-prompts/` 中一个与题目匹配的完整提示词。
+- 进入图表生产时，先读取 [references/common/academic-figures.md](references/common/academic-figures.md) 判断证据属性与绘图路径。需要生成式学术插画时读取 [references/figure-skills/academic-figure-routing.md](references/figure-skills/academic-figure-routing.md)；需要流程图、架构图、ER 图、UML、研究框架或其他确定性矢量图时读取 [references/figure-skills/academic-svg-quality.md](references/figure-skills/academic-svg-quality.md)。
 - 开题报告或答辩 PPT 是论文方向确定后的附加交付，分别读取 `references/deliverables/proposal-report.md` 或 `references/deliverables/defense-presentation.md`。
 - [references/universal-reference-prompt.md](references/universal-reference-prompt.md) 仅用于没有方向文件可覆盖的新型论文，或用于维护方向库；不要把它作为默认提示词。
 - 需要了解范文覆盖和分类依据时，读取 `references/research/coverage-report.md` 与 `references/research/taxonomy-report.md`，不要加载或复述范文全文。

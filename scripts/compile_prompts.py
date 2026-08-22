@@ -14,6 +14,7 @@ COMMON_MARKDOWN_ORDER = (
     "integrity-and-evidence.md",
     "literature-and-citation.md",
     "output-contract.md",
+    "academic-figures.md",
     "final-quality-gates.md",
 )
 
