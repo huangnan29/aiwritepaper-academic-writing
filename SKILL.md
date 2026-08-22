@@ -4,7 +4,7 @@ description: 根据已有选题、专业细分方向和可用研究材料，为�
 license: MIT
 metadata:
   author: huangnan29
-  version: "0.3.0"
+  version: "0.3.1"
   repository: https://github.com/huangnan29/aiwritepaper-agentic-skill
 ---
 
@@ -70,3 +70,4 @@ metadata:
 - 定量结果必须通过证据清单校验；模拟、合成或硬编码示例不得表述为真实系统实验。
 - `FULL_BUILD` 缺少 DOCX/PDF、全文未整合或 manifest 与文件不一致时，最终状态不得为 `PASS`。
 - `12-final-qa-report.md` 只能引用确定性交付验收器计算的状态，不得由模型自行判定。
+- `FULL_BUILD` 或 `FIGURES_ONLY` 中，当前客户端若暴露 `imagegen`、`image_gen`、Imagine、Nano Banana 或等价图片生成工具，所有适合图片生成的论文配图都必须逐张真实调用并保存位图。精确流程图、架构图、研究框架、组织图、ER/UML 等必须先根据上下文写出详细生图 Prompt 再生成；不得回退为纯 SVG。数据统计图从真实数据用代码生成，原始科研影像使用原文件，公式、化学、电路和地图使用领域工具。SVG 只允许用于无图片工具环境或生成图后的确定性修正层。只有用户明确退出或目标期刊明确禁止 AI 图片时可豁免并记录证据。

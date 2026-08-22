@@ -7,16 +7,18 @@ description: 设计、重绘和验收论文中的确定性 SVG 学术图，显�
 
 不要从论文段落直接拼接矩形和箭头。先把图建模成节点、关系、层级和阅读顺序，再选择布局算法与视觉语法。
 
+路由边界：当前 Agent 已暴露图片生成工具时，本 Skill 只承担生成图后的中文标签、箭头、图例修正和 SVG 兼容性审计；流程图、架构图、研究框架、组织图、ER/UML 等主视觉必须先由图片工具根据详细 Prompt 生成。只有没有图片生成能力时，才使用本 Skill 从头创建纯 SVG。
+
 ## 工作流
 
 1. 建立图形规格：图号、论点、图类、读者、版面宽度、节点清单、边清单、分组、正文来源、不可改变的术语。
 2. 按 [references/layout-recipes.md](references/layout-recipes.md) 选择图类攻略。复杂关系优先用 Graphviz、Mermaid、PlantUML 或领域工具生成骨架，再在 SVG 层精修；不要手算几十个坐标。
 3. 先生成黑白线框，检查阅读顺序、层级和交叉线；结构正确后再加颜色、图例与注释。
 4. 统一设计令牌：字体、字号、节点圆角、间距、线宽、箭头、颜色、阴影。单图不要临时发明多套样式。
-5. 开始前记录可用渲染器及版本。在浏览器或矢量渲染器中渲染并检查。只通过 XML 或代码检查不能算视觉验收；缺少渲染器时标记 `VISUAL_QA_BLOCKED`。
+5. 开始前记录可用渲染器及版本。含中文时先用最终导出所用的同一渲染器渲染“中文字体测试 0123 Aa”探针，再渲染整图。只通过 XML 或代码检查不能算视觉验收；缺少渲染器时标记 `VISUAL_QA_BLOCKED`。
 6. 按 [references/quality-gates.md](references/quality-gates.md) 在论文实际尺寸下验收，修复后再导出 SVG、PDF 和至少 300 DPI PNG。
 
-生成或修改 SVG 后，先以当前 `SKILL.md` 所在目录为基准定位 `scripts/audit_svg.py`，再使用 `uv run python <该脚本路径> <svg路径>` 执行确定性静态审计；批量或流水线场景追加 `--json`。不要假定调用者当前工作目录就是 Skill 目录。该脚本检查 XML、`viewBox`、可访问标题、远程资源、`foreignObject`、字号和基础画布指标，但不能替代实际渲染与视觉验收。
+生成或修改 SVG 后，先以当前 `SKILL.md` 所在目录为基准定位 `scripts/audit_svg.py`，再使用 `uv run python <该脚本路径> <svg路径>` 执行确定性静态审计；批量或流水线场景追加 `--json`。不要假定调用者当前工作目录就是 Skill 目录。该脚本检查 XML、`viewBox`、可访问标题、远程资源、`foreignObject`、字号、中文字体声明和基础画布指标，但不能替代实际渲染与视觉验收。出现 `CJK_FONT_FAMILY_MISSING` 或 `CJK_FONT_FALLBACK_UNSAFE` 时必须修复，不能进入导出。
 
 ## 视觉语法
 
@@ -35,7 +37,8 @@ description: 设计、重绘和验收论文中的确定性 SVG 学术图，显�
 
 - 必须有明确 `viewBox`，宽高比与最终版面一致；不要用巨大画布制造空白。
 - 使用 `<defs>` 集中定义箭头、滤镜和可复用样式；元素使用语义化分组和稳定 ID。
-- 文本保持可编辑；使用常见中文字体回退栈，并在交付环境验证字体。需要跨环境绝对一致时，另存文字转路径版本，但保留原始可编辑版本。
+- 文本保持可编辑。含中文时使用 `"Noto Sans CJK SC", "Source Han Sans SC", "Source Han Sans CN", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "WenQuanYi Micro Hei", "SimHei", sans-serif` 或包含同等明确中文字体候选的回退栈。禁止只用 `Helvetica`、`Arial`、`Times New Roman`、`Roboto`、`serif` 或 `sans-serif`；系统自动回退不算验证。
+- 需要跨环境绝对一致时，另存文字转路径版本或字体已嵌入/子集化的 PDF，但保留原始可编辑 SVG，并确认字体许可。
 - 不依赖 CDN、远程字体、远程脚本或远程图片。若嵌入位图，记录来源并使用相对路径或内嵌资源。
 - 为整图提供 `<title>` 和 `<desc>`；关键分组可加入可访问名称。
 - 不把 HTML 截图、代码目录树或终端输出伪装成架构图。
@@ -46,4 +49,4 @@ description: 设计、重绘和验收论文中的确定性 SVG 学术图，显�
 
 ## 交付
 
-每张图保留 SVG 源文件、PNG、可选 PDF、图形规格、渲染命令或工具版本、来源和视觉验收记录。PNG 同时记录最终物理宽度、像素宽高和有效 DPI，不能只写“300 DPI”。正文必须先引用、再展示、后解释。
+每张图保留 SVG 源文件、PNG、可选 PDF、图形规格、渲染命令或工具版本、来源和视觉验收记录。含中文时记录字体栈、探针渲染结果和 PNG、DOCX、PDF 抽查结果；检查方框、乱码、缺字、基线变化、换行和裁切。PNG 同时记录最终物理宽度、像素宽高和有效 DPI，不能只写“300 DPI”。正文必须先引用、再展示、后解释。

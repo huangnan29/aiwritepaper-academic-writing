@@ -1,5 +1,7 @@
 # 确定性学术 SVG 规则
 
+本规则只在当前 Agent 没有图片生成能力，或对已生成图片做文字、箭头、图例等确定性修正时使用。当前 Agent 已暴露图片生成工具时，流程图、架构图、研究框架、组织图、ER/UML 等不得以纯 SVG 作为主交付，应先按 `academic-figure-routing.md` 编写详细 Prompt 并真实生成位图。
+
 ## 先建模再绘图
 
 先写图形规格：图号、论点、图类、版面宽度、节点、关系、层级、分组、阅读顺序、来源和不可改变的术语。不要从论文段落直接拼矩形与箭头。复杂关系优先用 Graphviz、Mermaid、PlantUML 或领域工具生成骨架，再精修 SVG。
@@ -20,6 +22,15 @@
 
 SVG 必须有匹配版面的 `viewBox`、`title`、`desc`、语义分组和稳定 ID，不依赖 CDN、远程字体、远程脚本或远程图片。文本保留可编辑版本。开始前记录渲染器及版本；导出前必须实际渲染。仅检查 XML 或源代码不能判定视觉通过，缺渲染器时标记 `VISUAL_QA_BLOCKED`。
 
+### 中文字体硬门
+
+- 含中文的可见 `<text>` 必须通过根元素、元素属性或 CSS 明确继承跨平台中文字体栈。推荐：`"Noto Sans CJK SC", "Source Han Sans SC", "Source Han Sans CN", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "WenQuanYi Micro Hei", "SimHei", sans-serif`。
+- 禁止只声明 `Helvetica`、`Arial`、`Times New Roman`、`Georgia`、`Verdana`、`Roboto`、`serif` 或 `sans-serif`。这些声明不能证明含有中文字形，浏览器临时回退也不能证明导出器会使用相同字体。
+- 避免使用会重置 `font-family` 的不完整 `font` shorthand；字体名含空格时加引号。不要依赖远程字体、系统 UI 字体别名或未记录的自动回退。
+- 生成后运行 `skills/academic-svg-enhancer/scripts/audit_svg.py`。`CJK_FONT_FAMILY_MISSING` 或 `CJK_FONT_FALLBACK_UNSAFE` 必须修复，不能以人工备注降级放行。
+- 使用最终导出所用的同一渲染器先渲染“中文字体测试 0123 Aa”探针，再渲染整图。核对缺字方框、乱码、粗细替换、行高、基线、换行、裁切和字宽变化；PNG、DOCX、PDF 分别抽查。
+- 跨环境要求绝对一致时，额外交付文字转路径版本或已嵌入/子集化字体的 PDF；必须保留可编辑 SVG，确认字体许可，并重新核对搜索性、可访问性和文件体积。PNG 作为稳定显示版本时仍保留 SVG 源文件。
+
 ## 验收
 
-逐项核对节点、关系、方向、基数、术语和来源；缺少关键来源时状态为 `INPUT_REQUIRED`，不得生成终稿。检查文字溢出、重叠、连线穿字、空白失衡、裁切、字体替换、灰度可辨和论文实际缩放可读性。SVG、PNG 和可选 PDF 均需抽查；PNG 同时记录最终物理宽度、像素宽高和有效 DPI。未实际渲染不得标记 `PASS`。
+逐项核对节点、关系、方向、基数、术语和来源；缺少关键来源时状态为 `INPUT_REQUIRED`，不得生成终稿。检查文字溢出、重叠、连线穿字、空白失衡、裁切、字体替换、缺字方框、乱码、灰度可辨和论文实际缩放可读性。SVG、PNG、DOCX 和 PDF 中的实际结果均需抽查；PNG 同时记录最终物理宽度、像素宽高和有效 DPI。未通过中文字体静态门或未实际渲染不得标记 `PASS`。

@@ -35,6 +35,112 @@ _LENGTH_RE = re.compile(
 )
 _REMOTE_URL_RE = re.compile(r"(?i)(?:https?://|//)[^\s\"'<>]+")
 _FONT_DECLARATION_RE = re.compile(r"font-size\s*:\s*([^;}\n]+)", re.IGNORECASE)
+_FONT_FAMILY_DECLARATION_RE = re.compile(
+    r"(?<![\w-])font-family\s*:\s*([^;}]+)", re.IGNORECASE
+)
+_CSS_COMMENT_RE = re.compile(r"/\*.*?\*/", re.DOTALL)
+_HIDDEN_DISPLAY_RE = re.compile(r"(?:^|;)\s*display\s*:\s*none\b", re.IGNORECASE)
+_HIDDEN_VISIBILITY_RE = re.compile(
+    r"(?:^|;)\s*visibility\s*:\s*(?:hidden|collapse)\b", re.IGNORECASE
+)
+
+# 覆盖常用汉字、CJK 扩展 A、兼容表意文字，并顺带覆盖后续扩展区。
+_CJK_RE = re.compile(
+    r"[\u3005\u3007\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF"
+    r"\U00020000-\U0002A6DF\U0002A700-\U0002B73F"
+    r"\U0002B740-\U0002B81F\U0002B820-\U0002CEAF"
+    r"\U0002CEB0-\U0002EBEF\U0002F800-\U0002FA1F"
+    r"\U00030000-\U0003134F\U00031350-\U000323AF]"
+)
+
+# 这些是 CSS generic family；它们本身不能证明含有中文字形。
+_GENERIC_FONT_FAMILIES = {
+    "cursive",
+    "fantasy",
+    "fangsong",
+    "math",
+    "monospace",
+    "sans-serif",
+    "serif",
+    "system-ui",
+    "ui-monospace",
+    "ui-rounded",
+    "ui-sans-serif",
+    "ui-serif",
+}
+
+# 常见但不能作为中文字体保证的拉丁字体；集合只用于报告原因，不检查本机安装状态。
+_UNSAFE_LATIN_FONT_FAMILIES = {
+    "arial",
+    "arial narrow",
+    "calibri",
+    "cambria",
+    "comic sans ms",
+    "consolas",
+    "courier",
+    "courier new",
+    "dejavu sans",
+    "georgia",
+    "helvetica",
+    "inter",
+    "liberation sans",
+    "lato",
+    "menlo",
+    "open sans",
+    "roboto",
+    "segoe ui",
+    "tahoma",
+    "times",
+    "times new roman",
+    "trebuchet ms",
+    "verdana",
+}
+
+# 明确指向中文/CJK 字形的候选。静态门只检查声明，不检查目标机器是否安装。
+_CHINESE_FONT_CANDIDATES = {
+    "alibaba pu hui ti",
+    "arial unicode ms",
+    "heiti",
+    "heiti sc",
+    "hiragino sans gb",
+    "kaiti",
+    "kaiti sc",
+    "lxgw wenkai",
+    "microsoft yahei",
+    "microsoft yahei ui",
+    "noto sans cjk",
+    "noto sans cjk cn",
+    "noto sans cjk hk",
+    "noto sans cjk sc",
+    "noto sans cjk tc",
+    "noto serif cjk",
+    "noto serif cjk cn",
+    "noto serif cjk hk",
+    "noto serif cjk sc",
+    "noto serif cjk tc",
+    "pingfang sc",
+    "sarasa gothic sc",
+    "simsun",
+    "simhei",
+    "songti",
+    "songti sc",
+    "source han sans",
+    "source han sans cn",
+    "source han sans sc",
+    "source han serif",
+    "source han serif cn",
+    "source han serif sc",
+    "stheiti",
+    "stsong",
+    "wenquanyi micro hei",
+    "思源宋体",
+    "思源黑体",
+    "宋体",
+    "黑体",
+}
+
+# CSS-wide keywords不是可用的字体名称，不能把它们算作已声明字体栈。
+_CSS_WIDE_FONT_KEYWORDS = {"inherit", "initial", "revert", "revert-layer", "unset"}
 
 
 @dataclass(frozen=True)
@@ -125,6 +231,405 @@ def _text_value(element: ET.Element) -> str:
     return "".join(element.itertext())
 
 
+def _normalize_font_family(raw: str) -> str:
+    """规范化字体名，去掉 CSS 字体名常见的引号和多余空白。"""
+
+    value = _clean_font_family_name(raw)
+    return value.casefold()
+
+
+def _clean_font_family_name(raw: str) -> str:
+    """清理字体名但保留原有大小写，便于在 JSON 中展示声明内容。"""
+
+    value = re.sub(r"\s*!important\s*$", "", raw.strip(), flags=re.IGNORECASE)
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+        value = value[1:-1]
+    return re.sub(r"\s+", " ", value).strip()
+
+
+def _is_css_wide_font_value(raw: str) -> bool:
+    """判断声明是否只是 CSS-wide 继承/重置关键字。"""
+
+    value = re.sub(r"\s*!important\s*$", "", raw.strip(), flags=re.IGNORECASE)
+    return _normalize_font_family(value) in _CSS_WIDE_FONT_KEYWORDS
+
+
+def _split_font_family_list(raw: str) -> list[str]:
+    """按逗号拆分 font-family，并保留引号中的逗号。"""
+
+    families: list[str] = []
+    buffer: list[str] = []
+    quote: str | None = None
+    for char in raw:
+        if char in {"'", '"'}:
+            if quote is None:
+                quote = char
+            elif quote == char:
+                quote = None
+            buffer.append(char)
+            continue
+        if char == "," and quote is None:
+            family = _clean_font_family_name("".join(buffer))
+            if family and _normalize_font_family(family) not in _CSS_WIDE_FONT_KEYWORDS:
+                families.append(family)
+            buffer = []
+            continue
+        buffer.append(char)
+    family = _clean_font_family_name("".join(buffer))
+    if family and _normalize_font_family(family) not in _CSS_WIDE_FONT_KEYWORDS:
+        families.append(family)
+    return families
+
+
+def _font_family_declarations_from_css(css: str) -> list[str]:
+    """提取 CSS 文本中的 font-family 声明值，忽略注释内容。"""
+
+    clean_css = _CSS_COMMENT_RE.sub("", css)
+    return [
+        match.group(1).strip()
+        for match in _FONT_FAMILY_DECLARATION_RE.finditer(clean_css)
+    ]
+
+
+def _collect_font_families(root: ET.Element) -> tuple[list[dict[str, Any]], list[str]]:
+    """收集根/元素属性、style 属性和 style 元素 CSS 中的字体声明。"""
+
+    declarations: list[dict[str, Any]] = []
+    families: list[str] = []
+
+    def add_declaration(
+        element_index: int, source: str, raw_value: str
+    ) -> None:
+        value = raw_value.strip()
+        parsed_families = _split_font_family_list(value)
+        if not value:
+            return
+        declarations.append(
+            {
+                "element_index": element_index,
+                "raw": value,
+                "source": source,
+                "families": parsed_families,
+            }
+        )
+        for family in parsed_families:
+            if family not in families:
+                families.append(family)
+
+    for index, element in enumerate(root.iter(), start=1):
+        # SVG 属性是大小写敏感的，规范属性名为小写 font-family。
+        attribute_value = element.attrib.get("font-family")
+        if attribute_value is not None:
+            add_declaration(index, "attribute", attribute_value)
+
+        style_attribute = element.attrib.get("style", "")
+        for value in _font_family_declarations_from_css(style_attribute):
+            add_declaration(index, "style", value)
+
+        if _local_name(element.tag).lower() == "style":
+            for value in _font_family_declarations_from_css(_text_value(element)):
+                add_declaration(index, "style_element", value)
+
+    return declarations, families
+
+
+def _parse_simple_selector(selector: str) -> dict[str, Any] | None:
+    """解析有限的单元素 CSS 选择器，复杂选择器一律不参与匹配。"""
+
+    value = selector.strip()
+    if not value or any(char.isspace() or char in ">+~:*[]()" for char in value):
+        return None
+
+    tag: str | None = None
+    element_id: str | None = None
+    class_name: str | None = None
+    position = 0
+    tag_match = re.match(r"[A-Za-z_][A-Za-z0-9_-]*", value)
+    if tag_match:
+        tag = tag_match.group(0).casefold()
+        position = tag_match.end()
+
+    while position < len(value):
+        marker = value[position]
+        if marker not in {"#", "."}:
+            return None
+        name_match = re.match(r"[A-Za-z_][A-Za-z0-9_-]*", value[position + 1 :])
+        if name_match is None:
+            return None
+        name = name_match.group(0)
+        position += 1 + name_match.end()
+        if marker == "#":
+            if element_id is not None:
+                return None
+            element_id = name
+        else:
+            if class_name is not None:
+                return None
+            class_name = name
+
+    if tag is None and element_id is None and class_name is None:
+        return None
+    return {
+        "tag": tag,
+        "id": element_id,
+        "class": class_name,
+        "specificity": [
+            1 if element_id is not None else 0,
+            1 if class_name is not None else 0,
+            1 if tag is not None else 0,
+        ],
+    }
+
+
+def _iter_top_level_css_blocks(css: str) -> Iterable[tuple[str, str]]:
+    """只迭代顶层 CSS 块，避免把未解析的嵌套 at-rule 当作可用规则。"""
+
+    depth = 0
+    selector_start = 0
+    opening_brace: int | None = None
+    for index, char in enumerate(css):
+        if char == "{" and depth == 0:
+            opening_brace = index
+            depth = 1
+        elif char == "{" and depth > 0:
+            depth += 1
+        elif char == "}" and depth > 0:
+            depth -= 1
+            if depth == 0 and opening_brace is not None:
+                yield (
+                    css[selector_start:opening_brace].strip(),
+                    css[opening_brace + 1 : index],
+                )
+                selector_start = index + 1
+                opening_brace = None
+
+
+def _collect_css_font_rules(root: ET.Element) -> list[dict[str, Any]]:
+    """从 style 元素中提取可匹配的简单 CSS 字体规则。"""
+
+    rules: list[dict[str, Any]] = []
+    rule_order = 0
+    for element_index, element in enumerate(root.iter(), start=1):
+        if _local_name(element.tag).lower() != "style":
+            continue
+        css = _CSS_COMMENT_RE.sub("", _text_value(element))
+        for selector_group, body in _iter_top_level_css_blocks(css):
+            if not selector_group or selector_group.startswith("@"):
+                continue
+            declarations = _font_family_declarations_from_css(body)
+            if not declarations:
+                continue
+            raw_value = declarations[-1]
+            for selector_text in selector_group.split(","):
+                selector = _parse_simple_selector(selector_text)
+                if selector is None:
+                    # 复杂/不完整选择器不能被降级为全局规则。
+                    continue
+                rule_order += 1
+                rules.append(
+                    {
+                        "element_index": element_index,
+                        "source": "style_element_css",
+                        "selector": selector_text.strip(),
+                        "selector_parts": selector,
+                        "raw": raw_value,
+                        "families": _split_font_family_list(raw_value),
+                        "specificity": selector["specificity"],
+                        "rule_order": rule_order,
+                    }
+                )
+    return rules
+
+
+def _selector_matches(selector: dict[str, Any], element: ET.Element) -> bool:
+    """判断简单选择器是否匹配指定 SVG 元素。"""
+
+    tag = selector.get("tag")
+    if tag is not None and _local_name(element.tag).casefold() != tag:
+        return False
+    element_id = selector.get("id")
+    if element_id is not None and element.attrib.get("id") != element_id:
+        return False
+    class_name = selector.get("class")
+    if class_name is not None:
+        classes = set(element.attrib.get("class", "").split())
+        if class_name not in classes:
+            return False
+    return True
+
+
+def _effective_declaration(
+    declarations: list[dict[str, Any]],
+) -> dict[str, Any] | None:
+    """取同一元素上最后一个可审计的字体声明。"""
+
+    for declaration in reversed(declarations):
+        if declaration["families"]:
+            return declaration
+        if not _is_css_wide_font_value(declaration["raw"]):
+            return declaration
+    return None
+
+
+def _ancestor_chain(
+    element: ET.Element, parent_map: dict[ET.Element, ET.Element]
+) -> list[ET.Element]:
+    """按当前元素到根元素的顺序返回祖先链。"""
+
+    chain: list[ET.Element] = []
+    current: ET.Element | None = element
+    while current is not None:
+        chain.append(current)
+        current = parent_map.get(current)
+    return chain
+
+
+def _resolve_cjk_font_source(
+    element: ET.Element,
+    *,
+    parent_map: dict[ET.Element, ET.Element],
+    element_indexes: dict[ET.Element, int],
+    declarations_by_element: dict[int, list[dict[str, Any]]],
+    css_rules: list[dict[str, Any]],
+) -> dict[str, Any] | None:
+    """为单个中文 text 解析自身、祖先或匹配 CSS 规则中的字体来源。"""
+
+    chain = _ancestor_chain(element, parent_map)
+    for depth, node in enumerate(chain):
+        direct = [
+            declaration
+            for declaration in declarations_by_element.get(element_indexes[node], [])
+            if declaration["source"] in {"attribute", "style"}
+        ]
+        resolved = _effective_declaration(direct)
+        if resolved is not None:
+            source = dict(resolved)
+            source["source_kind"] = (
+                "element_style"
+                if resolved["source"] == "style" and depth == 0
+                else "element_attribute"
+                if resolved["source"] == "attribute" and depth == 0
+                else "ancestor_style"
+                if resolved["source"] == "style"
+                else "ancestor_attribute"
+            )
+            source["element_distance"] = depth
+            return source
+
+    # 没有内联/属性声明时，再按当前元素到根的顺序应用可解析 CSS 规则。
+    for depth, node in enumerate(chain):
+        matched = [
+            rule
+            for rule in css_rules
+            if _selector_matches(rule["selector_parts"], node)
+        ]
+        if not matched:
+            continue
+        resolved = max(
+            matched,
+            key=lambda rule: (tuple(rule["specificity"]), rule["rule_order"]),
+        )
+        source = dict(resolved)
+        source["source_kind"] = "css_selector"
+        source["element_distance"] = depth
+        return source
+    return None
+
+
+def _audit_cjk_text_font(
+    element_index: int,
+    value: str,
+    *,
+    element: ET.Element,
+    parent_map: dict[ET.Element, ET.Element],
+    element_indexes: dict[ET.Element, int],
+    declarations_by_element: dict[int, list[dict[str, Any]]],
+    css_rules: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """返回一个可见中文 text 的字体来源、候选和稳定状态。"""
+
+    source = _resolve_cjk_font_source(
+        element,
+        parent_map=parent_map,
+        element_indexes=element_indexes,
+        declarations_by_element=declarations_by_element,
+        css_rules=css_rules,
+    )
+    family_names = list(source["families"]) if source is not None else []
+    chinese_candidates = [
+        family
+        for family in family_names
+        if _normalize_font_family(family) in _CHINESE_FONT_CANDIDATES
+    ]
+    if source is None:
+        status = "missing"
+        finding_code = "CJK_FONT_FAMILY_MISSING"
+    elif not chinese_candidates:
+        status = "unsafe"
+        finding_code = "CJK_FONT_FALLBACK_UNSAFE"
+    else:
+        status = "safe"
+        finding_code = None
+    return {
+        "text_element_index": element_index,
+        "text": value,
+        "cjk_character_count": len(_CJK_RE.findall(value)),
+        "status": status,
+        "finding_code": finding_code,
+        "font_family_names": family_names,
+        "generic_font_families": [
+            family
+            for family in family_names
+            if _normalize_font_family(family) in _GENERIC_FONT_FAMILIES
+        ],
+        "unsafe_latin_font_families": [
+            family
+            for family in family_names
+            if _normalize_font_family(family) in _UNSAFE_LATIN_FONT_FAMILIES
+        ],
+        "chinese_font_candidates": chinese_candidates,
+        "font_family_source": source,
+    }
+
+
+def _is_hidden_text_element(
+    element: ET.Element, parent_map: dict[ET.Element, ET.Element]
+) -> bool:
+    """识别直接或祖先声明为 display:none/visibility:hidden 的 text。"""
+
+    current: ET.Element | None = element
+    while current is not None:
+        if current.attrib.get("display", "").strip().casefold() == "none":
+            return True
+        if current.attrib.get("visibility", "").strip().casefold() in {
+            "hidden",
+            "collapse",
+        }:
+            return True
+        style = current.attrib.get("style", "")
+        if _HIDDEN_DISPLAY_RE.search(style) or _HIDDEN_VISIBILITY_RE.search(style):
+            return True
+        current = parent_map.get(current)
+    return False
+
+
+def _visible_text_value(
+    element: ET.Element, parent_map: dict[ET.Element, ET.Element]
+) -> str:
+    """递归获取 text 中未被隐藏子节点遮蔽的文字。"""
+
+    if _is_hidden_text_element(element, parent_map):
+        return ""
+    parts: list[str] = []
+    if element.text:
+        parts.append(element.text)
+    for child in element:
+        parts.append(_visible_text_value(child, parent_map))
+        if child.tail:
+            parts.append(child.tail)
+    return "".join(parts)
+
+
 def _add_finding(
     findings: list[Finding],
     code: str,
@@ -165,6 +670,19 @@ def _new_result(path: Path) -> dict[str, Any]:
             "blank_text_element_count": 0,
             "text_character_count": 0,
             "whitespace_character_count": 0,
+            "cjk_text_present": False,
+            "cjk_character_count": 0,
+            "cjk_text_element_count": 0,
+            "cjk_text_audit_count": 0,
+            "cjk_text_audits": [],
+            "cjk_text_audit_passed": True,
+            "font_family_declaration_count": 0,
+            "font_family_declarations": [],
+            "font_family_count": 0,
+            "font_family_names": [],
+            "chinese_font_candidate_count": 0,
+            "chinese_font_candidates": [],
+            "has_chinese_font_candidate": False,
             "font_size_count": 0,
             "minimum_font_size_pt": None,
             "view_box": None,
@@ -325,16 +843,30 @@ def audit_svg(
         )
 
     # 统计文本并找出空白 text 节点；title/desc 不计入图中可见文字统计。
-    text_elements = [element for element in root.iter() if _local_name(element.tag) == "text"]
+    all_elements = list(root.iter())
+    element_indexes = {
+        element: index for index, element in enumerate(all_elements, start=1)
+    }
+    text_elements = [element for element in all_elements if _local_name(element.tag) == "text"]
     metrics["text_element_count"] = len(text_elements)
-    nonempty_texts = []
-    blank_texts = []
-    for index, element in enumerate(text_elements, start=1):
+    parent_map = {
+        child: parent
+        for parent in all_elements
+        for child in parent
+    }
+    nonempty_texts: list[str] = []
+    visible_nonempty_texts: list[tuple[int, str]] = []
+    blank_texts: list[int] = []
+    for element in text_elements:
+        index = element_indexes[element]
         value = _text_value(element)
         metrics["text_character_count"] += len(value)
         metrics["whitespace_character_count"] += sum(1 for char in value if char.isspace())
         if value.strip():
             nonempty_texts.append(value)
+            visible_value = _visible_text_value(element, parent_map)
+            if visible_value.strip():
+                visible_nonempty_texts.append((index, visible_value))
         else:
             blank_texts.append(index)
     metrics["nonempty_text_element_count"] = len(nonempty_texts)
@@ -352,6 +884,18 @@ def audit_svg(
             "SVG 包含空白 text 元素，可能是未清理的占位节点。",
             details={"text_element_indexes": blank_texts},
         )
+
+    # 中文字体门只针对可见 text，不把 title/desc 或隐藏占位文字当作图中标签。
+    cjk_characters = [
+        character
+        for _element_index, value in visible_nonempty_texts
+        for character in _CJK_RE.findall(value)
+    ]
+    metrics["cjk_character_count"] = len(cjk_characters)
+    metrics["cjk_text_element_count"] = sum(
+        1 for _element_index, value in visible_nonempty_texts if _CJK_RE.search(value)
+    )
+    metrics["cjk_text_present"] = bool(cjk_characters)
 
     # 检查属性、样式和文字中的远程 URL。XML 命名空间声明不会出现在 attrib 中，
     # 因而不会把标准 SVG 命名空间误报为远程资源。
@@ -397,6 +941,59 @@ def audit_svg(
             "image 元素引用了远程图片外链，不符合自包含论文图要求。",
             details={"links": remote_images},
         )
+
+    font_family_declarations, font_family_names = _collect_font_families(root)
+    chinese_font_candidates = [
+        family
+        for family in font_family_names
+        if _normalize_font_family(family) in _CHINESE_FONT_CANDIDATES
+    ]
+    metrics["font_family_declaration_count"] = len(font_family_declarations)
+    metrics["font_family_declarations"] = font_family_declarations
+    metrics["font_family_count"] = len(font_family_names)
+    metrics["font_family_names"] = font_family_names
+    metrics["chinese_font_candidate_count"] = len(chinese_font_candidates)
+    metrics["chinese_font_candidates"] = chinese_font_candidates
+    metrics["has_chinese_font_candidate"] = bool(chinese_font_candidates)
+
+    declarations_by_element: dict[int, list[dict[str, Any]]] = {}
+    for declaration in font_family_declarations:
+        declarations_by_element.setdefault(declaration["element_index"], []).append(
+            declaration
+        )
+    css_rules = _collect_css_font_rules(root)
+    cjk_text_audits: list[dict[str, Any]] = []
+    for element_index, value in visible_nonempty_texts:
+        if not _CJK_RE.search(value):
+            continue
+        audit = _audit_cjk_text_font(
+            element_index,
+            value,
+            element=all_elements[element_index - 1],
+            parent_map=parent_map,
+            element_indexes=element_indexes,
+            declarations_by_element=declarations_by_element,
+            css_rules=css_rules,
+        )
+        cjk_text_audits.append(audit)
+        finding_code = audit["finding_code"]
+        if finding_code is not None:
+            message = (
+                "可见中文 text 没有声明可审计的 font-family。"
+                if finding_code == "CJK_FONT_FAMILY_MISSING"
+                else "可见中文 text 的字体栈没有明确中文字体候选，无法保证中文字形。"
+            )
+            _add_finding(
+                findings,
+                finding_code,
+                message,
+                details=audit,
+            )
+    metrics["cjk_text_audit_count"] = len(cjk_text_audits)
+    metrics["cjk_text_audits"] = cjk_text_audits
+    metrics["cjk_text_audit_passed"] = all(
+        audit["status"] == "safe" for audit in cjk_text_audits
+    )
 
     # 同时检查属性中的 font-size、style 属性和 style 元素中的 CSS 声明。
     font_sizes: list[dict[str, Any]] = []

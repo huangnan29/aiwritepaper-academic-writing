@@ -75,6 +75,8 @@ PATH_SUFFIX_RE = re.compile(
     re.I,
 )
 
+IMAGE_GENERATION_ARTIFACT_SUFFIXES = {".png", ".jpg", ".jpeg", ".webp"}
+
 POINTER_PATTERNS = (
     re.compile(r"详见\s*(?:分章|章节(?:文件)?|对应分章|文件链接)", re.I),
     re.compile(r"正文(?:完整内容)?[^\n]{0,30}详见(?:对应)?分章", re.I),
@@ -906,7 +908,18 @@ def _figure_count_from_manifest(value: Any) -> int | None:
 def _figure_manifest_files(value: Any) -> list[str]:
     """提取图表清单中声明的本地文件名。"""
 
-    keys = {"filename", "file", "svg_file", "png_file", "html_file", "source_file"}
+    keys = {
+        "filename",
+        "file",
+        "svg_file",
+        "png_file",
+        "jpg_file",
+        "jpeg_file",
+        "webp_file",
+        "image_file",
+        "html_file",
+        "source_file",
+    }
     found: list[str] = []
 
     def visit(item: Any) -> None:
@@ -922,6 +935,702 @@ def _figure_manifest_files(value: Any) -> list[str]:
 
     visit(value)
     return list(dict.fromkeys(found))
+
+
+def _policy_bool(
+    policy: dict[str, Any],
+    key: str,
+    report: ValidationReport,
+    default: bool = False,
+) -> bool:
+    """读取图片生成策略中的布尔字段，并拒绝字符串冒充布尔值。"""
+
+    value = policy.get(key, default)
+    if isinstance(value, bool):
+        return value
+    report.add_issue(
+        "image-generation-policy-invalid",
+        f"image_generation_policy.{key} 必须是布尔值",
+        FAIL,
+        field=key,
+        value=value,
+    )
+    return default
+
+
+def _policy_figure_ids(
+    policy: dict[str, Any],
+    report: ValidationReport,
+) -> list[str]:
+    """读取 eligible_figure_ids，并保持清单顺序去重。"""
+
+    value = policy.get("eligible_figure_ids", [])
+    if value is None:
+        return []
+    if not isinstance(value, list):
+        report.add_issue(
+            "image-generation-policy-invalid",
+            "image_generation_policy.eligible_figure_ids 必须是字符串数组",
+            FAIL,
+            field="eligible_figure_ids",
+            value=value,
+        )
+        return []
+    result: list[str] = []
+    for item in value:
+        if not isinstance(item, str) or not item.strip():
+            report.add_issue(
+                "image-generation-policy-invalid",
+                "image_generation_policy.eligible_figure_ids 只能包含非空字符串",
+                FAIL,
+                field="eligible_figure_ids",
+                value=value,
+            )
+            continue
+        figure_id = item.strip()
+        if figure_id not in result:
+            result.append(figure_id)
+    return result
+
+
+def _policy_path_value(value: Any) -> str | None:
+    """从图片生成产物条目中读取路径。"""
+
+    if isinstance(value, str):
+        return value.strip() or None
+    if isinstance(value, dict):
+        for key in (
+            "path",
+            "artifact",
+            "file",
+            "filename",
+            "generated_artifact",
+            "artifact_path",
+        ):
+            child = value.get(key)
+            if isinstance(child, str) and child.strip():
+                return child.strip()
+    return None
+
+
+def _policy_figure_id(value: Any) -> str | None:
+    """从图片生成产物对象中读取图号。"""
+
+    if not isinstance(value, dict):
+        return None
+    for key in ("figure_id", "figureId", "id", "figure"):
+        child = value.get(key)
+        if isinstance(child, str) and child.strip():
+            return child.strip()
+    return None
+
+
+def _policy_prompt_value(value: Any) -> str | None:
+    """从逐图 prompt 映射条目中读取 prompt 文件路径。"""
+
+    if isinstance(value, str):
+        return value.strip() or None
+    if isinstance(value, dict):
+        for key in ("prompt_file", "prompt_path", "path", "file", "filename"):
+            child = value.get(key)
+            if isinstance(child, str) and child.strip():
+                return child.strip()
+    return None
+
+
+def _collect_prompt_by_figure(
+    policy: dict[str, Any],
+    report: ValidationReport,
+) -> dict[str, str]:
+    """读取每个 eligible 图号对应的独立 prompt 文件映射。"""
+
+    raw_mapping = policy.get("prompt_by_figure", {})
+    if raw_mapping is None:
+        return {}
+    if not isinstance(raw_mapping, dict):
+        report.add_issue(
+            "image-generation-policy-invalid",
+            "image_generation_policy.prompt_by_figure 必须是图号到 prompt 路径的对象",
+            FAIL,
+            field="prompt_by_figure",
+            value=raw_mapping,
+        )
+        return {}
+    result: dict[str, str] = {}
+    for figure_id, value in raw_mapping.items():
+        normalized_id = str(figure_id).strip()
+        prompt_path = _policy_prompt_value(value)
+        if not normalized_id or prompt_path is None:
+            report.add_issue(
+                "image-generation-policy-invalid",
+                "image_generation_policy.prompt_by_figure 只能包含非空图号和 prompt 文件路径",
+                FAIL,
+                field="prompt_by_figure",
+            )
+            continue
+        result[normalized_id] = prompt_path
+    return result
+
+
+def _collect_image_generation_artifacts(
+    policy: dict[str, Any],
+    report: ValidationReport,
+) -> tuple[list[str], dict[str, str]]:
+    """收集图片生成产物，并兼容路径数组、对象数组和图号映射。"""
+
+    artifact_paths: list[str] = []
+    by_figure: dict[str, str] = {}
+
+    def add(path: str | None, figure_id: str | None = None) -> None:
+        if path is None:
+            report.add_issue(
+                "image-generation-policy-invalid",
+                "image_generation_policy.generated_artifacts 含有无效产物条目",
+                FAIL,
+                field="generated_artifacts",
+            )
+            return
+        artifact_paths.append(path)
+        if figure_id:
+            by_figure[figure_id] = path
+
+    raw_artifacts = policy.get("generated_artifacts", [])
+    if raw_artifacts is None:
+        raw_artifacts = []
+    if isinstance(raw_artifacts, str):
+        raw_items: list[Any] = [raw_artifacts]
+    elif isinstance(raw_artifacts, list):
+        raw_items = raw_artifacts
+    elif isinstance(raw_artifacts, dict):
+        raw_items = []
+        for figure_id, value in raw_artifacts.items():
+            add(_policy_path_value(value), str(figure_id).strip() or None)
+    else:
+        raw_items = []
+        report.add_issue(
+            "image-generation-policy-invalid",
+            "image_generation_policy.generated_artifacts 必须是路径数组或对象数组",
+            FAIL,
+            field="generated_artifacts",
+            value=raw_artifacts,
+        )
+
+    for item in raw_items:
+        if isinstance(item, str):
+            add(item.strip() or None)
+            continue
+        if isinstance(item, dict):
+            add(_policy_path_value(item), _policy_figure_id(item))
+            continue
+        add(None)
+
+    raw_mapping = policy.get("generated_by_figure", {})
+    if raw_mapping is None:
+        raw_mapping = {}
+    if not isinstance(raw_mapping, dict):
+        report.add_issue(
+            "image-generation-policy-invalid",
+            "image_generation_policy.generated_by_figure 必须是图号到路径的对象",
+            FAIL,
+            field="generated_by_figure",
+            value=raw_mapping,
+        )
+    else:
+        for figure_id, value in raw_mapping.items():
+            normalized_id = str(figure_id).strip()
+            if not normalized_id:
+                report.add_issue(
+                    "image-generation-policy-invalid",
+                    "image_generation_policy.generated_by_figure 不能使用空图号",
+                    FAIL,
+                    field="generated_by_figure",
+                )
+                continue
+            path = _policy_path_value(value)
+            add(path, normalized_id)
+
+    unique_paths: list[str] = []
+    seen: set[str] = set()
+    for path in artifact_paths:
+        normalized = path.replace("\\", "/")
+        if normalized not in seen:
+            seen.add(normalized)
+            unique_paths.append(path)
+    return unique_paths, by_figure
+
+
+def _infer_image_generation_figure_id(
+    path: str,
+    eligible_ids: list[str],
+) -> str | None:
+    """从产物文件名推断唯一图号，供旧式路径数组兼容。"""
+
+    stem = Path(path.replace("\\", "/")).stem.casefold()
+    matches = [figure_id for figure_id in eligible_ids if figure_id.casefold() in stem]
+    if not matches:
+        return None
+    matches.sort(key=lambda item: len(item), reverse=True)
+    if len(matches) > 1 and len(matches[0]) == len(matches[1]):
+        return None
+    return matches[0]
+
+
+def _resolve_figure_artifact(
+    figure_dir: Path,
+    declared: str,
+) -> tuple[Path | None, str | None]:
+    """解析图片生成产物，拒绝绝对路径、URI、越界路径和符号链接越界。"""
+
+    normalized = declared.strip().replace("\\", "/")
+    if not normalized:
+        return None, "invalid"
+    if re.match(r"^[A-Za-z][A-Za-z0-9+.-]*://", normalized) or re.match(r"^[A-Za-z]:/", normalized):
+        return None, "outside"
+    candidate = Path(normalized)
+    if candidate.is_absolute():
+        return None, "outside"
+    parts = list(candidate.parts)
+    if ".." in parts:
+        return None, "outside"
+    while parts and parts[0] == ".":
+        parts.pop(0)
+    if parts and parts[0].casefold() == "figures":
+        parts = parts[1:]
+    if not parts:
+        return None, "invalid"
+    resolved = (figure_dir / Path(*parts)).resolve()
+    try:
+        resolved.relative_to(figure_dir.resolve())
+    except ValueError:
+        return None, "outside"
+    return resolved, None
+
+
+def _raster_signature(path: Path) -> str | None:
+    """读取位图文件头，返回 png、jpeg、webp 或可识别的伪装类型。"""
+
+    try:
+        sample = path.read_bytes()[:1024]
+    except OSError:
+        return None
+    if sample.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "png"
+    if sample.startswith(b"\xff\xd8\xff"):
+        return "jpeg"
+    if len(sample) >= 12 and sample[:4] == b"RIFF" and sample[8:12] == b"WEBP":
+        return "webp"
+    text_sample = sample.lstrip(b"\xef\xbb\xbf \t\r\n").lower()
+    if text_sample.startswith(b"<svg") or (
+        text_sample.startswith(b"<?xml") and b"<svg" in text_sample
+    ):
+        return "svg"
+    if text_sample.startswith((b"<!doctype html", b"<html", b"<head", b"<body")):
+        return "html"
+    return None
+
+
+def _check_image_generation_policy(
+    report: ValidationReport,
+    root: Path,
+    figure_dir: Path,
+    figure_manifest: Any,
+) -> dict[str, Any]:
+    """验收 FULL_BUILD/FIGURES_ONLY 的 image-gen 使用策略和逐图覆盖。"""
+
+    issue_start = len(report.issues)
+    policy = figure_manifest.get("image_generation_policy") if isinstance(figure_manifest, dict) else None
+    result: dict[str, Any] = {
+        "present": isinstance(policy, dict),
+        "required_mode": report.mode,
+        "eligible_figure_ids": [],
+        "generated_artifacts": [],
+        "generated_by_figure": {},
+        "prompt_by_figure": {},
+        "valid_artifacts": [],
+        "valid_prompts": [],
+        "missing_eligible_figure_ids": [],
+        "missing_prompt_figure_ids": [],
+    }
+    if not isinstance(policy, dict):
+        issue_code = "image-generation-policy-invalid" if policy is not None else "image-generation-policy-missing"
+        message = (
+            "figures/figure-manifest.json 顶层必须包含 image_generation_policy 对象"
+            if policy is not None
+            else "FULL_BUILD/FIGURES_ONLY 要求 figure-manifest.json 包含 image_generation_policy"
+        )
+        report.add_issue(issue_code, message, FAIL)
+        report.metrics["image_generation_policy_present"] = False
+        report.metrics["image_generation_required"] = False
+        report.metrics["image_generation_attempted"] = False
+        report.metrics["image_generation_eligible_count"] = 0
+        report.metrics["image_generation_artifact_count"] = 0
+        report.metrics["image_generation_prompt_count"] = 0
+        report.metrics["image_generation_valid_prompt_count"] = 0
+        report.metrics["image_generation_missing_prompt_figure_ids"] = []
+        report.metrics["image_generation_policy"] = result
+        report.add_check("image_generation_policy", FAIL, "image-gen 使用策略缺失或格式错误", **result)
+        return result
+
+    client_tool_exposed = _policy_bool(policy, "client_tool_exposed", report)
+    required = _policy_bool(policy, "required", report)
+    attempted = _policy_bool(policy, "attempted", report)
+    explicit_opt_out = _policy_bool(policy, "explicit_user_opt_out", report)
+    venue_prohibits = _policy_bool(policy, "venue_prohibits_ai_images", report)
+    eligible_ids = _policy_figure_ids(policy, report)
+    tool_or_model_value = policy.get("tool_or_model")
+    tool_or_model = tool_or_model_value.strip() if isinstance(tool_or_model_value, str) else None
+    if tool_or_model_value is not None and not isinstance(tool_or_model_value, str):
+        report.add_issue(
+            "image-generation-policy-invalid",
+            "image_generation_policy.tool_or_model 必须是字符串或 null",
+            FAIL,
+            field="tool_or_model",
+            value=tool_or_model_value,
+        )
+    not_used_reason_value = policy.get("not_used_reason")
+    not_used_reason = not_used_reason_value.strip() if isinstance(not_used_reason_value, str) else None
+    if not_used_reason_value is not None and not isinstance(not_used_reason_value, str):
+        report.add_issue(
+            "image-generation-policy-invalid",
+            "image_generation_policy.not_used_reason 必须是字符串或 null",
+            FAIL,
+            field="not_used_reason",
+            value=not_used_reason_value,
+        )
+    deterministic_reason_value = policy.get("deterministic_only_reason")
+    deterministic_reason = (
+        deterministic_reason_value.strip() if isinstance(deterministic_reason_value, str) else None
+    )
+    if deterministic_reason_value is not None and not isinstance(deterministic_reason_value, str):
+        report.add_issue(
+            "image-generation-policy-invalid",
+            "image_generation_policy.deterministic_only_reason 必须是字符串或 null",
+            FAIL,
+            field="deterministic_only_reason",
+            value=deterministic_reason_value,
+        )
+    deterministic_reason_valid = bool(
+        deterministic_reason
+        and re.search(
+            r"(?:deterministic|data|raw|domain|statistic|统计|数据|原始|科研|领域|公式|化学|电路|地图)",
+            deterministic_reason,
+            re.I,
+        )
+    )
+    exempt = explicit_opt_out or venue_prohibits
+    deterministic_only = client_tool_exposed and not eligible_ids and not exempt and deterministic_reason_valid
+    artifact_paths, generated_by_figure = _collect_image_generation_artifacts(policy, report)
+    prompt_by_figure = _collect_prompt_by_figure(policy, report)
+    result.update(
+        {
+            "client_tool_exposed": client_tool_exposed,
+            "required": required,
+            "effective_required": required,
+            "attempted": attempted,
+            "tool_or_model": tool_or_model,
+            "eligible_figure_ids": eligible_ids,
+            "generated_artifacts": artifact_paths,
+            "generated_by_figure": generated_by_figure,
+            "prompt_by_figure": prompt_by_figure,
+            "explicit_user_opt_out": explicit_opt_out,
+            "venue_prohibits_ai_images": venue_prohibits,
+            "not_used_reason": not_used_reason,
+            "deterministic_only_reason": deterministic_reason,
+            "deterministic_only_exception": deterministic_only,
+        }
+    )
+
+    if eligible_ids and not required:
+        report.add_issue(
+            "image-generation-required-false",
+            "eligible_figure_ids 非空时 image_generation_policy.required 必须为 true",
+            FAIL,
+            eligible_figure_ids=eligible_ids,
+            declared_required=required,
+        )
+    if client_tool_exposed and not eligible_ids and not exempt and not deterministic_reason_valid:
+        report.add_issue(
+            "image-generation-deterministic-only-reason-missing",
+            "client_tool_exposed=true 且没有 eligible_figure_ids 时，必须说明仅含数据、原始科研或领域图的 deterministic_only_reason",
+            FAIL,
+            field="deterministic_only_reason",
+        )
+    if deterministic_reason_value is not None and deterministic_reason and not deterministic_reason_valid:
+        report.add_issue(
+            "image-generation-deterministic-only-reason-invalid",
+            "deterministic_only_reason 必须明确列出数据、原始科研或公式/化学/电路/地图等领域图",
+            FAIL,
+            field="deterministic_only_reason",
+        )
+
+    if client_tool_exposed and eligible_ids and not exempt:
+        result["effective_required"] = True
+    elif client_tool_exposed and not eligible_ids and not exempt and not deterministic_reason_valid:
+        result["effective_required"] = True
+    elif deterministic_only:
+        result["effective_required"] = False
+
+    enforce_generation = bool(result["effective_required"] and not deterministic_only)
+    if enforce_generation:
+        if not attempted:
+            report.add_issue(
+                "image-generation-not-attempted",
+                "image_generation_policy.required=true 时必须记录 attempted=true",
+                FAIL,
+            )
+        if not tool_or_model:
+            report.add_issue(
+                "image-generation-tool-missing",
+                "image_generation_policy.required=true 时必须记录非空 tool_or_model",
+                FAIL,
+            )
+        if not artifact_paths:
+            report.add_issue(
+                "image-generation-artifacts-missing",
+                "image_generation_policy.required=true 时必须至少提供一个 generated_artifacts 或 generated_by_figure 产物",
+                FAIL,
+            )
+
+    if eligible_ids:
+        for artifact_path in artifact_paths:
+            inferred_id = _infer_image_generation_figure_id(artifact_path, eligible_ids)
+            if inferred_id and inferred_id not in generated_by_figure:
+                generated_by_figure[inferred_id] = artifact_path
+
+    valid_resolved: set[Path] = set()
+    valid_artifacts: list[str] = []
+    for artifact_path in artifact_paths:
+        resolved, path_error = _resolve_figure_artifact(figure_dir, artifact_path)
+        if path_error == "outside":
+            report.add_issue(
+                "image-generation-artifact-outside",
+                f"image-gen 产物必须位于 figures/ 内：{artifact_path}",
+                FAIL,
+                artifact=artifact_path,
+            )
+            continue
+        if path_error or resolved is None:
+            report.add_issue(
+                "image-generation-artifact-path-invalid",
+                f"image-gen 产物路径无效：{artifact_path}",
+                FAIL,
+                artifact=artifact_path,
+            )
+            continue
+        suffix = resolved.suffix.casefold()
+        if suffix not in IMAGE_GENERATION_ARTIFACT_SUFFIXES:
+            report.add_issue(
+                "image-generation-artifact-format-invalid",
+                f"image-gen 产物只允许 PNG/JPG/JPEG/WebP，不接受该文件：{artifact_path}",
+                FAIL,
+                artifact=artifact_path,
+                suffix=suffix,
+                allowed=sorted(IMAGE_GENERATION_ARTIFACT_SUFFIXES),
+            )
+            continue
+        if not resolved.is_file():
+            report.add_issue(
+                "image-generation-artifact-missing",
+                f"image-gen 产物不存在：{artifact_path}",
+                FAIL,
+                artifact=artifact_path,
+            )
+            continue
+        try:
+            size = resolved.stat().st_size
+        except OSError:
+            size = 0
+        if size <= 0:
+            report.add_issue(
+                "image-generation-artifact-empty",
+                f"image-gen 产物为空：{artifact_path}",
+                FAIL,
+                artifact=artifact_path,
+            )
+            continue
+        expected_signature = "jpeg" if suffix in {".jpg", ".jpeg"} else suffix[1:]
+        actual_signature = _raster_signature(resolved)
+        if actual_signature != expected_signature:
+            report.add_issue(
+                "image-generation-artifact-signature-invalid",
+                f"image-gen 产物文件头与扩展名不匹配：{artifact_path}",
+                FAIL,
+                artifact=artifact_path,
+                expected=expected_signature,
+                detected=actual_signature,
+            )
+            continue
+        valid_resolved.add(resolved)
+        valid_artifacts.append(_relative(root, resolved))
+
+    result["valid_artifacts"] = list(dict.fromkeys(valid_artifacts))
+    covered_ids: list[str] = []
+    missing_ids: list[str] = []
+    for figure_id in eligible_ids:
+        declared_artifact = generated_by_figure.get(figure_id)
+        resolved, path_error = (
+            _resolve_figure_artifact(figure_dir, declared_artifact)
+            if isinstance(declared_artifact, str)
+            else (None, "invalid")
+        )
+        if resolved is not None and path_error is None and resolved in valid_resolved:
+            covered_ids.append(figure_id)
+        else:
+            missing_ids.append(figure_id)
+    result["covered_figure_ids"] = covered_ids
+    result["missing_eligible_figure_ids"] = missing_ids
+    result["artifact_count"] = len(artifact_paths)
+    result["valid_artifact_count"] = len(result["valid_artifacts"])
+    reused_by_path: dict[Path, list[str]] = {}
+    for figure_id in covered_ids:
+        declared_artifact = generated_by_figure.get(figure_id)
+        if not isinstance(declared_artifact, str):
+            continue
+        resolved, path_error = _resolve_figure_artifact(figure_dir, declared_artifact)
+        if resolved is not None and path_error is None:
+            reused_by_path.setdefault(resolved, []).append(figure_id)
+    reused = [
+        {"artifact": _relative(root, path), "figure_ids": figure_ids}
+        for path, figure_ids in reused_by_path.items()
+        if len(figure_ids) > 1
+    ]
+    result["reused_artifacts"] = reused
+    if reused and enforce_generation and not exempt:
+        report.add_issue(
+            "image-generation-artifact-reused",
+            "同一个 image-gen 位图不能覆盖多个 eligible_figure_ids",
+            FAIL,
+            reused_artifacts=reused,
+        )
+
+    valid_prompts: list[str] = []
+    prompt_resolved_by_figure: dict[str, Path] = {}
+    missing_prompt_ids: list[str] = []
+    prompt_required = bool(eligible_ids and enforce_generation and not exempt)
+    if prompt_required:
+        for figure_id in eligible_ids:
+            declared_prompt = prompt_by_figure.get(figure_id)
+            if not isinstance(declared_prompt, str) or not declared_prompt.strip():
+                missing_prompt_ids.append(figure_id)
+                continue
+            resolved_prompt, prompt_path_error = _resolve_figure_artifact(figure_dir, declared_prompt)
+            if prompt_path_error == "outside":
+                report.add_issue(
+                    "image-generation-prompt-outside",
+                    f"eligible 图的 prompt_file 必须位于 figures/ 内：{declared_prompt}",
+                    FAIL,
+                    figure_id=figure_id,
+                    prompt_file=declared_prompt,
+                )
+                missing_prompt_ids.append(figure_id)
+                continue
+            if prompt_path_error or resolved_prompt is None:
+                report.add_issue(
+                    "image-generation-prompt-path-invalid",
+                    f"eligible 图的 prompt_file 路径无效：{declared_prompt}",
+                    FAIL,
+                    figure_id=figure_id,
+                    prompt_file=declared_prompt,
+                )
+                missing_prompt_ids.append(figure_id)
+                continue
+            if resolved_prompt.suffix.casefold() not in {".md", ".txt"}:
+                report.add_issue(
+                    "image-generation-prompt-format-invalid",
+                    f"eligible 图的 prompt_file 只允许 .md 或 .txt：{declared_prompt}",
+                    FAIL,
+                    figure_id=figure_id,
+                    prompt_file=declared_prompt,
+                )
+                missing_prompt_ids.append(figure_id)
+                continue
+            if not resolved_prompt.is_file():
+                report.add_issue(
+                    "image-generation-prompt-file-missing",
+                    f"eligible 图的 prompt_file 不存在：{declared_prompt}",
+                    FAIL,
+                    figure_id=figure_id,
+                    prompt_file=declared_prompt,
+                )
+                missing_prompt_ids.append(figure_id)
+                continue
+            try:
+                prompt_size = resolved_prompt.stat().st_size
+            except OSError:
+                prompt_size = 0
+            if prompt_size <= 0:
+                report.add_issue(
+                    "image-generation-prompt-empty",
+                    f"eligible 图的 prompt_file 为空：{declared_prompt}",
+                    FAIL,
+                    figure_id=figure_id,
+                    prompt_file=declared_prompt,
+                )
+                missing_prompt_ids.append(figure_id)
+                continue
+            prompt_resolved_by_figure[figure_id] = resolved_prompt
+            valid_prompts.append(_relative(root, resolved_prompt))
+        if missing_prompt_ids:
+            report.add_issue(
+                "image-generation-prompt-missing",
+                "eligible_figure_ids 未逐一覆盖非空 prompt_file：" + "、".join(missing_prompt_ids),
+                FAIL,
+                missing_prompt_figure_ids=missing_prompt_ids,
+            )
+
+    prompt_by_path: dict[Path, list[str]] = {}
+    for figure_id, prompt_path in prompt_resolved_by_figure.items():
+        prompt_by_path.setdefault(prompt_path, []).append(figure_id)
+    reused_prompts = [
+        {"prompt_file": _relative(root, path), "figure_ids": figure_ids}
+        for path, figure_ids in prompt_by_path.items()
+        if len(figure_ids) > 1
+    ]
+    if reused_prompts and prompt_required:
+        report.add_issue(
+            "image-generation-prompt-reused",
+            "每个 eligible_figure_id 必须使用独立 prompt_file，不能复用同一文件",
+            FAIL,
+            reused_prompts=reused_prompts,
+        )
+    result["valid_prompts"] = list(dict.fromkeys(valid_prompts))
+    result["missing_prompt_figure_ids"] = missing_prompt_ids
+    result["reused_prompts"] = reused_prompts
+    if missing_ids and enforce_generation and not exempt:
+        report.add_issue(
+            "image-generation-eligible-uncovered",
+            "eligible_figure_ids 未逐一覆盖有效 image-gen 位图产物：" + "、".join(missing_ids),
+            FAIL,
+            missing_eligible_figure_ids=missing_ids,
+            covered_figure_ids=covered_ids,
+        )
+
+    report.metrics["image_generation_policy_present"] = True
+    report.metrics["image_generation_client_tool_exposed"] = client_tool_exposed
+    report.metrics["image_generation_required"] = bool(result["effective_required"])
+    report.metrics["image_generation_attempted"] = attempted
+    report.metrics["image_generation_eligible_count"] = len(eligible_ids)
+    report.metrics["image_generation_covered_count"] = len(covered_ids)
+    report.metrics["image_generation_missing_figure_ids"] = missing_ids
+    report.metrics["image_generation_artifact_count"] = len(artifact_paths)
+    report.metrics["image_generation_valid_artifact_count"] = len(result["valid_artifacts"])
+    report.metrics["image_generation_prompt_count"] = len(prompt_by_figure)
+    report.metrics["image_generation_valid_prompt_count"] = len(result["valid_prompts"])
+    report.metrics["image_generation_missing_prompt_figure_ids"] = missing_prompt_ids
+    report.metrics["image_generation_policy"] = result
+
+    policy_issues = report.issues[issue_start:]
+    if any(issue.severity == FAIL for issue in policy_issues):
+        check_status = FAIL
+        check_message = "image-gen 使用策略或逐图产物校验失败"
+    elif policy_issues:
+        check_status = PARTIAL
+        check_message = "image-gen 使用策略存在待核对项"
+    else:
+        check_status = PASS
+        check_message = "image-gen 使用策略和逐图位图覆盖校验通过"
+    report.add_check("image_generation_policy", check_status, check_message, **result)
+    return result
 
 
 def _manifest_declared_count(manifest: dict[str, Any] | None) -> int | None:
@@ -972,14 +1681,57 @@ def _qa_figure_count(text: str | None) -> int | None:
     return None
 
 
+def _figure_manifest_entries(value: Any) -> list[Any]:
+    """提取 figure-manifest 中的逐图条目。"""
+
+    if isinstance(value, list):
+        return value
+    if not isinstance(value, dict):
+        return []
+    for key in ("figures", "items", "entries", "assets"):
+        child = value.get(key)
+        if isinstance(child, list):
+            return child
+    return []
+
+
+def _figure_entry_raster_files(entry: Any) -> list[str]:
+    """提取单个图表条目声明的最终位图文件。"""
+
+    raster_keys = {
+        "filename",
+        "file",
+        "png_file",
+        "jpg_file",
+        "jpeg_file",
+        "webp_file",
+        "image_file",
+        "raster_file",
+        "final_file",
+        "final_raster",
+        "output_file",
+    }
+    if isinstance(entry, str):
+        return [entry.strip()] if entry.strip() else []
+    if not isinstance(entry, dict):
+        return []
+    result: list[str] = []
+    for key, value in entry.items():
+        if str(key).casefold() in raster_keys and isinstance(value, str) and value.strip():
+            if Path(value.replace("\\", "/")).suffix.casefold() in IMAGE_GENERATION_ARTIFACT_SUFFIXES:
+                result.append(value.strip())
+    return list(dict.fromkeys(result))
+
+
 def _check_figures(
     report: ValidationReport,
     root: Path,
     run_manifest: dict[str, Any] | None = None,
     qa_text: str | None = None,
 ) -> dict[str, Any]:
-    """统计 SVG/PNG 并核对图表清单。"""
+    """统计最终 raster，核对图表清单和可选 SVG 修正源。"""
 
+    issue_start = len(report.issues)
     figure_dir = root / "figures"
     result: dict[str, Any] = {"directory": "figures", "exists": figure_dir.is_dir()}
     if not figure_dir.is_dir():
@@ -988,11 +1740,17 @@ def _check_figures(
         return result
     svg_paths = sorted(path for path in figure_dir.rglob("*") if path.is_file() and path.suffix.casefold() == ".svg")
     png_paths = sorted(path for path in figure_dir.rglob("*") if path.is_file() and path.suffix.casefold() == ".png")
-    result.update({"svg_count": len(svg_paths), "png_count": len(png_paths)})
+    raster_paths = sorted(
+        path
+        for path in figure_dir.rglob("*")
+        if path.is_file() and path.suffix.casefold() in IMAGE_GENERATION_ARTIFACT_SUFFIXES
+    )
+    result.update({"svg_count": len(svg_paths), "png_count": len(png_paths), "raster_count": len(raster_paths)})
     report.metrics["svg_count"] = len(svg_paths)
     report.metrics["png_count"] = len(png_paths)
-    if not svg_paths and not png_paths:
-        report.add_issue("figures-empty", "figures/ 下没有 SVG 或 PNG 图文件", FAIL)
+    report.metrics["raster_count"] = len(raster_paths)
+    if not raster_paths:
+        report.add_issue("figures-empty", "figures/ 下没有最终 PNG/JPG/JPEG/WebP 位图", FAIL)
 
     figure_manifest_path = figure_dir / "figure-manifest.json"
     figure_manifest: Any | None = None
@@ -1003,6 +1761,8 @@ def _check_figures(
             figure_manifest = _json_file(figure_manifest_path)
         except (OSError, ValueError, TypeError) as error:
             report.add_issue("figure-manifest-invalid", f"图表清单 JSON 无法解析：{error}", FAIL)
+    image_policy_result = _check_image_generation_policy(report, root, figure_dir, figure_manifest)
+    result["image_generation_policy"] = image_policy_result
     expected = _figure_count_from_manifest(figure_manifest)
     declared_files = _figure_manifest_files(figure_manifest)
     missing_declared_files: list[str] = []
@@ -1030,54 +1790,89 @@ def _check_figures(
             FAIL,
             files=missing_declared_files,
         )
+    figure_entries = _figure_manifest_entries(figure_manifest)
+    entries_with_raster = 0
+    entries_missing_raster: list[int] = []
+    for entry_index, entry in enumerate(figure_entries):
+        raster_declarations = _figure_entry_raster_files(entry)
+        if not raster_declarations:
+            entries_missing_raster.append(entry_index)
+            continue
+        entry_has_raster = False
+        for declared_raster in raster_declarations:
+            resolved_raster, raster_path_error = _resolve_figure_artifact(figure_dir, declared_raster)
+            if raster_path_error or resolved_raster is None:
+                continue
+            if resolved_raster.suffix.casefold() not in IMAGE_GENERATION_ARTIFACT_SUFFIXES:
+                continue
+            if not _is_nonempty_file(resolved_raster):
+                continue
+            entry_has_raster = True
+            break
+        if entry_has_raster:
+            entries_with_raster += 1
+        else:
+            entries_missing_raster.append(entry_index)
+    result["figure_entry_count"] = len(figure_entries)
+    result["figure_entries_with_raster"] = entries_with_raster
+    result["figure_entries_missing_raster"] = entries_missing_raster
+    report.metrics["figure_entry_count"] = len(figure_entries)
+    report.metrics["figure_entries_with_raster"] = entries_with_raster
+    report.metrics["figure_entries_missing_raster"] = entries_missing_raster
+    if entries_missing_raster:
+        report.add_issue(
+            "figure-raster-missing",
+            "每个 figure manifest 条目必须声明并存在至少一个最终 raster 文件；缺少条目："
+            + "、".join(str(index) for index in entries_missing_raster),
+            FAIL,
+            entries=entries_missing_raster,
+        )
     run_declared = _manifest_declared_count(run_manifest)
     qa_declared = _qa_figure_count(qa_text)
     result.update({"figure_manifest_count": expected, "manifest_count": run_declared, "qa_count": qa_declared})
     report.metrics["figure_manifest_count"] = expected
-    if expected is not None and len(svg_paths) != expected:
+    if expected is None:
         report.add_issue(
-            "svg-count-mismatch",
-            f"SVG 实际数量 {len(svg_paths)} 与图表清单声明 {expected} 不一致",
+            "figure-manifest-count-missing",
+            "图表清单缺少可核对的 figure 条目数",
             FAIL,
-            actual=len(svg_paths),
-            declared=expected,
         )
-    if expected is not None and len(png_paths) != expected:
+    elif len(raster_paths) != expected:
         report.add_issue(
-            "png-count-mismatch",
-            f"PNG 实际数量 {len(png_paths)} 与图表清单声明 {expected} 不一致",
-            PARTIAL,
-            actual=len(png_paths),
+            "raster-count-mismatch",
+            f"最终 raster 实际数量 {len(raster_paths)} 与图表清单声明 {expected} 不一致",
+            FAIL,
+            actual=len(raster_paths),
             declared=expected,
         )
-    if run_declared is not None and len(svg_paths) != run_declared:
+
+    if run_declared is not None and (
+        (expected is not None and run_declared != expected) or run_declared != len(raster_paths)
+    ):
         report.add_issue(
             "manifest-figure-count-mismatch",
-            f"SVG 实际数量 {len(svg_paths)} 与 run-manifest 图数 {run_declared} 不一致",
+            f"run-manifest 图数 {run_declared} 与 expected {expected} 或最终 raster 数 {len(raster_paths)} 不一致",
             FAIL,
-            actual=len(svg_paths),
             declared=run_declared,
+            expected=expected,
+            raster_count=len(raster_paths),
         )
-    if qa_declared is not None and len(svg_paths) != qa_declared:
+    if qa_declared is not None and (
+        (expected is not None and qa_declared != expected) or qa_declared != len(raster_paths)
+    ):
         report.add_issue(
             "qa-figure-count-mismatch",
-            f"SVG 实际数量 {len(svg_paths)} 与 QA 图数 {qa_declared} 不一致",
+            f"QA 图数 {qa_declared} 与 expected {expected} 或最终 raster 数 {len(raster_paths)} 不一致",
             FAIL,
-            actual=len(svg_paths),
             declared=qa_declared,
+            expected=expected,
+            raster_count=len(raster_paths),
         )
-    if len(svg_paths) != len(png_paths):
-        report.add_issue(
-            "figure-format-gap",
-            f"SVG/PNG 数量不一致：SVG {len(svg_paths)}、PNG {len(png_paths)}",
-            PARTIAL,
-            svg=len(svg_paths),
-            png=len(png_paths),
-        )
-    if not any(issue.code.startswith("figures-") or issue.code.endswith("count-mismatch") or issue.code == "figure-manifest-missing" for issue in report.issues):
-        report.add_check("figures", PASS, "SVG/PNG 数量和图表清单校验通过", **result)
+    figure_issues = report.issues[issue_start:]
+    if not figure_issues:
+        report.add_check("figures", PASS, "最终 raster 数量和图表清单校验通过", **result)
     else:
-        check_status = FAIL if any(issue.severity == FAIL and (issue.code.startswith("figures-") or "figure" in issue.code) for issue in report.issues) else PARTIAL
+        check_status = FAIL if any(issue.severity == FAIL for issue in figure_issues) else PARTIAL
         report.add_check("figures", check_status, "图表数量或清单存在问题", **result)
     return result
 

@@ -62,6 +62,75 @@ REQUIRED_SECTION_GROUPS = {
 HEADING_PATTERN = re.compile(r"(?im)^\s*#{1,6}\s+(.+?)\s*$")
 MANIFEST_MARKER = "公共来源（固定顺序）"
 
+# 这些标记用于防止图片路由规则在文案小幅改写时悄然丢失。每个内层元组
+# 表示一个必须满足的语义组，组内模式为可接受的同义写法；不匹配整句，
+# 避免因为换行、标点或措辞微调产生误报。
+ACADEMIC_FIGURE_MARKER_GROUPS: dict[str, tuple[tuple[str, ...], ...]] = {
+    "client_tool_exposed": ((r"\bclient_tool_exposed\b",),),
+    "eligible_figure_ids": ((r"\beligible_figure_ids\b",),),
+    "prompt_by_figure": ((r"\bprompt_by_figure\b",),),
+    "generated_by_figure": ((r"\bgenerated_by_figure\b",),),
+    "image_generation_policy": ((r"\bimage_generation_policy\b",),),
+    "imagegen/image_gen": (
+        (
+            r"(?<![A-Za-z0-9_])imagegen(?![A-Za-z0-9_])",
+            r"(?<![A-Za-z0-9_])image_gen(?![A-Za-z0-9_])",
+            r"(?<![A-Za-z0-9_])image-gen(?![A-Za-z0-9_])",
+        ),
+    ),
+    "数据统计图用 Python/R 代码生成": (
+        (
+            r"(?:数据\s*)?(?:统计图|数据图|柱状图|折线图|散点图|热图|森林图|模型诊断图)",
+            r"(?:statistical|data)\s+(?:chart|plot|figure)",
+        ),
+        (r"(?<![A-Za-z0-9_])Python(?![A-Za-z0-9_])", r"(?<![A-Za-z])R(?![A-Za-z])"),
+        (r"代码|code",),
+        (r"生成|绘制|generate|plot",),
+    ),
+    "SVG 仅用于无图片能力或修正层": (
+        (r"(?<![A-Za-z0-9_])SVG(?![A-Za-z0-9_])|纯\s*SVG",),
+        (
+            r"无图片(?:生成)?能力",
+            r"没有图片(?:生成)?能力",
+            r"图片生成能力[^。；\n]{0,20}(?:不可用|未提供|缺失)",
+            r"修正层",
+            r"后处理",
+        ),
+        (r"仅|只有|只能|不得|不能|禁止|严禁|回退|改走",),
+    ),
+}
+
+# 精确流程图 Prompt 的最低结构契约。箭头规则同时接受“箭头起止”和
+# “箭头起点和终点”等稳定表达，不要求某一整句固定文案。
+FLOWCHART_PROMPT_MARKER_GROUPS: dict[str, tuple[tuple[str, ...], ...]] = {
+    "节点总数": ((r"节点总数|节点数量|node\s+count",),),
+    "逐字中文标签": (
+        (r"逐字\s*中文\s*标签|verbatim\s+Chinese\s+labels?",),
+    ),
+    "箭头起止": (
+        (
+            r"箭头起止",
+            r"箭头起点和终点",
+            r"箭头[^。；\n]{0,20}起点[^。；\n]{0,20}终点",
+            r"arrow[^。；\n]{0,30}(?:start|source)[^。；\n]{0,30}(?:end|target)",
+        ),
+    ),
+    "禁止回退纯 SVG": (
+        (r"(?<![A-Za-z0-9_])SVG(?![A-Za-z0-9_])|纯\s*SVG",),
+        (
+            r"(?:不能|不得|禁止|严禁|不可|不应|must\s+not|do\s+not|avoid)"
+            r"[^。；]{0,30}(?:回退|改走|使用|fallback|fall\s+back)"
+            r"[^。；]{0,30}(?:纯\s*)?SVG",
+            r"(?:纯\s*)?SVG[^。；]{0,30}(?:不能|不得|禁止|严禁|不可|不应|must\s+not)",
+        ),
+    ),
+}
+
+SVG_FONT_MARKERS = (
+    "CJK_FONT_FAMILY_MISSING",
+    "CJK_FONT_FALLBACK_UNSAFE",
+)
+
 
 class ValidationReport:
     """收集静态检查错误，避免发现一个错误后提前结束。"""
@@ -220,6 +289,68 @@ def contains_section(content: str, markers: tuple[str, ...]) -> bool:
     return any(marker.casefold() in heading for heading in headings for marker in markers)
 
 
+def normalized_marker_content(content: str) -> str:
+    """折叠空白，允许关键规则在换行或列表重排后仍被识别。"""
+
+    return re.sub(r"\s+", " ", content)
+
+
+def missing_marker_groups(
+    content: str,
+    marker_groups: dict[str, tuple[tuple[str, ...], ...]],
+) -> list[str]:
+    """返回未满足的关键标记组名称。
+
+    一个标记组由若干必需子组组成；每个子组可以使用任一同义正则表达式。
+    这样既能锁住稳定键名，也能容纳中文规则的轻微改写。
+    """
+
+    searchable = normalized_marker_content(content)
+    missing: list[str] = []
+    for name, clauses in marker_groups.items():
+        if all(
+            any(re.search(pattern, searchable, flags=re.IGNORECASE) for pattern in alternatives)
+            for alternatives in clauses
+        ):
+            continue
+        missing.append(name)
+    return missing
+
+
+def check_academic_figure_rules(root: Path, report: ValidationReport) -> None:
+    """检查公共学术配图规则中的稳定路由标记。"""
+
+    path = root / "references/common/academic-figures.md"
+    content = read_utf8(path, root, report)
+    if content is None:
+        return
+    for marker in missing_marker_groups(content, ACADEMIC_FIGURE_MARKER_GROUPS):
+        report.add(f"{relative_path(root, path)} 缺少学术配图规则标记：{marker}")
+
+
+def check_figure_routing_prompt_contract(root: Path, report: ValidationReport) -> None:
+    """检查精确流程图 Prompt 的结构契约和 SVG 回退禁令。"""
+
+    path = root / "references/figure-skills/academic-figure-routing.md"
+    content = read_utf8(path, root, report)
+    if content is None:
+        return
+    for marker in missing_marker_groups(content, FLOWCHART_PROMPT_MARKER_GROUPS):
+        report.add(f"{relative_path(root, path)} 缺少精确流程图 Prompt 标记：{marker}")
+
+
+def check_svg_font_rules(root: Path, report: ValidationReport) -> None:
+    """检查 SVG 中文字体规则保留静态审计错误码。"""
+
+    path = root / "references/figure-skills/academic-svg-quality.md"
+    content = read_utf8(path, root, report)
+    if content is None:
+        return
+    for marker in SVG_FONT_MARKERS:
+        if marker not in content:
+            report.add(f"{relative_path(root, path)} 缺少中文 SVG 字体规则标记：{marker}")
+
+
 def check_compiled_prompts(root: Path, report: ValidationReport) -> None:
     """检查每个完整提示词的来源头和关键规则章节。"""
 
@@ -248,6 +379,10 @@ def check_compiled_prompts(root: Path, report: ValidationReport) -> None:
             if common_path.is_file() and expected_source not in header:
                 report.add(f"{relative_path(root, path)} 来源清单未列出公共源：{expected_source}")
 
+        if path.name.endswith("-full.md"):
+            for marker in missing_marker_groups(content, ACADEMIC_FIGURE_MARKER_GROUPS):
+                report.add(f"{relative_path(root, path)} 缺少学术配图关键标记：{marker}")
+
         missing_sections = [
             name
             for name, markers in REQUIRED_SECTION_GROUPS.items()
@@ -266,6 +401,9 @@ def validate(root: Path) -> ValidationReport:
     check_required_files(root, report)
     check_direction_pairing(root, report)
     check_no_placeholders(root, report)
+    check_academic_figure_rules(root, report)
+    check_figure_routing_prompt_contract(root, report)
+    check_svg_font_rules(root, report)
     check_compiled_prompts(root, report)
     return report
 
