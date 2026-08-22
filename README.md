@@ -1,96 +1,228 @@
+<div align="center">
+
 # AIWritePaper Agentic Skill
 
-这是一个遵循 [agentskills.io](https://agentskills.io/) 规范的中文论文生产Skill。`0.4.x`采用MD-first结构：先根据题目选择一个方向，再让模型完整读取一份独立提示词并持续执行，不再由Skill内Python脚本控制论文流程。
+**从论文题目到一份完整执行提示词，再持续交付正文、配图、DOCX 与 PDF。**
 
-## 为什么重构
+![Version](https://img.shields.io/badge/version-0.4.2-2563EB?style=flat-square)
+![License](https://img.shields.io/badge/license-MIT-16A34A?style=flat-square)
+![Architecture](https://img.shields.io/badge/architecture-MD--first-7C3AED?style=flat-square)
+![Directions](https://img.shields.io/badge/paper%20directions-19-EA580C?style=flat-square)
 
-旧版本把运行规则拆分到大量公共引用、配图子Skill和Python验收器中。不同Agent对递归加载和长任务状态保持能力不同，容易出现脚本通过但正文、文献、图表或字数明显不足的情况。
+[快速开始](#快速开始) · [工作方式](#工作方式) · [配图策略](#配图策略) · [Word交付](#word交付) · [安装路径](#安装路径)
 
-`0.4.x`的原则：
+</div>
 
-- `SKILL.md`只负责请求判断和方向选择；
-- 19个 `references/compiled-prompts/*-full.md` 都是完整、自包含的最终提示词；
-- 正式执行前把本次参数与所选完整提示词写入 `final-execution-prompt.md`；
-- 后续只按照这一份MD执行；
-- 不再调用Skill内预置Python流水线；
-- 最终状态由模型对照用户目标和真实产物判断。
+> [!NOTE]
+> 当前版本采用 **MD-first 单提示词执行**。Skill先判断论文方向，再将本次参数与一个完整方向提示词合成为 `final-execution-prompt.md`。正式执行阶段不再跳转多层规则，也不由Skill内Python脚本控制论文内容。
 
-直接给出题目触发 `FULL_BUILD` 且没有指定字数时，默认正文目标为25,000字，允许误差±10%，低于22,500不能标记 `PASS`。
+## 你会得到什么
 
-## 保留的论文能力
+| 能力 | 默认行为 |
+|---|---|
+| 自动选方向 | 根据题目、研究对象、方法和证据，从19个方向中选择一个 |
+| 稳定字数 | 直接给题目且未指定字数时，默认正文25,000字，允许±10% |
+| 文献与证据 | 先检索、核验并建立证据矩阵，不编造文献、数据或实验 |
+| 论文生产 | 大纲、分章、累计字数检查、全文整合、同行评审与修订 |
+| 学术配图 | 有图片工具时逐张生图；统计图由真实数据和代码生成 |
+| 文档交付 | 生成并检查DOCX、PDF、目录、标题层级、题注和页码 |
+| 后处理模式 | 支持单独配图、只导出文档、只审计和只做方向判断 |
 
-- 19个论文方向；
-- 没有题目时推荐10个可行题目；
-- 能力检查、研究契约、文献检索、证据矩阵、详细大纲和论证地图；
-- 按章写作、累计字数检查和弱模型持续完成机制；
-- 全文整合、引用审计、同行评审和修订；
-- DOCX、PDF、格式检查、QA和运行清单；
-- `FULL_BUILD`、`FIGURES_ONLY`、`EXPORT_ONLY`、`AUDIT_ONLY`、`ROUTE_ONLY`。
-
-## 配图规则
-
-- Agent具备图片生成能力时，流程、架构、框架、组织、ER/UML、机制、装置和场景类图逐张调用图片工具；
-- Codex优先使用 `imagegen`/`image_gen`，Grok使用Imagine，Gemini使用Nano Banana或当前实际图片工具；
-- 精确流程图先从上下文提取节点总数、逐字标签、箭头起止、分支、层级和禁止项，再保存独立详细Prompt并生成图片；
-- 生成图片存在局部文字或箭头问题时先编辑图片，必要时增加确定性覆盖层；
-- 数据统计图读取真实数据，通过Python、R或等价代码生成；
-- 原始科研影像使用原文件，公式、化学、电路和地图使用领域工具；
-- 没有图片生成能力时才降级SVG；中文SVG使用明确的跨平台中文字体栈，并在PNG、DOCX和PDF中检查。
-- SVG降级图还要检查连接线整齐度、非必要交叉、穿越、转折、箭头和连接点位置。
-- Imagine或其他图片工具成功生成后，正文、Word和PDF必须插入该位图或以其为底图合成的最终PNG；同名SVG只能作为备用源。每张图通过 `final_embed_file` 指定唯一最终插图，导出程序不得重新选择SVG。
-
-未提供学校模板时使用通用学术格式：A4、中文正文12pt、1.5倍行距、首行缩进2字符、分级Heading样式、图题在下、表题在上、可编辑表格和可更新目录。Word中每个图号只保留一个可见题注，章、节、小节使用Heading 1/2/3与正确大纲级别，以支持左侧导航窗格。
-
-## 目录结构
+## 工作方式
 
 ```text
-aiwritepaper-agentic-skill/
-├── SKILL.md
-├── agents/openai.yaml
-├── references/
-│   ├── compiled-prompts/    # 运行时只读取其中一个完整提示词
-│   ├── directions/          # 19个方向增量源，供维护
-│   ├── common/              # 通用规则源，供维护
-│   └── deliverables/        # 开题与答辩附加要求
-├── install.sh
-└── install.ps1
+题目与材料
+    ↓
+判断唯一论文方向
+    ↓
+本次参数 + 方向完整提示词
+    ↓
+final-execution-prompt.md
+    ↓
+检索 → 大纲 → 分章 → 配图 → 整合 → DOCX/PDF → QA
 ```
 
-正式论文执行阶段不得继续加载 `common/` 或 `directions/`。它们只用于维护已经预合成的完整提示词。
+每个 `references/compiled-prompts/*-full.md` 都是完整、自包含的论文生产提示词。模型选中一个方向后，会将它完整写入本次输出目录，并从头到尾重新读取。后续只执行这一份最终MD。
 
-## 快速安装
+## 默认规则
 
-通用Agent Skills环境：
+### 直接题目自动完成
+
+用户直接给出完整题目并触发 `FULL_BUILD` 时：
+
+- 不重复询问题目；
+- 不停在大纲确认阶段；
+- 未给字数时使用 `TARGET_LENGTH: 25000`；
+- 可接受正文区间为22,500—27,500；
+- 低于22,500不得标记 `PASS`；
+- 用户明确给出的字数、文献、图片和表格目标始终优先。
+
+正文统计范围为第一章至结论的主体论述，不含摘要、目录、参考文献、致谢、附录、代码和图表题注。
+
+### 弱模型持续完成
+
+- 大纲先分配章节字数，合计必须落入目标区间；
+- 每章完成后检查计划字数、实际字数和累计字数；
+- 章节不足时先补足原小节，再进入下一章；
+- 禁止在附录、致谢或参考文献后增加“扩展章节”补字数；
+- 文献、图片和表格未达标时，不提前进入排版；
+- 文件存在或PDF可打开，不等于论文已经完成。
+
+## 配图策略
+
+| 图形类型 | 首选路径 | 关键边界 |
+|---|---|---|
+| 流程、架构、框架、组织、ER/UML、机制、装置、场景 | 当前Agent实际暴露的图片工具 | 每张图保存独立Prompt和生成位图 |
+| 柱状图、折线图、散点图、热图、森林图、模型诊断 | Python、R或等价代码 | 必须读取真实数据并保留计算过程 |
+| 显微图、医学影像、实验照片、遥感、仪器截图 | 原始科研文件 | 不生成、补画或伪装成观测证据 |
+| 公式、化学结构、电路、地图 | 对应领域工具 | 不让图片模型猜测符号和连接 |
+| 无图片生成能力的结构图 | HTML/SVG → PNG | 检查中文字体、连线、箭头和连接点 |
+
+### 精确流程图
+
+生图Prompt必须明确：
+
+- 画布比例与阅读方向；
+- 节点总数、逐字标签和节点形状；
+- 分组、层级和主次路径；
+- 每条箭头的起点、终点和分支条件；
+- 禁止新增、遗漏、合并或改写的内容；
+- 输出后的逐项验收清单。
+
+### 最终插图优先级
+
+每张图只有一个最终入口：`final_embed_file`。
+
+- Imagine、`imagegen`、`image_gen`或Nano Banana成功生成后，最终Markdown、DOCX和PDF必须使用该位图；
+- 如果增加文字或箭头覆盖层，先合成为最终PNG，再设置为 `final_embed_file`；
+- 同名SVG只能保留为`source_file`、`fallback_file`或`overlay_source`；
+- 整合和导出阶段不得扫描同名文件并重新选择SVG；
+- DOCX导出后检查`word/media/`，PDF再做视觉核对。
+
+### SVG降级质量
+
+- 中文使用明确的跨平台字体栈；
+- 连接线尽量不交叉、不重叠、不穿越节点或文字；
+- 转折位置整齐，连接点位于合理的节点边界；
+- 箭头准确落在目标边界，不悬空、不伸入文字；
+- 无法避免交叉时优先绕行、拆图或使用跨线桥；
+- 在论文实际显示尺寸检查PNG、DOCX与PDF。
+
+## Word交付
+
+没有学校模板时，默认使用通用中文学术格式：
+
+- A4；上、下2.54cm，左3.0cm，右2.5cm；
+- 中文正文12pt，英文和数字Times New Roman 12pt；
+- 两端对齐、首行缩进2字符、1.5倍行距；
+- 章、节、小节使用内置Heading 1/2/3；
+- 自动目录可更新，支持Word左侧导航窗格；
+- 图题在图下方，表题在表上方；
+- 表格保持原生可编辑，优先三线表；
+- 图片、题注和页脚保持安全间距。
+
+### 图号去重
+
+- 图片画布内部不写“图X-X 标题”；
+- Markdown替代文字不作为第二个可见图题；
+- 普通文本题注与Word Caption只保留一种；
+- 每个图号、表号在Word可见段落中恰好出现一次；
+- `11-format-validation.md`记录Heading数量、目录状态和题注重复检查。
+
+## 19个论文方向
+
+<details>
+<summary><strong>展开查看完整方向列表</strong></summary>
+
+| 方向 | 完整提示词 |
+|---|---|
+| 软件系统工程 | `software-system-engineering-full.md` |
+| 机械与材料工艺 | `mechanical-material-process-full.md` |
+| 电子电路设计 | `electronic-circuit-design-full.md` |
+| 物理材料实验 | `physical-materials-experiment-full.md` |
+| 化学与复合材料 | `chemical-materials-experiment-full.md` |
+| 管理案例分析 | `management-case-analysis-full.md` |
+| 地理与环境实证 | `geography-environmental-empirical-full.md` |
+| 生物医学实验期刊 | `biomedical-experimental-journal-full.md` |
+| 机器学习应用实证 | `machine-learning-applied-empirical-full.md` |
+| 教育应用研究 | `education-applied-research-full.md` |
+| 艺术与设计实践 | `art-design-practice-full.md` |
+| 经济与政策实证 | `economics-policy-empirical-full.md` |
+| 法律规范分析 | `legal-normative-analysis-full.md` |
+| 临床护理研究 | `clinical-nursing-research-full.md` |
+| 数学教育 | `mathematics-education-full.md` |
+| 文学文本分析 | `literature-textual-analysis-full.md` |
+| 通用期刊IMRaD | `general-journal-imrad-full.md` |
+| 文献综述与综合 | `literature-review-synthesis-full.md` |
+| 专业工作报告 | `professional-work-report-full.md` |
+
+</details>
+
+## 运行模式
+
+| 模式 | 用途 |
+|---|---|
+| `FULL_BUILD` | 完整论文、配图、DOCX、PDF和QA |
+| `FIGURES_ONLY` | 读取现有正文，只新增或优化配图 |
+| `EXPORT_ONLY` | 从现有定稿生成DOCX/PDF |
+| `AUDIT_ONLY` | 只读检查现有论文与交付物 |
+| `ROUTE_ONLY` | 只做选题或方向判断 |
+
+## 主要输出
+
+```text
+paper-output/
+├── final-execution-prompt.md
+├── 00-capability-report.md
+├── 01-research-contract.md
+├── 02-search-log.md
+├── 03-evidence-matrix.csv
+├── 04-reference-audit.md
+├── references.bib
+├── 05-outline.md
+├── 06-argument-map.md
+├── chapters/
+├── figures/
+│   └── figure-manifest.md
+├── tables/
+├── 07-paper-full.md
+├── 08-claim-citation-audit.md
+├── 09-peer-review.md
+├── 10-revision-log.md
+├── final-paper.docx
+├── final-paper.pdf
+├── 11-format-validation.md
+├── 12-final-qa-report.md
+└── run-manifest.json
+```
+
+## 快速开始
+
+### 通用安装
 
 ```bash
 npx skills add huangnan29/aiwritepaper-agentic-skill
 ```
 
-Codex全局安装：
+### macOS / Linux全局安装
 
 ```bash
+# Codex
 ./install.sh --agent codex --scope user
-```
 
-Grok Build全局安装：
-
-```bash
+# Grok Build
 ./install.sh --agent grok --scope user
-```
 
-WorkBuddy全局安装：
-
-```bash
+# WorkBuddy
 ./install.sh --agent workbuddy --scope user
-```
 
-Antigravity全局安装：
-
-```bash
+# Antigravity
 ./install.sh --agent antigravity --scope user
 ```
 
-Windows PowerShell：
+更新已有安装时追加`--force`。
+
+### Windows PowerShell
 
 ```powershell
 .\install.ps1 -Agent codex -Scope user
@@ -99,44 +231,78 @@ Windows PowerShell：
 .\install.ps1 -Agent antigravity -Scope user
 ```
 
+更新已有安装时追加`-Force`。
+
 ## 安装路径
 
-| agent | 项目级 | 用户级 |
+| Agent | 项目级 | 用户级 |
 |---|---|---|
 | Claude | `.claude/skills/aiwritepaper-agentic-skill` | `~/.claude/skills/aiwritepaper-agentic-skill` |
 | Codex | `.codex/skills/aiwritepaper-agentic-skill` | `~/.codex/skills/aiwritepaper-agentic-skill` |
 | Cursor | `.cursor/skills/aiwritepaper-agentic-skill` | `~/.cursor/skills/aiwritepaper-agentic-skill` |
-| Gemini | `.gemini/skills/aiwritepaper-agentic-skill` | `~/.gemini/skills/aiwritepaper-agentic-skill` |
+| Gemini CLI | `.gemini/skills/aiwritepaper-agentic-skill` | `~/.gemini/skills/aiwritepaper-agentic-skill` |
 | Antigravity | `.agents/skills/aiwritepaper-agentic-skill` | `~/.gemini/config/skills/aiwritepaper-agentic-skill` |
 | Grok Build | `.grok/skills/aiwritepaper-agentic-skill` | `~/.grok/skills/aiwritepaper-agentic-skill` |
-| Copilot | `.github/skills/aiwritepaper-agentic-skill` | `~/.copilot/skills/aiwritepaper-agentic-skill` |
+| GitHub Copilot | `.github/skills/aiwritepaper-agentic-skill` | `~/.copilot/skills/aiwritepaper-agentic-skill` |
 | OpenCode | `.opencode/skills/aiwritepaper-agentic-skill` | `~/.config/opencode/skills/aiwritepaper-agentic-skill` |
 | WorkBuddy | `.workbuddy/skills/aiwritepaper-agentic-skill` | `~/.workbuddy/skills/aiwritepaper-agentic-skill` |
-| 通用 | `.agents/skills/aiwritepaper-agentic-skill` | `~/.agents/skills/aiwritepaper-agentic-skill` |
+| 通用Agent | `.agents/skills/aiwritepaper-agentic-skill` | `~/.agents/skills/aiwritepaper-agentic-skill` |
 
-默认情况下目标目录已存在时安装器拒绝覆盖。确认更新已有版本时追加 `--force` 或 `-Force`。
+## 使用示例
 
-## 使用方式
-
-提供题目、输出目录和目标参数，然后要求调用Skill执行。例如：
+### 完整论文
 
 ```text
 使用 $aiwritepaper-agentic-skill 完成论文生产。
+
 题目：基于SpringBoot的助农服务平台系统设计与实现
 运行模式：FULL_BUILD
-目标正文：28000
 最低文献：30
 目标图片：10-14
 目标表格：8-12
-不要停留在计划阶段，持续执行到DOCX、PDF和最终QA。
+
+未指定字数，使用默认25,000字。不要停留在计划阶段，持续执行到DOCX、PDF和最终QA。
 ```
 
-Skill会先选择一个 `*-full.md`，再在输出目录创建 `final-execution-prompt.md`。已有题目时不需要再次确认方向。
+### 单独优化图片
 
-## 维护边界
+```text
+使用 $aiwritepaper-agentic-skill，运行FIGURES_ONLY。
 
-更新公共规则或方向增量时，需要重新生成19份完整提示词并逐份检查。合并过程只能做机械拼接，不能决定章节、内容、证据或最终状态。维护工具不随运行版Skill分发；当前历史版本可以通过Git标签 `v0.3.1-runtime-gates` 恢复。
+读取当前论文和figures目录。有图片工具时逐张调用；统计图使用真实数据和代码。
+更新figure-manifest.md和final_embed_file，不改写正文主张。
+```
+
+## 项目结构
+
+```text
+aiwritepaper-agentic-skill/
+├── SKILL.md
+├── agents/openai.yaml
+├── references/
+│   ├── compiled-prompts/    # 运行时只读取其中一个完整提示词
+│   ├── directions/          # 19个方向增量源
+│   ├── common/              # 通用规则源
+│   └── deliverables/        # 开题与答辩附加规则
+├── install.sh
+└── install.ps1
+```
+
+## 真实性边界
+
+- 不编造文献、DOI、数据、实验、问卷、访谈、病例、代码运行和性能结果；
+- 缺少真实材料时降级为设计方案、验证协议、公开数据研究或综述；
+- 图片生成内容不得冒充显微图、医学影像、实验照片和统计结果；
+- 不以规避AIGC检测或重复率检测为目标；
+- 用户提供学校模板时，模板优先于默认格式。
+
+## 维护与版本
+
+- 当前版本：`0.4.2`
+- 更新记录：[CHANGELOG.md](CHANGELOG.md)
+- Skill入口：[SKILL.md](SKILL.md)
+- 历史复杂流水线版可通过Git标签`v0.3.1-runtime-gates`恢复
 
 ## License
 
-MIT License。参见 [LICENSE](LICENSE)。
+[MIT License](LICENSE)
