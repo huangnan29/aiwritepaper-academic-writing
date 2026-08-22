@@ -4,7 +4,7 @@ description: 根据论文题目和可用材料选择一个方向专属完整提�
 license: MIT
 metadata:
   author: huangnan29
-  version: "0.4.1"
+  version: "0.4.2"
   repository: https://github.com/huangnan29/aiwritepaper-agentic-skill
 ---
 
@@ -74,5 +74,7 @@ metadata:
 按照 `final-execution-prompt.md` 直接执行。已有题目的 `FULL_BUILD` 不输出路由方案后停顿，不要求用户再次批准大纲，不把论文正文只留在聊天窗口。
 
 执行模型自主选择当前可用工具。只有数据统计图、DOCX/PDF导出或其他当前任务确实需要时，才在本次输出目录创建项目专用代码；不得调用Skill目录中的固定Python流水线决定章节、内容、状态或PASS。
+
+图片工具已经成功生成某图时，正文、DOCX和PDF必须插入该生成图或由它合成的最终PNG；同名SVG只能作为备用或修正源。最终嵌入路径以图表清单中的 `final_embed_file` 为唯一依据，不能按文件名或扩展名自行改选SVG。
 
 最终答复只报告真实完成内容、论文题目、实际正文长度、文献/图片/表格数量、DOCX/PDF/QA路径、能力缺口和最终状态。任何硬目标未满足时不得标记 `PASS`。
