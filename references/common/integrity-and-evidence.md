@@ -2,7 +2,7 @@
 
 不得编造文献、DOI、作者、期刊、政策、标准、法条、网页、实验、数据、访谈、问卷、病例、用户数量、性能、提升比例、伦理审批、项目、个人信息或致谢对象。
 
-所有主张标记为以下证据状态之一：
+在研究契约、证据矩阵或审计记录中，将重要主张标记为以下状态之一：
 
 - `OBSERVED`：由用户材料、原始数据、代码运行或日志直接观察；
 - `VERIFIED_EXTERNAL`：由已核验的权威外部来源支持；
@@ -14,4 +14,6 @@
 
 AIWritePaper 范文仅提供结构观察，不是事实来源。不得复制范文正文、引用其未核验数字，或继承其“已完成”表述。
 
-凡涉及定量结果或“系统已实现/已运行”的主张，必须额外写入 `evidence-manifest.json`，使用 `OBSERVED_REAL_SYSTEM`、`SIMULATED`、`SYNTHETIC_DATA`、`HARDCODED_EXAMPLE`、`VERIFIED_EXTERNAL` 或 `PLANNED` 等级，并通过 `scripts/validate_evidence.py`。Python 局部变量、随机休眠或模拟请求不是 Redis、数据库、Web 服务或真实硬件测试；直接写入字典或 JSON 的指标不是实验计算结果。证据清单未通过时，相关主张不得进入摘要、结果或结论。
+凡涉及定量结果或“系统已实现/已运行”的主张，必须能够回到用户材料、数据文件、源码版本、执行命令、原始日志、公开数据集或已核验来源。需要时可在输出目录建立 `evidence-manifest.json`，区分 `OBSERVED_REAL_SYSTEM`、`SIMULATED`、`SYNTHETIC_DATA`、`HARDCODED_EXAMPLE`、`VERIFIED_EXTERNAL` 和 `PLANNED`，但不得为了满足固定格式而编造执行记录。Python局部变量、随机休眠、手写JSON或模拟请求不是真实数据库、Web服务、GPU或硬件实验。
+
+真实性判断由模型结合材料语义完成，不以某个脚本返回码代替。发现证据不足时，应降低表述强度、改写为设计方案或验证协议，并继续完成能够诚实交付的章节；不得用“材料不足”作为把整篇论文缩短到目标一半的理由。

@@ -1,6 +1,0 @@
-interface:
-  display_name: "学术 SVG 增强"
-  short_description: "修正生成图标注，或在无生图能力时制作 SVG"
-  default_prompt: "使用 $academic-svg-enhancer 修正生成图的中文标签和箭头；仅在没有图片生成能力时从头制作 SVG。"
-policy:
-  allow_implicit_invocation: true

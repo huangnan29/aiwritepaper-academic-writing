@@ -4,7 +4,7 @@
 
 同行评审按 Critical、Important、Minor 分级。Critical 和 Important 必须修复并在 `10-revision-log.md` 记录修改位置、内容、验证和状态。
 
-最终必须先运行 `scripts/validate_delivery.py --phase preqa`，写入相同状态的 manifest 与 QA 后再运行 `--phase final`，并验证：
+最终由模型读取研究契约、正文和真实文件后逐项验收，并验证：
 
 - 要求文件存在且非空；
 - DOCX 可解包和解析；
@@ -12,10 +12,15 @@
 - 标题、摘要、各章、参考文献和致谢均存在；
 - 实际字数、图、表和文献达到合同要求；
 - 图表不裁切、不越界，表格宽度合理；
-- 含中文的 SVG 已通过字体静态门，且 PNG、DOCX、PDF 未出现字体替换、方框、乱码、缺字或因字宽变化导致的溢出；
-- `figures/figure-manifest.json` 已声明 `image_generation_policy`；当前客户端暴露图片工具且未获明确豁免时，所有 `eligible_figure_ids` 都被 `prompt_by_figure` 和 `generated_by_figure` 逐项覆盖，独立详细 Prompt 文件与真实 image-gen 生成的 PNG/JPEG/WebP 均存在且非空，图号、工具、提示词、路径、限制和人工核对记录一一对应；任一适合生图的流程、架构或框架图只交付 SVG，或用截图冒充生成式图片，均为 `FAIL`；
+- 图片能力Agent应生图的每张图均有独立Prompt和真实位图；数据统计图有数据与代码；SVG降级图在PNG、DOCX、PDF中没有字体替换、方框、乱码、缺字、溢出或裁切；
 - 没有远程图片、临时路径、调试文字和模型自述；
 - 文献、数字、图表、伦理和个人信息审计通过；
 - 所有最终文件计算 SHA-256。
 
-状态只能为 `PASS`、`PARTIAL` 或 `FAIL`，以验收器输出为准。缺少必要工具或材料为 `PARTIAL`；缺少 `FULL_BUILD` 必需终稿、manifest 与文件矛盾、伪造文献或结果、损坏文件、未关闭 Critical/Important 为 `FAIL`。不得承诺“保证通过”“绝对原创”或虚报检测结果。模型不得在验收器之后手工提升状态。
+把实际值和目标值写入 `12-final-qa-report.md` 与 `run-manifest.json`：正文长度及目标区间、文献数、图片数、表格数、DOCX/PDF状态、Critical/Important数量和能力缺口。状态只能为：
+
+- `PASS`：所有用户硬目标和真实性边界均满足；
+- `PARTIAL`：核心初稿可用，但存在明确能力、材料、模板、数量或格式缺口；
+- `FAIL`：缺核心正文或必需终稿、正文不足目标下限、伪造文献/数据/结果、文件损坏、结构错乱或仍有Critical/Important问题。
+
+正文目标为28,000且允许误差±10%时，低于25,200不得标记 `PASS`。同理，文献、图片和表格低于用户明确下限时不得标记 `PASS`。不得承诺“保证通过”“绝对原创”或虚报检测结果。

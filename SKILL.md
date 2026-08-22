@@ -1,73 +1,74 @@
 ---
 name: aiwritepaper-agentic-skill
-description: 根据已有选题、专业细分方向和可用研究材料，为中文论文选择可审计提示词，并按明确模式执行完整生产、配图、导出或验收；也可在用户没有确定选题时推荐 10 个可行题目。适用于毕业论文、期刊论文、文献综述、工程设计、实证研究、法学、人文和工作报告，不用于代替真实研究、编造数据或规避检测。
+description: 根据论文题目和可用材料选择一个方向专属完整提示词，将本次参数与该提示词合成为单一最终执行MD，并持续完成中文论文、配图、DOCX、PDF或验收。没有题目时可推荐10个可行题目；不用于编造研究、数据、文献或规避检测。
 license: MIT
 metadata:
   author: huangnan29
-  version: "0.3.1"
+  version: "0.4.0"
   repository: https://github.com/huangnan29/aiwritepaper-agentic-skill
 ---
 
-# AIWritePaper Agentic Skill
+# AIWritePaper 单提示词执行入口
 
-本 Skill 先确定运行模式，再把题目收敛为可回答、可取证的研究问题，只加载一个最匹配的方向提示词，并通过确定性脚本完成能力探测、证据核验、全文整合、文档导出和最终验收。不要默认加载全部方向文件，也不要让模型自行宣布 `PASS`。
+本Skill只负责两件事：选择一个论文方向；让执行阶段完整读取一份自包含提示词。不要在论文生产过程中继续跳转公共规则、配图子Skill或Skill自带脚本。
 
-运行兼容性：遵循 Agent Skills 开放规范；基础路由只需读取 Markdown，完整论文生产还需要当前 agent 具备网络检索、文件写入和相应文档工具。
+## 一、先确定请求类型
 
-## 启动判断
+- 用户已有完整题目：直接判断方向，不重复询问题目，不等待确认。
+- 用户要求完整论文：使用 `FULL_BUILD`。
+- 用户已有正文，只要求配图：使用 `FIGURES_ONLY`。
+- 用户已有定稿，只要求DOCX/PDF：使用 `EXPORT_ONLY`。
+- 用户只要求检查：使用 `AUDIT_ONLY`。
+- 用户没有题目：一次询问专业、细分方向、论文层次、可用材料和方法偏好；信息足够时直接推荐10个题目。每个题目给出核心问题、方向、方法、证据需求、可行性、风险和材料不足时的降级题目。选题阶段不生成论文。
 
-1. 先从请求确定运行模式；无法唯一判断时只询问一个模式问题。
-2. `EXPORT_ONLY`、`FIGURES_ONLY` 或 `AUDIT_ONLY` 且工作区已有研究契约或正文时，直接读取现有文件，不重复询问题目。
-3. 如果当前请求已经给出完整题目，直接视为“已有选题”，不要重复询问是否有题目。
-4. 如果当前请求没有完整题目，先询问：“你是否已经有确定的论文题目？”
-5. 用户有题目时，读取 [references/routing.md](references/routing.md)，判断学科、研究对象、研究动作、证据形式和成果形态。
-6. 用户没有题目时，读取 [references/topic-selection.md](references/topic-selection.md)，一次询问专业、细分方向、论文层次、已有材料和方法偏好，然后推荐 10 个题目。
-7. 用户只给出大概方向时，先分析可能的研究路径；仅当歧义会改变提示词类型时提出一个消歧问题，再推荐或确认题目。
+已有题目且用户要求开始执行时，默认 `AUTO_BENCHMARK`：除权限、伦理、凭证、付费或无法继续的硬阻塞外，不停下来等待用户确认。
 
-## 运行模式
+## 二、选择唯一方向
 
-- `ROUTE_ONLY`：只完成选题或方向提示词路由，不写论文。
-- `FULL_BUILD`：执行能力探测、研究、写作、配图、整合、DOCX/PDF 导出和最终验收。
-- `FIGURES_ONLY`：只规划、生成或优化配图，不改正文主张。
-- `EXPORT_ONLY`：从现有定稿和图片生成 DOCX/PDF，不重新研究或改写结论。
-- `AUDIT_ONLY`：只读核验现有产物，不创建实验结果，不把修复计划写成已完成。
+不要只看专业名称，要同时判断研究对象、研究动作、证据形式和成果形态。选择一个首选完整提示词：
 
-开始工作前明确输出所选模式、输入目录、预期交付物和停止条件。
+| 题目信号 | 唯一完整提示词 |
+|---|---|
+| SpringBoot、管理系统、平台、数据库、软件架构、设计与实现 | `references/compiled-prompts/software-system-engineering-full.md` |
+| 机械零件、材料选型、热处理、工艺路线、强度校核 | `references/compiled-prompts/mechanical-material-process-full.md` |
+| 电路、接口、PCB、器件选型、仿真、信号测试 | `references/compiled-prompts/electronic-circuit-design-full.md` |
+| 物理材料、能带、光电性能、物性测量、数值模拟 | `references/compiled-prompts/physical-materials-experiment-full.md` |
+| 合成、复合材料、表征、电化学、反应机理 | `references/compiled-prompts/chemical-materials-experiment-full.md` |
+| 企业运营、商业模式、组织管理、案例分析 | `references/compiled-prompts/management-case-analysis-full.md` |
+| 区域、坡面、土壤、水文、遥感、GIS、空间分布 | `references/compiled-prompts/geography-environmental-empirical-full.md` |
+| 细胞、分子通路、药物处理、实验型医学期刊 | `references/compiled-prompts/biomedical-experimental-journal-full.md` |
+| 机器学习、分类预测、特征工程、模型评估、可解释性 | `references/compiled-prompts/machine-learning-applied-empirical-full.md` |
+| 教学、课程、学习者、教育技术、教学干预 | `references/compiled-prompts/education-applied-research-full.md` |
+| 文旅产品、视觉、交互、空间、服务设计、设计实践 | `references/compiled-prompts/art-design-practice-full.md` |
+| 贸易、产业、宏观政策、计量模型、经济影响 | `references/compiled-prompts/economics-policy-empirical-full.md` |
+| 著作权、侵权、法律规制、法条、判例、规范分析 | `references/compiled-prompts/legal-normative-analysis-full.md` |
+| 患者护理、护理干预、临床观察、病例资料 | `references/compiled-prompts/clinical-nursing-research-full.md` |
+| 数学思想、数学教学、题型、课堂策略 | `references/compiled-prompts/mathematics-education-full.md` |
+| 作家、作品、意象、叙事、修辞、文本细读 | `references/compiled-prompts/literature-textual-analysis-full.md` |
+| 明确要求期刊IMRaD且研究方法已确定 | `references/compiled-prompts/general-journal-imrad-full.md` |
+| 研究进展、现状与展望、系统综述、范围综述 | `references/compiled-prompts/literature-review-synthesis-full.md` |
+| 在职、MBA实践、岗位改进、组织问题与行动方案 | `references/compiled-prompts/professional-work-report-full.md` |
 
-## 路由输出
+“系统”要根据源码、图纸或电路证据区分软件、机械和电子；“影响因素”要根据数据、问卷或访谈区分方法；“期刊论文”只是成果格式，先判断研究方法。没有源码、图纸、实验、病例或数据时，选择相同学科方向，但在最终提示词中诚实降级为设计方案、验证协议、公开数据研究、规范分析或综述。
 
-在进入写作前，先向用户给出：
+## 三、建立单一最终执行提示词
 
-- 规范化题目；
-- 推定专业和论文类型；
-- 选中的方向提示词文件；
-- 选择依据；
-- 需要的原始材料；
-- 材料不足时的降级方式；
-- 是否需要用户确认研究问题。
+确定方向后必须完整读取所选 `*-full.md`，从文件开头读到结尾。该文件已经包含通用主提示词、近期配图规则、弱模型持续完成机制和方向增量；不要再读取 `references/common/`、`references/directions/`、`references/figure-skills/`、嵌套Skills或Skill脚本来补充执行规则。
 
-如果两个方向同样合理，给出首选和备选并解释差异，不要静默猜测。
+在用户输出目录创建 `final-execution-prompt.md`，内容按以下顺序组成：
 
-## 加载规则
+1. 本次真实运行参数：模式、输出目录、模型标签、题目、论文类型、学科、研究对象、核心问题、语言、目标正文长度、引用格式、最低文献数、图片数、表格数、模板和用户材料；
+2. 用户明确的目录、工具、真实性、格式和停止条件；
+3. 所选 `*-full.md` 的完整原文。
 
-- 正常执行只读取 `references/compiled-prompts/` 中一个与题目匹配的完整提示词。
-- `FULL_BUILD`、`EXPORT_ONLY` 和 `AUDIT_ONLY` 必须读取 [references/common/executable-gates.md](references/common/executable-gates.md) 并运行其中对应脚本。
-- 包含定量或系统运行结果时，读取 [references/evidence-manifest.md](references/evidence-manifest.md) 建立证据清单和执行记录。
-- 进入图表生产时，先读取 [references/common/academic-figures.md](references/common/academic-figures.md) 判断证据属性与绘图路径。需要生成式学术插画时读取 [references/figure-skills/academic-figure-routing.md](references/figure-skills/academic-figure-routing.md)；需要流程图、架构图、ER 图、UML、研究框架或其他确定性矢量图时读取 [references/figure-skills/academic-svg-quality.md](references/figure-skills/academic-svg-quality.md)。
-- 开题报告或答辩 PPT 是论文方向确定后的附加交付，分别读取 `references/deliverables/proposal-report.md` 或 `references/deliverables/defense-presentation.md`。
-- [references/universal-reference-prompt.md](references/universal-reference-prompt.md) 仅用于没有方向文件可覆盖的新型论文，或用于维护方向库；不要把它作为默认提示词。
-- 需要了解范文覆盖和分类依据时，读取 `references/research/coverage-report.md` 与 `references/research/taxonomy-report.md`，不要加载或复述范文全文。
+用户没有另行指定 `OUTPUT_DIR` 时使用当前工作目录；没有指定 `MODEL_LABEL` 时使用当前工作目录名称。目录边界明确时，除读取Skill与用户授权材料外，只在该输出目录写入，不访问其他模型结果目录。
 
-## 硬性边界
+不得概括、删减或改写所选完整提示词。写入后重新从头到尾读取 `final-execution-prompt.md`，后续只把它作为论文生产指令。若无法完整读取或写入该文件，明确报告硬阻塞；不得用当前 `SKILL.md` 的简短说明替代正式提示词。
 
-- 先检索、核验和建立证据矩阵，再写正文。
-- 没有真实数据、代码、实验、问卷、访谈、病例或日志时，不得生成已完成结果。
-- 不以规避 AIGC 检测或重复率检测为目标。
-- 不编造参考文献、DOI、政策、标准、法条、病例、伦理审批、个人信息或致谢对象。
-- AIWritePaper 范文只用于学习结构和暴露风险，不作为事实来源，也不复制其正文。
-- 文件生成、浏览器访问、外部数据库、DOCX/PDF 和发布操作均受当前运行环境与用户授权约束。
-- 能力状态只能来自探测证据；不存在的工具不得写成 `AVAILABLE`。
-- 定量结果必须通过证据清单校验；模拟、合成或硬编码示例不得表述为真实系统实验。
-- `FULL_BUILD` 缺少 DOCX/PDF、全文未整合或 manifest 与文件不一致时，最终状态不得为 `PASS`。
-- `12-final-qa-report.md` 只能引用确定性交付验收器计算的状态，不得由模型自行判定。
-- `FULL_BUILD` 或 `FIGURES_ONLY` 中，当前客户端若暴露 `imagegen`、`image_gen`、Imagine、Nano Banana 或等价图片生成工具，所有适合图片生成的论文配图都必须逐张真实调用并保存位图。精确流程图、架构图、研究框架、组织图、ER/UML 等必须先根据上下文写出详细生图 Prompt 再生成；不得回退为纯 SVG。数据统计图从真实数据用代码生成，原始科研影像使用原文件，公式、化学、电路和地图使用领域工具。SVG 只允许用于无图片工具环境或生成图后的确定性修正层。只有用户明确退出或目标期刊明确禁止 AI 图片时可豁免并记录证据。
+## 四、持续执行
+
+按照 `final-execution-prompt.md` 直接执行。已有题目的 `FULL_BUILD` 不输出路由方案后停顿，不要求用户再次批准大纲，不把论文正文只留在聊天窗口。
+
+执行模型自主选择当前可用工具。只有数据统计图、DOCX/PDF导出或其他当前任务确实需要时，才在本次输出目录创建项目专用代码；不得调用Skill目录中的固定Python流水线决定章节、内容、状态或PASS。
+
+最终答复只报告真实完成内容、论文题目、实际正文长度、文献/图片/表格数量、DOCX/PDF/QA路径、能力缺口和最终状态。任何硬目标未满足时不得标记 `PASS`。

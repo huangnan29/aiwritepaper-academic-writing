@@ -1,6 +1,6 @@
 interface:
-  display_name: "AIWritePaper Agentic Paper"
-  short_description: "可审计论文生产、图片生成配图与文档交付"
-  default_prompt: "使用 $aiwritepaper-agentic-skill 完成论文生产；若当前有图片生成能力，逐张调用图片工具制作非数据配图，数据统计图使用代码生成。"
+  display_name: "AIWritePaper 单提示词论文生产"
+  short_description: "选择方向后加载一份完整MD，持续完成论文与文档"
+  default_prompt: "使用 $aiwritepaper-agentic-skill 根据题目选择唯一完整提示词，生成 final-execution-prompt.md，并持续完成论文、配图、DOCX、PDF和最终验收。"
 policy:
   allow_implicit_invocation: true

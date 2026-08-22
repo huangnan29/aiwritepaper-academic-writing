@@ -1,6 +1,0 @@
-interface:
-  display_name: "学术配图路由"
-  short_description: "图片能力优先生图，数据统计图使用代码生成"
-  default_prompt: "使用 $academic-figure-router 规划论文配图；有图片工具时逐张生图，精确流程图先写详细 Prompt，数据统计图使用代码生成。"
-policy:
-  allow_implicit_invocation: true

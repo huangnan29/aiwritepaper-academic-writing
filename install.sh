@@ -17,7 +17,7 @@ print_usage() {
 用法：
   ./install.sh --agent <agent> --scope <user|project> [--force]
 
-agent 可选值：codex、claude、cursor、gemini、antigravity、copilot、opencode、workbuddy、universal
+agent 可选值：codex、claude、cursor、gemini、antigravity、copilot、opencode、workbuddy、grok、universal
 scope 可选值：user、project
 --force：目标目录已存在时，确认后覆盖
 EOF
@@ -66,13 +66,13 @@ done
 [ -n "$SCOPE" ] || fail '必须使用 --scope 指定 user 或 project。'
 
 case "$AGENT" in
-    codex|claude|cursor|gemini|antigravity|copilot|opencode|workbuddy|universal) ;;
-    *) fail "不支持的 agent：$AGENT。可选值为 codex、claude、cursor、gemini、antigravity、copilot、opencode、workbuddy、universal。" ;;
+    codex|claude|cursor|gemini|antigravity|copilot|opencode|workbuddy|grok|universal) ;;
+    *) fail "不支持的 agent：${AGENT}。可选值为 codex、claude、cursor、gemini、antigravity、copilot、opencode、workbuddy、grok、universal。" ;;
 esac
 
 case "$SCOPE" in
     user|project) ;;
-    *) fail "不支持的 scope：$SCOPE。可选值为 user 或 project。" ;;
+    *) fail "不支持的 scope：${SCOPE}。可选值为 user 或 project。" ;;
 esac
 
 HOME_DIR=${HOME:-}
@@ -101,6 +101,8 @@ case "$AGENT:$SCOPE" in
     opencode:user) INSTALL_ROOT="$BASE_DIR/.config/opencode/skills" ;;
     workbuddy:project) INSTALL_ROOT="$BASE_DIR/.workbuddy/skills" ;;
     workbuddy:user) INSTALL_ROOT="$BASE_DIR/.workbuddy/skills" ;;
+    grok:project) INSTALL_ROOT="$BASE_DIR/.grok/skills" ;;
+    grok:user) INSTALL_ROOT="$BASE_DIR/.grok/skills" ;;
     universal:project) INSTALL_ROOT="$BASE_DIR/.agents/skills" ;;
     universal:user) INSTALL_ROOT="$BASE_DIR/.agents/skills" ;;
     *) fail '无法计算安装目标目录。' ;;
@@ -119,7 +121,7 @@ if [ -e "$TARGET_DIR" ] || [ -L "$TARGET_DIR" ]; then
 fi
 
 if [ "$TARGET_EXISTS" -eq 1 ] && [ "$FORCE" -ne 1 ]; then
-    fail "目标目录已存在：$TARGET_DIR。确认覆盖时请添加 --force。"
+    fail "目标目录已存在：${TARGET_DIR}。确认覆盖时请添加 --force。"
 fi
 
 if ! command -v git >/dev/null 2>&1; then
@@ -127,7 +129,7 @@ if ! command -v git >/dev/null 2>&1; then
 fi
 
 if ! mkdir -p "$INSTALL_ROOT"; then
-    fail "无法创建安装目录：$INSTALL_ROOT。"
+    fail "无法创建安装目录：${INSTALL_ROOT}。"
 fi
 
 if ! TEMP_ROOT=$(mktemp -d "${TMPDIR:-/tmp}/aiwritepaper-agentic-skill.XXXXXX"); then
@@ -145,12 +147,12 @@ if [ "$FORCE" -eq 1 ] && [ "$TARGET_EXISTS" -eq 1 ]; then
 fi
 
 if ! mkdir -p "$TARGET_DIR"; then
-    fail "无法创建目标目录：$TARGET_DIR。"
+    fail "无法创建目标目录：${TARGET_DIR}。"
 fi
 
-# 复制完整目录，包括 references、scripts、agents 和隐藏文件。
+# 复制完整目录，包括 references、agents 和隐藏文件。
 if ! cp -R "$CLONE_DIR"/. "$TARGET_DIR"/; then
-    fail "复制完整 skill 目录失败：$TARGET_DIR。"
+    fail "复制完整 skill 目录失败：${TARGET_DIR}。"
 fi
 
 # 安装结果不需要临时克隆产生的 Git 元数据，但保留所有 skill 内容。
