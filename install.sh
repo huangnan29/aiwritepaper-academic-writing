@@ -17,7 +17,7 @@ print_usage() {
 用法：
   ./install.sh --agent <agent> --scope <user|project> [--force]
 
-agent 可选值：codex、claude、cursor、gemini、antigravity、copilot、opencode、universal
+agent 可选值：codex、claude、cursor、gemini、antigravity、copilot、opencode、workbuddy、universal
 scope 可选值：user、project
 --force：目标目录已存在时，确认后覆盖
 EOF
@@ -66,8 +66,8 @@ done
 [ -n "$SCOPE" ] || fail '必须使用 --scope 指定 user 或 project。'
 
 case "$AGENT" in
-    codex|claude|cursor|gemini|antigravity|copilot|opencode|universal) ;;
-    *) fail "不支持的 agent：$AGENT。可选值为 codex、claude、cursor、gemini、antigravity、copilot、opencode、universal。" ;;
+    codex|claude|cursor|gemini|antigravity|copilot|opencode|workbuddy|universal) ;;
+    *) fail "不支持的 agent：$AGENT。可选值为 codex、claude、cursor、gemini、antigravity、copilot、opencode、workbuddy、universal。" ;;
 esac
 
 case "$SCOPE" in
@@ -99,6 +99,8 @@ case "$AGENT:$SCOPE" in
     copilot:user) INSTALL_ROOT="$BASE_DIR/.copilot/skills" ;;
     opencode:project) INSTALL_ROOT="$BASE_DIR/.opencode/skills" ;;
     opencode:user) INSTALL_ROOT="$BASE_DIR/.config/opencode/skills" ;;
+    workbuddy:project) INSTALL_ROOT="$BASE_DIR/.workbuddy/skills" ;;
+    workbuddy:user) INSTALL_ROOT="$BASE_DIR/.workbuddy/skills" ;;
     universal:project) INSTALL_ROOT="$BASE_DIR/.agents/skills" ;;
     universal:user) INSTALL_ROOT="$BASE_DIR/.agents/skills" ;;
     *) fail '无法计算安装目标目录。' ;;

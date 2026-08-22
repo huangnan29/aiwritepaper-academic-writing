@@ -13,3 +13,5 @@
 工程论文必须区分已实现、已验证、设计方案和未来扩展。实证论文的每个定量结果必须追溯到数据文件与计算过程。临床、问卷、访谈和人体研究必须说明伦理、同意、样本和匿名化边界。没有真实材料时，降级为研究方案、公开数据分析、验证协议、概念设计或文献综述。
 
 AIWritePaper 范文仅提供结构观察，不是事实来源。不得复制范文正文、引用其未核验数字，或继承其“已完成”表述。
+
+凡涉及定量结果或“系统已实现/已运行”的主张，必须额外写入 `evidence-manifest.json`，使用 `OBSERVED_REAL_SYSTEM`、`SIMULATED`、`SYNTHETIC_DATA`、`HARDCODED_EXAMPLE`、`VERIFIED_EXTERNAL` 或 `PLANNED` 等级，并通过 `scripts/validate_evidence.py`。Python 局部变量、随机休眠或模拟请求不是 Redis、数据库、Web 服务或真实硬件测试；直接写入字典或 JSON 的指标不是实验计算结果。证据清单未通过时，相关主张不得进入摘要、结果或结论。

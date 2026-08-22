@@ -12,6 +12,62 @@
 - 在图表生产前区分语言模型、SVG 渲染器和专用图片生成工具，不把“能写 SVG”误判为“能生成图片”。
 - 按图类路由流程图、架构图、ER 图、UML、统计图、科研原始图像与生成式机制示意。
 
+## 0.3.0 可执行门禁
+
+`0.3.0` 将关键质量要求从文字提示升级为确定性脚本：
+
+| 脚本 | 作用 |
+| --- | --- |
+| `scripts/probe_capabilities.py` | 实际探测文件、代码、渲染、DOCX、PDF 和检查工具，不能由模型凭空声明能力 |
+| `scripts/run_evidence.py` | 以 `shell=False` 运行真实证据命令，保存受限日志、时间、返回码和 SHA-256 执行记录 |
+| `scripts/validate_evidence.py` | 校验真实系统观测、模拟、合成数据、硬编码示例、外部核验和计划之间的证据等级 |
+| `scripts/assemble_and_export.py` | 按确定顺序合并章节，并在工具可用时生成 DOCX/PDF |
+| `scripts/validate_delivery.py` | 核对必需文件、manifest、全文整合、DOCX/PDF、图形、体量和 QA 时间顺序，并计算最终状态 |
+
+典型 `FULL_BUILD` 调用顺序：
+
+```bash
+uv run python /path/to/skill/scripts/probe_capabilities.py \
+  --root /path/to/paper --json --output /path/to/paper/00-capability-report.json
+
+uv run python /path/to/skill/scripts/run_evidence.py \
+  --root /path/to/paper --id EXP-01 --claim "真实系统测试主张" \
+  --output-log evidence/exp-01.log \
+  --record-output evidence/exp-01-execution.json \
+  -- python tests/run_real_experiment.py
+
+uv run python /path/to/skill/scripts/validate_evidence.py \
+  --root /path/to/paper --json
+
+uv run python /path/to/skill/scripts/assemble_and_export.py \
+  --root /path/to/paper --mode FULL_BUILD --json
+
+uv run python /path/to/skill/scripts/validate_delivery.py \
+  --root /path/to/paper --mode FULL_BUILD --phase preqa --json \
+  --output /path/to/paper/delivery-validation.json
+
+# 将预验收状态写入 run-manifest.json 与 12-final-qa-report.md 后执行终验收
+uv run python /path/to/skill/scripts/validate_delivery.py \
+  --root /path/to/paper --mode AUDIT_ONLY --phase final --json \
+  --output /path/to/paper/delivery-validation.json
+```
+
+完整论文生产阶段固定为：
+
+```text
+PROBE → RESEARCH → DRAFT → EVIDENCE → FIGURES → ASSEMBLE → EXPORT → VALIDATE → QA
+```
+
+模型不能自行把状态写成 `PASS`。`FULL_BUILD` 缺少 DOCX/PDF、全文仍是分章链接、manifest 与文件不一致、QA 早于被验收文件或证据清单失败时，最终状态必须由验收脚本降级。
+
+支持五种运行模式：
+
+- `ROUTE_ONLY`：只做选题和方向路由；
+- `FULL_BUILD`：完整研究、写作、配图、导出和验收；
+- `FIGURES_ONLY`：只优化配图；
+- `EXPORT_ONLY`：只从现有定稿导出 DOCX/PDF；
+- `AUDIT_ONLY`：只读核验现有产物。
+
 ## 学术配图能力
 
 根 Skill 已内置统一的学术配图规则：
@@ -61,6 +117,26 @@ git -C ~/.gemini/config/skills/aiwritepaper-agentic-skill pull --ff-only
 
 如果只需要独立配图能力，可将仓库中的 `skills/academic-figure-router/` 和 `skills/academic-svg-enhancer/` 分别复制到 `~/.gemini/config/skills/`，保持各自目录下的 `SKILL.md`、`references/`、`scripts/` 和 `tests/` 完整。
 
+### WorkBuddy 全局安装
+
+WorkBuddy 在所有项目中共享的 Skill 目录为 `~/.workbuddy/skills/`。首次安装：
+
+```bash
+mkdir -p ~/.workbuddy/skills
+git clone https://github.com/huangnan29/aiwritepaper-agentic-skill.git \
+  ~/.workbuddy/skills/aiwritepaper-agentic-skill
+```
+
+Windows PowerShell 5.1：
+
+```powershell
+$WorkBuddySkills = Join-Path $HOME '.workbuddy\skills'
+New-Item -ItemType Directory -Path $WorkBuddySkills -Force | Out-Null
+git clone https://github.com/huangnan29/aiwritepaper-agentic-skill.git (Join-Path $WorkBuddySkills 'aiwritepaper-agentic-skill')
+```
+
+安装后请重启 WorkBuddy，或在设置中重新扫描 Skills。扫描完成后，在“我安装的”中应能看到根 Skill `aiwritepaper-agentic-skill`，以及仓库内的两个嵌套配图 Skill：`academic-figure-router` 和 `academic-svg-enhancer`。请保持仓库的完整目录层级，不要只复制根目录下的 `SKILL.md`。
+
 ### 指定 agent 的全局安装
 
 下面的 `--global` 表示用户级安装，对该用户的多个项目生效：
@@ -101,7 +177,7 @@ copilot plugins install --skill --scope project https://github.com/huangnan29/ai
 
 ## 本地安装器
 
-安装器支持以下 agent 参数：`codex`、`claude`、`cursor`、`gemini`、`antigravity`、`copilot`、`opencode`、`universal`。
+安装器支持以下 agent 参数：`codex`、`claude`、`cursor`、`gemini`、`antigravity`、`copilot`、`opencode`、`workbuddy`、`universal`。
 
 `user` 是用户级安装，`project` 是当前工作目录下的项目级安装。执行 `project` 安装时，请先切换到项目根目录。默认情况下，目标目录已存在就会拒绝覆盖；确认要替换已有版本时才使用 `force`。
 
@@ -116,6 +192,9 @@ macOS、Linux 或其他 POSIX shell：
 
 # 全局安装到 Antigravity 的 ~/.gemini/config/skills
 ./install.sh --agent antigravity --scope user
+
+# 全局安装到 WorkBuddy 的 ~/.workbuddy/skills
+./install.sh --agent workbuddy --scope user
 
 # 强制更新项目级 Copilot 安装
 ./install.sh --agent copilot --scope project --force
@@ -132,6 +211,9 @@ Windows PowerShell 5.1：
 
 # 全局安装到 Antigravity 的 .gemini\config\skills
 .\install.ps1 -Agent antigravity -Scope user
+
+# 全局安装到 WorkBuddy 的 .workbuddy\skills
+.\install.ps1 -Agent workbuddy -Scope user
 
 # 强制更新项目级 Copilot 安装
 .\install.ps1 -Agent copilot -Scope project -Force
@@ -152,6 +234,7 @@ Windows PowerShell 5.1：
 | `antigravity` | `.agents/skills/aiwritepaper-agentic-skill` | `~/.gemini/config/skills/aiwritepaper-agentic-skill` |
 | `copilot` | `.github/skills/aiwritepaper-agentic-skill` | `~/.copilot/skills/aiwritepaper-agentic-skill` |
 | `opencode` | `.opencode/skills/aiwritepaper-agentic-skill` | `~/.config/opencode/skills/aiwritepaper-agentic-skill` |
+| `workbuddy` | `.workbuddy/skills/aiwritepaper-agentic-skill` | `~/.workbuddy/skills/aiwritepaper-agentic-skill` |
 | `universal` | `.agents/skills/aiwritepaper-agentic-skill` | `~/.agents/skills/aiwritepaper-agentic-skill` |
 
 ### 手动 git clone 安装
@@ -173,6 +256,9 @@ git clone https://github.com/huangnan29/aiwritepaper-agentic-skill.git .cursor/s
 mkdir -p .opencode/skills
 git clone https://github.com/huangnan29/aiwritepaper-agentic-skill.git .opencode/skills/aiwritepaper-agentic-skill
 
+mkdir -p .workbuddy/skills
+git clone https://github.com/huangnan29/aiwritepaper-agentic-skill.git .workbuddy/skills/aiwritepaper-agentic-skill
+
 mkdir -p .agents/skills
 git clone https://github.com/huangnan29/aiwritepaper-agentic-skill.git .agents/skills/aiwritepaper-agentic-skill
 ```
@@ -184,6 +270,7 @@ git clone https://github.com/huangnan29/aiwritepaper-agentic-skill.git .agents/s
 ~/.codex/skills/aiwritepaper-agentic-skill
 ~/.cursor/skills/aiwritepaper-agentic-skill
 ~/.config/opencode/skills/aiwritepaper-agentic-skill
+~/.workbuddy/skills/aiwritepaper-agentic-skill
 ~/.agents/skills/aiwritepaper-agentic-skill
 ```
 
@@ -252,7 +339,7 @@ This repository follows the open agentskills.io `SKILL.md` standard. Install it 
 npx skills add huangnan29/aiwritepaper-agentic-skill
 ```
 
-For a local install, the POSIX installer clones the fixed repository into a temporary directory and copies the complete `aiwritepaper-agentic-skill` folder. It supports `--agent codex|claude|cursor|gemini|antigravity|copilot|opencode|universal`, `--scope user|project`, and `--force`. The PowerShell 5.1 installer provides the same options as `-Agent`, `-Scope`, and `-Force`.
+For a local install, the POSIX installer clones the fixed repository into a temporary directory and copies the complete `aiwritepaper-agentic-skill` folder. It supports `--agent codex|claude|cursor|gemini|antigravity|copilot|opencode|workbuddy|universal`, `--scope user|project`, and `--force`. The PowerShell 5.1 installer provides the same options as `-Agent`, `-Scope`, and `-Force`.
 
 ## License
 

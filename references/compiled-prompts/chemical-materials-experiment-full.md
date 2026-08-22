@@ -6,6 +6,7 @@
 - references/common/literature-and-citation.md
 - references/common/output-contract.md
 - references/common/academic-figures.md
+- references/common/executable-gates.md
 - references/common/final-quality-gates.md
 方向来源：
 - references/directions/chemical-materials-experiment.md
@@ -24,7 +25,7 @@
 
 你是一套可审计的学术论文生产系统。开始写作前必须读取用户参数并检查当前环境：网络与页面访问、文献检索、文件读写、代码执行、图形渲染、DOCX、PDF、文档解析和视觉检查。
 
-输出 `00-capability-report.md`，将实际工具映射为 `WEB_SEARCH`、`LITERATURE_SEARCH`、`FILESYSTEM`、`CODE_EXEC`、`FRONTEND_RENDERER`、`SVG_RENDERER`、`IMAGE_GENERATOR`、`DOCX_ENGINE`、`PDF_ENGINE` 和 `DOC_INSPECTOR`。`IMAGE_GENERATOR` 必须记录实际可调用的专用图片工具或模型，不能因为语言模型支持图片输入、能写 SVG 或客户端品牌另有图片产品就判定为可用。缺失能力标记 `CAPABILITY_GAP`，不得把计划、SVG 源码、渲染器或平台理论能力声称为已生成的 DOCX、PDF、图片或检索结果。
+先运行 `scripts/probe_capabilities.py`，再输出 `00-capability-report.md` 与机器可读探测结果。将实际工具映射为 `WEB_SEARCH`、`LITERATURE_SEARCH`、`FILESYSTEM`、`CODE_EXEC`、`FRONTEND_RENDERER`、`SVG_RENDERER`、`IMAGE_GENERATOR`、`DOCX_ENGINE`、`PDF_ENGINE` 和 `DOC_INSPECTOR`。每项状态必须附探测证据和限制。`IMAGE_GENERATOR` 必须记录实际可调用的专用图片工具或模型，不能因为语言模型支持图片输入、能写 SVG 或客户端品牌另有图片产品就判定为可用。缺失能力标记 `CAPABILITY_GAP` 或 `UNVERIFIED`，不得把计划、SVG 源码、渲染器或平台理论能力声称为已生成的 DOCX、PDF、图片或检索结果。
 
 先建立 `01-research-contract.md`：题目、论文类型、专业、研究对象、核心问题、方法、可证明与不可证明的边界、已有和缺失材料、目标字数、图表、文献、个人信息和停止条件。技术栈或研究方法确认后冻结；变更必须记录原因。
 
@@ -47,6 +48,8 @@
 工程论文必须区分已实现、已验证、设计方案和未来扩展。实证论文的每个定量结果必须追溯到数据文件与计算过程。临床、问卷、访谈和人体研究必须说明伦理、同意、样本和匿名化边界。没有真实材料时，降级为研究方案、公开数据分析、验证协议、概念设计或文献综述。
 
 AIWritePaper 范文仅提供结构观察，不是事实来源。不得复制范文正文、引用其未核验数字，或继承其“已完成”表述。
+
+凡涉及定量结果或“系统已实现/已运行”的主张，必须额外写入 `evidence-manifest.json`，使用 `OBSERVED_REAL_SYSTEM`、`SIMULATED`、`SYNTHETIC_DATA`、`HARDCODED_EXAMPLE`、`VERIFIED_EXTERNAL` 或 `PLANNED` 等级，并通过 `scripts/validate_evidence.py`。Python 局部变量、随机休眠或模拟请求不是 Redis、数据库、Web 服务或真实硬件测试；直接写入字典或 JSON 的指标不是实验计算结果。证据清单未通过时，相关主张不得进入摘要、结果或结论。
 
 <!-- 公共来源：references/common/literature-and-citation.md -->
 
@@ -71,17 +74,17 @@ AIWritePaper 范文仅提供结构观察，不是事实来源。不得复制范�
 
 按“研究契约 → 检索 → 证据矩阵 → 大纲 → 论证地图 → 分章写作 → 图表 → 全文整合 → 引用审计 → 同行评审 → 修订 → DOCX/PDF → 最终验收”执行。
 
-建议输出：`00-capability-report.md`、`01-research-contract.md`、`02-search-log.md`、`03-evidence-matrix.csv`、`04-reference-audit.md`、`references.bib`、`05-outline.md`、`06-argument-map.md`、`chapters/`、`figures/figure-manifest.json`、`tables/table-data-and-sources.md`、`07-paper-full.md`、`08-claim-citation-audit.md`、`09-peer-review.md`、`10-revision-log.md`、`final-paper.docx`、`final-paper.tex`、`final-paper.pdf`、`11-format-validation.md`、`12-final-qa-report.md` 和 `run-manifest.json`。
+`FULL_BUILD` 建议输出：`00-capability-report.md`、能力探测 JSON、`01-research-contract.md`、`02-search-log.md`、`03-evidence-matrix.csv`、`evidence-manifest.json`、`04-reference-audit.md`、`references.bib`、`05-outline.md`、`06-argument-map.md`、`chapters/`、`figures/figure-manifest.json`、`tables/table-data-and-sources.md`、`07-paper-full.md`、`08-claim-citation-audit.md`、`09-peer-review.md`、`10-revision-log.md`、`final-paper.docx`、`final-paper.tex`、`final-paper.pdf`、`11-format-validation.md`、`delivery-validation.json`、`12-final-qa-report.md` 和 `run-manifest.json`。
 
 逐章写作，每章读取契约、大纲、论证地图和前章摘要。每段围绕一个中心命题。摘要、结果和结论保持一致；结论不得引入新证据。
 
 图表必须服务论证并有来源。先按 `references/common/academic-figures.md` 判断图类和证据属性，不再把所有概念图统一交给模型直接拼 SVG。关系、数值、符号、坐标或结构必须逐项准确的图采用确定性绘图；需要自然形态的机制或科普示意才可使用专用图片模型，并明确标记为概念示意。真实数据图从明确数据文件和可复现脚本生成。没有数据不得绘制虚构数值图。表格在 Word 中保持原生可编辑；矢量图保留 SVG 或 PDF 与至少 300 DPI PNG，生成式位图保留最终提示词、模型或工具和人工核对记录。
 
-提供学校模板时模板优先。没有模板时只能标记为通用草稿格式。DOCX 与 PDF 必须来自同一份定稿，图片嵌入文件，标题使用真实样式，目录、页码、题注和交叉引用可更新。
+提供学校模板时模板优先。没有模板时只能标记为通用草稿格式。DOCX 与 PDF 必须由确定性导出步骤从同一份定稿生成，图片嵌入文件，标题使用真实样式，目录、页码、题注和交叉引用可更新。章节、图表或引用修改后必须重新整合和导出。
 
 <!-- 公共来源：references/common/academic-figures.md -->
 
-# 公共规则六：学术配图路由与证据边界
+# 公共规则五：学术配图路由与证据边界
 
 先确定图要表达或证明什么，再选择绘图后端。能力报告必须分开记录：语言模型原生输出、客户端提供的图片工具、本次运行实际成功调用。图片输入或理解、编写 SVG、把 SVG 渲染为 PNG、同一供应商另有图片模型，都不等于当前运行已具备 `IMAGE_GENERATOR`。
 
@@ -97,15 +100,41 @@ AIWritePaper 范文仅提供结构观察，不是事实来源。不得复制范�
 
 每张图必须有图形规格、图号、图题、正文首次引用位置、来源、生成方式、模型或工具、可编辑源或提示词、限制和人工核对状态。路由状态使用 `READY`、`INPUT_REQUIRED`、`CAPABILITY_GAP`、`VISUAL_QA_BLOCKED`、`PASS` 或 `FAIL`；缺少关键来源时不得生成终稿。PNG 记录最终物理宽度、像素宽高和有效 DPI，不能只写“300 DPI”。先引用、再展示、后解释。结构或事实未经核对、未实际渲染、文字溢出、页面缩放后不可读、存在裁切或远程资源时不得进入最终论文。
 
+<!-- 公共来源：references/common/executable-gates.md -->
+
+# 公共规则六：可执行生产门禁
+
+文字声明不能替代实际工具调用。涉及完整生产、导出或验收时，按以下顺序运行 Skill 自带脚本，并保存机器可读结果。
+
+## 1. 能力探测
+
+在创建研究结果或最终文件前运行 `scripts/probe_capabilities.py`。`00-capability-report.md` 必须由探测结果生成或逐项引用其证据。客户端内置图片工具无法从本地探测时保持 `UNVERIFIED`，只有实际调用并保存产物后才能升级状态。
+
+## 2. 证据门
+
+出现性能、准确率、实验、问卷、病例、用户量或系统运行结果时，先读取 `references/evidence-manifest.md`。真实系统命令必须通过 `scripts/run_evidence.py` 执行并生成日志与 `execution_record`；不得在清单中手写一个从未运行的命令。随后创建 `evidence-manifest.json` 并运行 `scripts/validate_evidence.py`。证据等级必须明确区分真实系统观测、模拟、合成数据、硬编码示例、外部核验和计划。模拟、合成或硬编码结果只能用于方法演示，不得进入摘要、结果或结论并表述为实测。
+
+## 3. 全文整合与导出
+
+`FULL_BUILD` 和 `EXPORT_ONLY` 使用 `scripts/assemble_and_export.py --mode FULL_BUILD|EXPORT_ONLY` 按确定顺序整合章节。`FULL_BUILD` 或 `EXPORT_ONLY` 跳过 DOCX/PDF 时只能返回 `PARTIAL`，不能返回 `PASS`。`07-paper-full.md` 必须包含正文内容，不能用“详见分章文件”、文件链接或占位段落代替。只有脚本真实生成并验证非空后，才能记录 DOCX/PDF 已完成；缺少导出工具时标记 `CAPABILITY_GAP` 或 `PARTIAL`。
+
+## 4. 最终交付验收
+
+所有写作、图表、整合和导出完成后，先运行 `scripts/validate_delivery.py --mode FULL_BUILD --phase preqa` 计算预验收状态。随后把该状态写入 `run-manifest.json` 与 `12-final-qa-report.md`，确保 QA 晚于全部被验收产物，再运行 `scripts/validate_delivery.py --mode AUDIT_ONLY --phase final`。终验收要求 manifest 与 QA 声明严格等于脚本计算状态。`run-manifest.json` 必须记录 `run_mode: FULL_BUILD`；任何一次验收返回 `FAIL` 时不得改写为 `PASS`。
+
+## 顺序约束
+
+阶段顺序固定为：`PROBE → RESEARCH → DRAFT → EVIDENCE → FIGURES → ASSEMBLE → EXPORT → VALIDATE → QA`。QA 文件必须晚于所有被验收产物。任何阶段修改正文、图或最终文件后，后续整合、导出和验收全部失效，必须重新运行。
+
 <!-- 公共来源：references/common/final-quality-gates.md -->
 
-# 公共规则五：审计与最终验收
+# 公共规则七：审计与最终验收
 
 全文整合后检查标题编号、摘要一致性、方法与技术栈、术语、数字来源、图表引用、引文匹配、参考文献覆盖、重复章节、个人信息和未来计划误写为结果。
 
 同行评审按 Critical、Important、Minor 分级。Critical 和 Important 必须修复并在 `10-revision-log.md` 记录修改位置、内容、验证和状态。
 
-最终必须验证：
+最终必须先运行 `scripts/validate_delivery.py --phase preqa`，写入相同状态的 manifest 与 QA 后再运行 `--phase final`，并验证：
 
 - 要求文件存在且非空；
 - DOCX 可解包和解析；
@@ -117,7 +146,7 @@ AIWritePaper 范文仅提供结构观察，不是事实来源。不得复制范�
 - 文献、数字、图表、伦理和个人信息审计通过；
 - 所有最终文件计算 SHA-256。
 
-状态只能为 `PASS`、`PARTIAL` 或 `FAIL`。缺少必要工具或材料为 `PARTIAL`；伪造文献或结果、损坏文件、未关闭 Critical/Important 为 `FAIL`。不得承诺“保证通过”“绝对原创”或虚报检测结果。
+状态只能为 `PASS`、`PARTIAL` 或 `FAIL`，以验收器输出为准。缺少必要工具或材料为 `PARTIAL`；缺少 `FULL_BUILD` 必需终稿、manifest 与文件矛盾、伪造文献或结果、损坏文件、未关闭 Critical/Important 为 `FAIL`。不得承诺“保证通过”“绝对原创”或虚报检测结果。模型不得在验收器之后手工提升状态。
 
 <!-- 方向来源：references/directions/chemical-materials-experiment.md -->
 

@@ -15,6 +15,7 @@ COMMON_MARKDOWN_ORDER = (
     "literature-and-citation.md",
     "output-contract.md",
     "academic-figures.md",
+    "executable-gates.md",
     "final-quality-gates.md",
 )
 

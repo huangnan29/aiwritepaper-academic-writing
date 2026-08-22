@@ -19,13 +19,25 @@ REQUIRED_FILES = (
     "references/routing.md",
     "references/topic-selection.md",
     "references/universal-reference-prompt.md",
+    "references/evidence-manifest.md",
     "references/common/academic-figures.md",
+    "references/common/executable-gates.md",
     "references/figure-skills/academic-figure-routing.md",
     "references/figure-skills/academic-svg-quality.md",
     "skills/academic-figure-router/SKILL.md",
     "skills/academic-svg-enhancer/SKILL.md",
     "skills/academic-svg-enhancer/scripts/audit_svg.py",
     "skills/academic-svg-enhancer/tests/test_audit_svg.py",
+    "scripts/probe_capabilities.py",
+    "scripts/run_evidence.py",
+    "scripts/assemble_and_export.py",
+    "scripts/validate_evidence.py",
+    "scripts/validate_delivery.py",
+    "tests/test_probe_capabilities.py",
+    "tests/test_run_evidence.py",
+    "tests/test_assemble_and_export.py",
+    "tests/test_validate_evidence.py",
+    "tests/test_validate_delivery.py",
 )
 
 # 只扫描容易明确判定为脚手架的词，避免把正常的否定规则误判为占位内容。
@@ -43,6 +55,7 @@ REQUIRED_SECTION_GROUPS = {
     "真实性规则": ("真实性", "学术诚信", "不得编造", "禁止虚构", "integrity"),
     "文献与引用规则": ("文献", "参考文献", "引用", "literature", "citation"),
     "证据规则": ("证据", "证据矩阵", "研究材料", "数据要求", "evidence"),
+    "可执行门禁": ("可执行生产门禁", "能力探测", "交付验收器", "executable gate"),
     "最终验收规则": ("最终验收", "质量门", "验收标准", "最终质量", "final acceptance", "quality gate"),
 }
 
@@ -101,6 +114,7 @@ def check_required_files(root: Path, report: ValidationReport) -> None:
         "references/figure-skills",
         "skills/academic-figure-router",
         "skills/academic-svg-enhancer",
+        "tests",
     )
     for dirname in required_directories:
         if not (root / dirname).is_dir():
