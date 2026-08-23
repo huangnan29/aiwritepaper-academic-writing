@@ -17,7 +17,7 @@ print_usage() {
 用法：
   ./install.sh --agent <agent> --scope <user|project> [--force]
 
-agent 可选值：codex、claude、cursor、gemini、antigravity、copilot、opencode、workbuddy、grok、universal
+agent 可选值：codex、claude、cursor、kimi、gemini、antigravity、copilot、opencode、workbuddy、grok、universal
 scope 可选值：user、project
 --force：目标目录已存在时，确认后覆盖
 EOF
@@ -66,8 +66,8 @@ done
 [ -n "$SCOPE" ] || fail '必须使用 --scope 指定 user 或 project。'
 
 case "$AGENT" in
-    codex|claude|cursor|gemini|antigravity|copilot|opencode|workbuddy|grok|universal) ;;
-    *) fail "不支持的 agent：${AGENT}。可选值为 codex、claude、cursor、gemini、antigravity、copilot、opencode、workbuddy、grok、universal。" ;;
+    codex|claude|cursor|kimi|gemini|antigravity|copilot|opencode|workbuddy|grok|universal) ;;
+    *) fail "不支持的 agent：${AGENT}。可选值为 codex、claude、cursor、kimi、gemini、antigravity、copilot、opencode、workbuddy、grok、universal。" ;;
 esac
 
 case "$SCOPE" in
@@ -77,6 +77,7 @@ esac
 
 HOME_DIR=${HOME:-}
 [ -n "$HOME_DIR" ] || fail '无法确定用户主目录。'
+KIMI_CODE_ROOT=${KIMI_CODE_HOME:-"$HOME_DIR/.kimi-code"}
 
 if [ "$SCOPE" = 'project' ]; then
     BASE_DIR=$(pwd -P) || fail '无法确定当前项目目录。'
@@ -91,6 +92,8 @@ case "$AGENT:$SCOPE" in
     claude:user) INSTALL_ROOT="$BASE_DIR/.claude/skills" ;;
     cursor:project) INSTALL_ROOT="$BASE_DIR/.cursor/skills" ;;
     cursor:user) INSTALL_ROOT="$BASE_DIR/.cursor/skills" ;;
+    kimi:project) INSTALL_ROOT="$BASE_DIR/.kimi-code/skills" ;;
+    kimi:user) INSTALL_ROOT="$KIMI_CODE_ROOT/skills" ;;
     gemini:project) INSTALL_ROOT="$BASE_DIR/.gemini/skills" ;;
     gemini:user) INSTALL_ROOT="$BASE_DIR/.gemini/skills" ;;
     antigravity:project) INSTALL_ROOT="$BASE_DIR/.agents/skills" ;;

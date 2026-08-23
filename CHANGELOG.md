@@ -1,5 +1,15 @@
 # 更新记录
 
+## 0.5.0 - 2026-08-22
+
+- 将长提示词复制从模型生成改为文件级确定性合成：模型只写 `run-params.md`，`compose_prompt.py` 原样拼接唯一compiled prompt与条件附加规则。
+- `SKILL.md` 不再维护重复的19方向表；已有题目统一读取 `routing.md`，无题目时按需读取 `topic-selection.md`。
+- 接通 `PROPOSAL_ONLY` 与 `DEFENSE_ONLY`，开题和答辩规则按需合入同一 `final-execution-prompt.md`。
+- 新增 `build_compiled.py` 与 `verify_compiled.py`，重建并校验19份compiled prompts、路由目标和版本同步。
+- 新增GitHub Actions同步校验，防止common、directions与compiled prompts漂移。
+- 补充 `MODEL_LABEL` 用途、自然触发词和跨平台原生拼接降级说明，移除空 `figure-skills` 死引用。
+- 安装器新增Kimi Code用户级与项目级路径支持，默认安装到 `$KIMI_CODE_HOME/skills` 对应的 `.kimi-code/skills`。
+
 ## 0.4.2 - 2026-08-22
 
 - 新增 `final_embed_file` 唯一最终插图入口，禁止整合与导出阶段重新按同名文件或扩展名选图。

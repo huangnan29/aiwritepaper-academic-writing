@@ -4,7 +4,7 @@
 
 **从论文题目到一份完整执行提示词，再持续交付正文、配图、DOCX 与 PDF。**
 
-![Version](https://img.shields.io/badge/version-0.4.2-2563EB?style=flat-square)
+![Version](https://img.shields.io/badge/version-0.5.0-2563EB?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-16A34A?style=flat-square)
 ![Architecture](https://img.shields.io/badge/architecture-MD--first-7C3AED?style=flat-square)
 ![Directions](https://img.shields.io/badge/paper%20directions-19-EA580C?style=flat-square)
@@ -14,7 +14,7 @@
 </div>
 
 > [!NOTE]
-> 当前版本采用 **MD-first 单提示词执行**。Skill先判断论文方向，再将本次参数与一个完整方向提示词合成为 `final-execution-prompt.md`。正式执行阶段不再跳转多层规则，也不由Skill内Python脚本控制论文内容。
+> 当前版本采用 **MD-first 单提示词执行**。Skill先判断论文方向，模型只写本次参数头，再通过确定性文件拼接生成 `final-execution-prompt.md`。正式执行阶段不再跳转多层规则，脚本也不控制论文内容、证据或最终状态。
 
 ## 你会得到什么
 
@@ -26,7 +26,7 @@
 | 论文生产 | 大纲、分章、累计字数检查、全文整合、同行评审与修订 |
 | 学术配图 | 有图片工具时逐张生图；统计图由真实数据和代码生成 |
 | 文档交付 | 生成并检查DOCX、PDF、目录、标题层级、题注和页码 |
-| 后处理模式 | 支持单独配图、只导出文档、只审计和只做方向判断 |
+| 条件模式 | 支持单独配图、只导出文档、只审计、只做方向判断、开题报告和答辩材料 |
 
 ## 工作方式
 
@@ -35,14 +35,23 @@
     ↓
 判断唯一论文方向
     ↓
-本次参数 + 方向完整提示词
+模型写入 run-params.md
+    ↓
+文件级拼接唯一方向完整提示词与条件附加规则
     ↓
 final-execution-prompt.md
     ↓
 检索 → 大纲 → 分章 → 配图 → 整合 → DOCX/PDF → QA
 ```
 
-每个 `references/compiled-prompts/*-full.md` 都是完整、自包含的论文生产提示词。模型选中一个方向后，会将它完整写入本次输出目录，并从头到尾重新读取。后续只执行这一份最终MD。
+每个 `references/compiled-prompts/*-full.md` 都是完整、自包含的论文生产提示词。模型选中一个方向后，不再复述这份长文本；`scripts/compose_prompt.py` 只做确定性文件拼接，并输出字节数和SHA-256。模型随后从头到尾读取一次最终MD，后续只执行这一份文件。
+
+### 为什么改为文件级拼接
+
+- 避免弱模型复制长提示词时截断、意译或漏段；
+- compiled prompt原文字节不经过模型生成；
+- 参数、完整规则和开题/答辩附加规则仍合成一份最终MD；
+- 维护脚本只负责拼接与同步校验，不参与论文决策。
 
 ## 默认规则
 
@@ -167,11 +176,14 @@ final-execution-prompt.md
 | `EXPORT_ONLY` | 从现有定稿生成DOCX/PDF |
 | `AUDIT_ONLY` | 只读检查现有论文与交付物 |
 | `ROUTE_ONLY` | 只做选题或方向判断 |
+| `PROPOSAL_ONLY` | 依据研究契约和已核验文献生成开题报告 |
+| `DEFENSE_ONLY` | 依据现有定稿生成答辩大纲、逐页内容和可用演示文件 |
 
 ## 主要输出
 
 ```text
 paper-output/
+├── run-params.md
 ├── final-execution-prompt.md
 ├── 00-capability-report.md
 ├── 01-research-contract.md
@@ -210,6 +222,15 @@ npx skills add huangnan29/aiwritepaper-agentic-skill
 # Codex
 ./install.sh --agent codex --scope user
 
+# Claude Code
+./install.sh --agent claude --scope user
+
+# Cursor
+./install.sh --agent cursor --scope user
+
+# Kimi Code
+./install.sh --agent kimi --scope user
+
 # Grok Build
 ./install.sh --agent grok --scope user
 
@@ -226,6 +247,9 @@ npx skills add huangnan29/aiwritepaper-agentic-skill
 
 ```powershell
 .\install.ps1 -Agent codex -Scope user
+.\install.ps1 -Agent claude -Scope user
+.\install.ps1 -Agent cursor -Scope user
+.\install.ps1 -Agent kimi -Scope user
 .\install.ps1 -Agent grok -Scope user
 .\install.ps1 -Agent workbuddy -Scope user
 .\install.ps1 -Agent antigravity -Scope user
@@ -240,6 +264,7 @@ npx skills add huangnan29/aiwritepaper-agentic-skill
 | Claude | `.claude/skills/aiwritepaper-agentic-skill` | `~/.claude/skills/aiwritepaper-agentic-skill` |
 | Codex | `.codex/skills/aiwritepaper-agentic-skill` | `~/.codex/skills/aiwritepaper-agentic-skill` |
 | Cursor | `.cursor/skills/aiwritepaper-agentic-skill` | `~/.cursor/skills/aiwritepaper-agentic-skill` |
+| Kimi Code | `.kimi-code/skills/aiwritepaper-agentic-skill` | `$KIMI_CODE_HOME/skills/aiwritepaper-agentic-skill`（默认`~/.kimi-code/skills`） |
 | Gemini CLI | `.gemini/skills/aiwritepaper-agentic-skill` | `~/.gemini/skills/aiwritepaper-agentic-skill` |
 | Antigravity | `.agents/skills/aiwritepaper-agentic-skill` | `~/.gemini/config/skills/aiwritepaper-agentic-skill` |
 | Grok Build | `.grok/skills/aiwritepaper-agentic-skill` | `~/.grok/skills/aiwritepaper-agentic-skill` |
@@ -279,11 +304,17 @@ npx skills add huangnan29/aiwritepaper-agentic-skill
 aiwritepaper-agentic-skill/
 ├── SKILL.md
 ├── agents/openai.yaml
+├── scripts/
+│   ├── compose_prompt.py   # 运行时只做确定性文件拼接
+│   ├── build_compiled.py   # 维护时重建19份完整提示词
+│   └── verify_compiled.py  # 只读校验源文件、路由和版本同步
 ├── references/
 │   ├── compiled-prompts/    # 运行时只读取其中一个完整提示词
 │   ├── directions/          # 19个方向增量源
 │   ├── common/              # 通用规则源
-│   └── deliverables/        # 开题与答辩附加规则
+│   ├── routing.md            # 唯一方向路由真源
+│   ├── topic-selection.md    # 无题目时按需读取
+│   └── deliverables/         # 开题与答辩按需附加
 ├── install.sh
 └── install.ps1
 ```
@@ -298,7 +329,7 @@ aiwritepaper-agentic-skill/
 
 ## 维护与版本
 
-- 当前版本：`0.4.2`
+- 当前版本：`0.5.0`
 - 更新记录：[CHANGELOG.md](CHANGELOG.md)
 - Skill入口：[SKILL.md](SKILL.md)
 - 历史复杂流水线版可通过Git标签`v0.3.1-runtime-gates`恢复

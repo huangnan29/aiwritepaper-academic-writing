@@ -1,25 +1,27 @@
 ---
 name: aiwritepaper-agentic-skill
-description: 根据论文题目和可用材料选择一个方向专属完整提示词，将本次参数与该提示词合成为单一最终执行MD，并持续完成中文论文、配图、DOCX、PDF或验收。没有题目时可推荐10个可行题目；不用于编造研究、数据、文献或规避检测。
+description: 根据题目和材料完成毕业论文、学位论文、期刊论文、开题报告、答辩材料、论文配图、DOCX/PDF导出或质量验收；选择唯一方向提示词并确定性合成为单一执行MD。不用于编造研究、数据、文献、实验结果或规避检测。
 license: MIT
 metadata:
   author: huangnan29
-  version: "0.4.2"
+  version: "0.5.0"
   repository: https://github.com/huangnan29/aiwritepaper-agentic-skill
 ---
 
 # AIWritePaper 单提示词执行入口
 
-本Skill只负责两件事：选择一个论文方向；让执行阶段完整读取一份自包含提示词。不要在论文生产过程中继续跳转公共规则、配图子Skill或Skill自带脚本。
+本Skill负责选择唯一论文方向，并把本次参数与一份自包含方向提示词确定性合成为 `final-execution-prompt.md`。论文生产阶段只执行这一个最终MD，不继续跳转公共规则、方向文件、配图子Skill或维护脚本。
 
-## 一、先确定请求类型
+## 一、确定请求类型
 
-- 用户已有完整题目：直接判断方向，不重复询问题目，不等待确认。
-- 用户要求完整论文：使用 `FULL_BUILD`。
-- 用户已有正文，只要求配图：使用 `FIGURES_ONLY`。
-- 用户已有定稿，只要求DOCX/PDF：使用 `EXPORT_ONLY`。
-- 用户只要求检查：使用 `AUDIT_ONLY`。
-- 用户没有题目：一次询问专业、细分方向、论文层次、可用材料和方法偏好；信息足够时直接推荐10个题目。每个题目给出核心问题、方向、方法、证据需求、可行性、风险和材料不足时的降级题目。选题阶段不生成论文。
+- 用户已有完整题目并要求完整论文：`FULL_BUILD`。
+- 用户已有正文，只要求新增或优化配图：`FIGURES_ONLY`。
+- 用户已有定稿，只要求DOCX/PDF：`EXPORT_ONLY`。
+- 用户只要求检查：`AUDIT_ONLY`。
+- 用户只要求方向判断：`ROUTE_ONLY`。
+- 用户只要求开题报告：`PROPOSAL_ONLY`。
+- 用户只要求答辩材料：`DEFENSE_ONLY`。
+- 用户没有题目或只有模糊方向：完整读取 [references/topic-selection.md](references/topic-selection.md)，一次收集必要信息并推荐10个题目；用户选定后再进入方向路由，不提前生成论文。
 
 已有题目且用户要求开始执行时，默认 `AUTO_BENCHMARK`：除权限、伦理、凭证、付费或无法继续的硬阻塞外，不停下来等待用户确认。
 
@@ -27,53 +29,44 @@ metadata:
 
 ## 二、选择唯一方向
 
-不要只看专业名称，要同时判断研究对象、研究动作、证据形式和成果形态。选择一个首选完整提示词：
+完整读取 [references/routing.md](references/routing.md)，根据研究对象、研究动作、证据形式和成果形态选择一个且仅一个 `references/compiled-prompts/*-full.md`。不要同时加载首选与备选提示词；材料不足时仍选择同学科方向，但在本次参数中诚实降级研究主张。
 
-| 题目信号 | 唯一完整提示词 |
-|---|---|
-| SpringBoot、管理系统、平台、数据库、软件架构、设计与实现 | `references/compiled-prompts/software-system-engineering-full.md` |
-| 机械零件、材料选型、热处理、工艺路线、强度校核 | `references/compiled-prompts/mechanical-material-process-full.md` |
-| 电路、接口、PCB、器件选型、仿真、信号测试 | `references/compiled-prompts/electronic-circuit-design-full.md` |
-| 物理材料、能带、光电性能、物性测量、数值模拟 | `references/compiled-prompts/physical-materials-experiment-full.md` |
-| 合成、复合材料、表征、电化学、反应机理 | `references/compiled-prompts/chemical-materials-experiment-full.md` |
-| 企业运营、商业模式、组织管理、案例分析 | `references/compiled-prompts/management-case-analysis-full.md` |
-| 区域、坡面、土壤、水文、遥感、GIS、空间分布 | `references/compiled-prompts/geography-environmental-empirical-full.md` |
-| 细胞、分子通路、药物处理、实验型医学期刊 | `references/compiled-prompts/biomedical-experimental-journal-full.md` |
-| 机器学习、分类预测、特征工程、模型评估、可解释性 | `references/compiled-prompts/machine-learning-applied-empirical-full.md` |
-| 教学、课程、学习者、教育技术、教学干预 | `references/compiled-prompts/education-applied-research-full.md` |
-| 文旅产品、视觉、交互、空间、服务设计、设计实践 | `references/compiled-prompts/art-design-practice-full.md` |
-| 贸易、产业、宏观政策、计量模型、经济影响 | `references/compiled-prompts/economics-policy-empirical-full.md` |
-| 著作权、侵权、法律规制、法条、判例、规范分析 | `references/compiled-prompts/legal-normative-analysis-full.md` |
-| 患者护理、护理干预、临床观察、病例资料 | `references/compiled-prompts/clinical-nursing-research-full.md` |
-| 数学思想、数学教学、题型、课堂策略 | `references/compiled-prompts/mathematics-education-full.md` |
-| 作家、作品、意象、叙事、修辞、文本细读 | `references/compiled-prompts/literature-textual-analysis-full.md` |
-| 明确要求期刊IMRaD且研究方法已确定 | `references/compiled-prompts/general-journal-imrad-full.md` |
-| 研究进展、现状与展望、系统综述、范围综述 | `references/compiled-prompts/literature-review-synthesis-full.md` |
-| 在职、MBA实践、岗位改进、组织问题与行动方案 | `references/compiled-prompts/professional-work-report-full.md` |
+`ROUTE_ONLY` 到此结束，只报告题目、研究问题、唯一方向提示词、证据需求、材料缺口和降级方案，不进入论文生产。
 
-“系统”要根据源码、图纸或电路证据区分软件、机械和电子；“影响因素”要根据数据、问卷或访谈区分方法；“期刊论文”只是成果格式，先判断研究方法。没有源码、图纸、实验、病例或数据时，选择相同学科方向，但在最终提示词中诚实降级为设计方案、验证协议、公开数据研究、规范分析或综述。
+## 三、确定性合成最终执行提示词
 
-## 三、建立单一最终执行提示词
+除 `ROUTE_ONLY` 和尚未选题的情况外，在用户输出目录创建 `run-params.md`，只写以下本次运行内容：
 
-确定方向后必须完整读取所选 `*-full.md`，从文件开头读到结尾。该文件已经包含通用主提示词、近期配图规则、弱模型持续完成机制和方向增量；不要再读取 `references/common/`、`references/directions/`、`references/figure-skills/`、嵌套Skills或Skill脚本来补充执行规则。
-
-在用户输出目录创建 `final-execution-prompt.md`，内容按以下顺序组成：
-
-1. 本次真实运行参数：模式、输出目录、模型标签、题目、论文类型、学科、研究对象、核心问题、语言、目标正文长度、引用格式、最低文献数、图片数、表格数、模板和用户材料；
+1. 真实运行参数：模式、输出目录、`MODEL_LABEL`、题目、论文类型、学科、研究对象、核心问题、语言、目标正文长度、引用格式、最低文献数、图片数、表格数、模板和用户材料；
 2. 用户明确的目录、工具、真实性、格式和停止条件；
-3. 所选 `*-full.md` 的完整原文。
+3. 能力缺口与降级边界，不提前写研究结果。
 
-用户没有另行指定 `OUTPUT_DIR` 时使用当前工作目录；没有指定 `MODEL_LABEL` 时使用当前工作目录名称。目录边界明确时，除读取Skill与用户授权材料外，只在该输出目录写入，不访问其他模型结果目录。
+`MODEL_LABEL` 只用于多模型对比测试、运行清单和结果区分；它不进入论文署名，也不改变正文内容或学术结论。用户没有指定时使用当前工作目录名称。
 
-直接给题目且未提供字数时，写入 `TARGET_LENGTH: 25000`，不得留空、不得改成模型自行估计值。正文统计范围为第一章至结论的主体论述，不含摘要、目录、参考文献、致谢、附录、代码和图表题注。
+不要让模型重新生成、复述或复制所选 `*-full.md`。使用Skill内的确定性合成工具，把 `run-params.md`、唯一完整提示词和必要的附加交付规则按字节顺序写入 `final-execution-prompt.md`：
 
-不得概括、删减或改写所选完整提示词。写入后重新从头到尾读取 `final-execution-prompt.md`，后续只把它作为论文生产指令。若无法完整读取或写入该文件，明确报告硬阻塞；不得用当前 `SKILL.md` 的简短说明替代正式提示词。
+```bash
+python3 "<SKILL_DIR>/scripts/compose_prompt.py" \
+  --params "<OUTPUT_DIR>/run-params.md" \
+  --compiled "<SKILL_DIR>/references/compiled-prompts/<PROMPT>-full.md" \
+  --output "<OUTPUT_DIR>/final-execution-prompt.md"
+```
+
+- `PROPOSAL_ONLY` 或用户附加要求开题报告时，增加 `--addon "<SKILL_DIR>/references/deliverables/proposal-report.md"`。
+- `DEFENSE_ONLY` 或用户附加要求答辩材料时，增加 `--addon "<SKILL_DIR>/references/deliverables/defense-presentation.md"`。
+- `python3` 不可用时，读取 [references/prompt-composition.md](references/prompt-composition.md)，使用对应平台的原生文件拼接命令；仍不得由模型复述完整提示词。
+
+合成工具只负责文件拼接、UTF-8校验、原文完整性和SHA-256输出，不决定方向、章节、证据、图片或最终状态。`scripts/build_compiled.py` 与 `scripts/verify_compiled.py` 仅供Skill维护，不在论文生产阶段运行。
+
+合成成功后，从头到尾完整读取一次 `final-execution-prompt.md`。后续只把它作为生产指令，不再单独读取 `references/common/`、`references/directions/` 或其他compiled prompts。若无法合成或完整读取，报告硬阻塞；不得用当前 `SKILL.md` 的简短说明替代正式提示词。
+
+用户没有另行指定 `OUTPUT_DIR` 时使用当前工作目录。目录边界明确时，除读取Skill与用户授权材料外，只在该输出目录写入，不访问其他模型结果目录。
 
 ## 四、持续执行
 
 按照 `final-execution-prompt.md` 直接执行。已有题目的 `FULL_BUILD` 不输出路由方案后停顿，不要求用户再次批准大纲，不把论文正文只留在聊天窗口。
 
-执行模型自主选择当前可用工具。只有数据统计图、DOCX/PDF导出或其他当前任务确实需要时，才在本次输出目录创建项目专用代码；不得调用Skill目录中的固定Python流水线决定章节、内容、状态或PASS。
+执行模型自主选择当前可用工具。只有数据统计图、DOCX/PDF导出或本次任务确实需要时，才在输出目录创建项目专用代码；不得调用Skill维护脚本决定正文、证据、章节状态或 `PASS`。
 
 图片工具已经成功生成某图时，正文、DOCX和PDF必须插入该生成图或由它合成的最终PNG；同名SVG只能作为备用或修正源。最终嵌入路径以图表清单中的 `final_embed_file` 为唯一依据，不能按文件名或扩展名自行改选SVG。
 

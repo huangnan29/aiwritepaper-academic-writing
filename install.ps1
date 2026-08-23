@@ -24,7 +24,7 @@ function Show-Usage {
 用法：
   .\install.ps1 -Agent <agent> -Scope <user|project> [-Force]
 
-Agent 可选值：codex、claude、cursor、gemini、antigravity、copilot、opencode、workbuddy、grok、universal
+Agent 可选值：codex、claude、cursor、kimi、gemini、antigravity、copilot、opencode、workbuddy、grok、universal
 Scope 可选值：user、project
 -Force：目标目录已存在时，确认后覆盖
 '@
@@ -45,6 +45,7 @@ switch ($AgentKey) {
     'codex' { }
     'claude' { }
     'cursor' { }
+    'kimi' { }
     'gemini' { }
     'antigravity' { }
     'copilot' { }
@@ -53,7 +54,7 @@ switch ($AgentKey) {
     'grok' { }
     'universal' { }
     default {
-        Stop-Install ('不支持的 agent：{0}。可选值为 codex、claude、cursor、gemini、antigravity、copilot、opencode、workbuddy、grok、universal。' -f $Agent)
+        Stop-Install ('不支持的 agent：{0}。可选值为 codex、claude、cursor、kimi、gemini、antigravity、copilot、opencode、workbuddy、grok、universal。' -f $Agent)
     }
 }
 
@@ -64,6 +65,12 @@ if ($ScopeKey -ne 'user' -and $ScopeKey -ne 'project') {
 $HomePath = [Environment]::GetFolderPath('UserProfile')
 if ([string]::IsNullOrWhiteSpace($HomePath)) {
     Stop-Install '无法确定用户主目录。'
+}
+
+if ([string]::IsNullOrWhiteSpace($env:KIMI_CODE_HOME)) {
+    $KimiCodeHome = Join-Path $HomePath '.kimi-code'
+} else {
+    $KimiCodeHome = $env:KIMI_CODE_HOME
 }
 
 if ($ScopeKey -eq 'project') {
@@ -77,6 +84,7 @@ if ($ScopeKey -eq 'user') {
         'codex' { $InstallRoot = Join-Path $BasePath '.codex\skills' }
         'claude' { $InstallRoot = Join-Path $BasePath '.claude\skills' }
         'cursor' { $InstallRoot = Join-Path $BasePath '.cursor\skills' }
+        'kimi' { $InstallRoot = Join-Path $KimiCodeHome 'skills' }
         'gemini' { $InstallRoot = Join-Path $BasePath '.gemini\skills' }
         'antigravity' { $InstallRoot = Join-Path $BasePath '.gemini\config\skills' }
         'copilot' { $InstallRoot = Join-Path $BasePath '.copilot\skills' }
@@ -90,6 +98,7 @@ if ($ScopeKey -eq 'user') {
         'codex' { $InstallRoot = Join-Path $BasePath '.codex\skills' }
         'claude' { $InstallRoot = Join-Path $BasePath '.claude\skills' }
         'cursor' { $InstallRoot = Join-Path $BasePath '.cursor\skills' }
+        'kimi' { $InstallRoot = Join-Path $BasePath '.kimi-code\skills' }
         'gemini' { $InstallRoot = Join-Path $BasePath '.gemini\skills' }
         'antigravity' { $InstallRoot = Join-Path $BasePath '.agents\skills' }
         'copilot' { $InstallRoot = Join-Path $BasePath '.github\skills' }

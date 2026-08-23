@@ -8,9 +8,11 @@
 - `FIGURES_ONLY`：读取现有正文，新增或优化配图，不改变正文主张；
 - `EXPORT_ONLY`：从现有定稿导出DOCX/PDF，不重新研究；
 - `AUDIT_ONLY`：只读检查现有交付物；
-- `ROUTE_ONLY`：只完成选题或方向判断。
+- `ROUTE_ONLY`：只完成选题或方向判断；
+- `PROPOSAL_ONLY`：依据研究契约与已核验文献生成开题报告，不提前生成结果；
+- `DEFENSE_ONLY`：依据现有定稿生成答辩大纲、逐页内容和工具允许的PPTX/PDF，不新增论文主张。
 
-严格遵守模式边界：`FIGURES_ONLY`直接读取现有正文和图表，不重做检索或改写结论；`EXPORT_ONLY`只处理现有定稿和图片；`AUDIT_ONLY`不创建研究结果；`ROUTE_ONLY`不进入正文生产。只有 `FULL_BUILD` 执行全部阶段。
+严格遵守模式边界：`FIGURES_ONLY`直接读取现有正文和图表，不重做检索或改写结论；`EXPORT_ONLY`只处理现有定稿和图片；`AUDIT_ONLY`不创建研究结果；`ROUTE_ONLY`不进入正文生产；`PROPOSAL_ONLY`使用计划性时态；`DEFENSE_ONLY`只压缩和重组现有论文证据。只有 `FULL_BUILD` 执行全部论文生产阶段。
 
 用户已给出完整题目、输出目录或明确要求“开始执行”时，默认 `AUTO_BENCHMARK`：不重复询问题目、不等待大纲批准、不要求用户确认模式，除非遇到权限、伦理、凭证、付费或无法继续的硬阻塞。用户明确要求交互时才使用 `INTERACTIVE`。
 
