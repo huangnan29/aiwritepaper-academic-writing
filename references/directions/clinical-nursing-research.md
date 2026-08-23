@@ -45,6 +45,14 @@ PROMPT_ID: `clinical-nursing-research`
 
 所有结果必须能回溯到原始文件、计算过程或已核验来源。
 
+## 文献信源
+
+- 发现与筛选：PubMed（OPEN_WEB与OPEN_API）；CINAHL、Cochrane Library、JBI证据总结（INSTITUTION_REQUIRED，若可访问）；SinoMed中的CBM或CNKI护理学核心刊（注明目录版本）。
+- 证据与全文：国家卫健委、NICE、WHO指南官网（OPEN_WEB）；PMC全文；中国临床试验注册中心（OPEN_WEB）。
+- 开放路线：PubMed、PMC、Europe PMC（OPEN_API）；WHO与NICE指南原文；临床试验注册中心。
+- 不宜作核心引文：科普号护理经验、无伦理号的“疗效体会”。
+- 信源核验门槛：干预主张记录伦理批号与试验注册号；指南记录版本与发布年份；量表引用原始开发文献。
+
 ## 图表与表格
 
 受试者流程、干预时间线和真实结果；表格包括基线、干预、结局和不良事件。

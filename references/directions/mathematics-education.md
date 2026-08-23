@@ -44,6 +44,14 @@ PROMPT_ID: `mathematics-education`
 
 所有结果必须能回溯到原始文件、计算过程或已核验来源。
 
+## 文献信源
+
+- 发现与筛选：ERIC（OPEN_WEB）；CNKI数学教育与课程教学核心刊（注明目录版本）；MathSciNet（INSTITUTION_REQUIRED）或zbMATH Open（OPEN_WEB）用于数学内容本身。
+- 证据与全文：教育部课程标准与教材审定官方文本（OPEN_WEB）；人教社等出版社教材版权页。
+- 开放路线：ERIC、zbMATH Open、课标官方文本、OpenAlex（OPEN_API）。
+- 不宜作核心引文：教辅盗版扫描、无出处的网传“高考真题”。
+- 信源核验门槛：教材内容记录出版社、版本与页码；真题记录官方来源与年份；课标注明版本年份。
+
 ## 图表与表格
 
 函数图像、几何示意、知识结构和教学流程；公式必须可编辑且符号统一。

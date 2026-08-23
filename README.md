@@ -4,7 +4,7 @@
 
 **从论文题目到一份完整执行提示词，再持续交付正文、配图、DOCX 与 PDF。**
 
-![Version](https://img.shields.io/badge/version-0.5.0-2563EB?style=flat-square)
+![Version](https://img.shields.io/badge/version-0.6.0-2563EB?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-16A34A?style=flat-square)
 ![Architecture](https://img.shields.io/badge/architecture-MD--first-7C3AED?style=flat-square)
 ![Directions](https://img.shields.io/badge/paper%20directions-19-EA580C?style=flat-square)
@@ -23,6 +23,7 @@
 | 自动选方向 | 根据题目、研究对象、方法和证据，从19个方向中选择一个 |
 | 稳定字数 | 直接给题目且未指定字数时，默认正文25,000字，允许±10% |
 | 文献与证据 | 先检索、核验并建立证据矩阵，不编造文献、数据或实验 |
+| 方向级信源 | 每个方向内置首选库、开放路线和不宜引用清单；无订阅时走开放路线 |
 | 论文生产 | 大纲、分章、累计字数检查、全文整合、同行评审与修订 |
 | 学术配图 | 有图片工具时逐张生图；统计图由真实数据和代码生成 |
 | 文档交付 | 生成并检查DOCX、PDF、目录、标题层级、题注和页码 |
@@ -76,6 +77,22 @@ final-execution-prompt.md
 - 禁止在附录、致谢或参考文献后增加“扩展章节”补字数；
 - 文献、图片和表格未达标时，不提前进入排版；
 - 文件存在或PDF可打开，不等于论文已经完成。
+
+## 文献信源
+
+每个方向提示词内置该学科的文献信源清单，信源分三层使用：
+
+| 层级 | 功能 | 典型来源 |
+|---|---|---|
+| 发现层 | 查找候选文献、引文追踪，不作全文证据 | Web of Science、Scopus、Ei Compendex、DBLP、CNKI、PubMed、ERIC |
+| 证据层 | 实际阅读并支撑论文主张 | 出版社全文、法源与标准原文、官方指南、官方数据集、监管披露 |
+| 核验层 | 核对题名、作者、年份、DOI和版本 | Crossref、DOI解析、出版社官方页、PubMed/SinoMed记录 |
+
+- 信源标注访问方式（`OPEN_API`/`OPEN_WEB`/`LOGIN_REQUIRED`/`INSTITUTION_REQUIRED`/`MANUAL_ONLY`）；检索日志必须记录实际访问路径，禁止虚构未访问数据库的检索过程。
+- 证据矩阵使用受控值：`evidence_role` 为 `DISCOVERY`/`EVIDENCE`/`VERIFICATION`，`access_mode` 使用上述五种访问标记，`publication_status` 区分正式发表、预印本、工作论文、标准、官方文件和数据集。
+- 首选库需机构订阅且不可访问时，记录能力缺口并转入开放路线：OpenAlex、Crossref、PubMed/PMC/Europe PMC、arXiv、DOAJ及官方政府、标准、统计和法源网站。
+- 预印本与工作论文须标注发表状态并与正式版去重；核心因果、疗效或性能主张优先正式发表来源。
+- 方向级核验门槛：法源记录版本与生效状态、标准记录标准号与年份、数据集记录版本与许可、系统综述至少双库交叉。
 
 ## 配图策略
 
@@ -329,7 +346,7 @@ aiwritepaper-agentic-skill/
 
 ## 维护与版本
 
-- 当前版本：`0.5.0`
+- 当前版本：`0.6.0`
 - 更新记录：[CHANGELOG.md](CHANGELOG.md)
 - Skill入口：[SKILL.md](SKILL.md)
 - 历史复杂流水线版可通过Git标签`v0.3.1-runtime-gates`恢复

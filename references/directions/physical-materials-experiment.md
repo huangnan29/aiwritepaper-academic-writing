@@ -43,6 +43,14 @@ PROMPT_ID: `physical-materials-experiment`
 
 所有结果必须能回溯到原始文件、计算过程或已核验来源。
 
+## 文献信源
+
+- 发现与筛选：Web of Science（INSTITUTION_REQUIRED，引文索引非全文）；APS、AIP、ACS等出版社库；CNKI物理与材料类核心刊（注明目录版本）。
+- 证据与全文：出版社全文或作者合法存档版本；Materials Project（OPEN_API）、ICSD（INSTITUTION_REQUIRED）等晶体与物性库只作数据来源，不作论文替代。
+- 开放路线：arXiv cond-mat（预印本，主张须降级或核正式版）；OpenAlex、Crossref（OPEN_API）；Materials Project。
+- 不宜作核心引文：个人主页未发表图、无法回溯仪器文件的二次绘图。
+- 信源核验门槛：晶体与物性数据记录数据库名称、版本和条目ID；预印本与正式发表版本去重。
+
 ## 图表与表格
 
 实验装置、晶体/能带示意、真实谱图、拟合残差和误差条；表格包括样品、参数和重复性。

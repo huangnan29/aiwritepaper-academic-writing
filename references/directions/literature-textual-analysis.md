@@ -44,6 +44,14 @@ PROMPT_ID: `literature-textual-analysis`
 
 所有结果必须能回溯到原始文件、计算过程或已核验来源。
 
+## 文献信源
+
+- 发现与筛选：CNKI文学核心刊（注明CSSCI目录版本）；JSTOR、Project MUSE、MLA International Bibliography（INSTITUTION_REQUIRED）。
+- 证据与全文：中华书局等权威点校本（MANUAL_ONLY，记录版本与页码）；中国基本古籍库（INSTITUTION_REQUIRED）；国家图书馆特藏与中华古籍资源库（LOGIN_REQUIRED，免费注册）。
+- 开放路线：中华古籍资源库、Internet Archive公版书、OpenAlex与DOAJ（OPEN_API）。
+- 不宜作核心引文：无页码的网页摘句、AI生成的“原文”。
+- 信源核验门槛：引文标注权威版本与页码；比较文学使用原语文本与可靠译本，译本注明译者与版本。
+
 ## 图表与表格
 
 以文本关系、意象谱系和叙事结构为主；不强制数量型图表。

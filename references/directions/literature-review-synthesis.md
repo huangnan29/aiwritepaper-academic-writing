@@ -44,6 +44,14 @@ PROMPT_ID: `literature-review-synthesis`
 
 所有结果必须能回溯到原始文件、计算过程或已核验来源。
 
+## 文献信源
+
+- 发现与筛选：至少两库交叉：Web of Science或Scopus（INSTITUTION_REQUIRED）加学科库（医学加PubMed与Cochrane，中文加CNKI与CBM，计算机加IEEE与ACM）。
+- 证据与全文：PRISMA声明原文；PROSPERO注册记录（OPEN_WEB）；纳入研究的出版社全文。
+- 开放路线：无机构权限时改用OpenAlex加PubMed或Europe PMC等开放库完成双库交叉（OPEN_API），并在检索日志中声明库覆盖面的局限。
+- 不宜作核心引文：单库“搜到什么写什么”；无检索式的“研究现状”。
+- 信源核验门槛：系统综述必须至少两库、完整布尔检索式与PRISMA流程记录；预印本单独报告，除非协议允许不混入正式纳入集。
+
 ## 图表与表格
 
 PRISMA流程、概念框架、证据地图和时间线；表格包括检索式、研究特征和质量评价。

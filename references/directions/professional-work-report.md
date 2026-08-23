@@ -44,6 +44,14 @@ PROMPT_ID: `professional-work-report`
 
 所有结果必须能回溯到原始文件、计算过程或已核验来源。
 
+## 文献信源
+
+- 发现与筛选：CNKI管理与公共管理核心刊题录（OPEN_WEB）或全文（LOGIN_REQUIRED|INSTITUTION_REQUIRED，注明CSSCI目录版本）用于理论框架。
+- 证据与全文：企业年报、监管披露和行业主管部门统计（OPEN_WEB）；ISO与国家标准流程文件（OPEN_WEB|INSTITUTION_REQUIRED|MANUAL_ONLY）；学校实践手册和授权组织材料（MANUAL_ONLY）。
+- 开放路线：披露与统计原文、国家标准全文公开系统、OpenAlex（OPEN_API）。
+- 不宜作核心引文：咨询公司宣传册当绩效证据、未脱敏的内部机密材料。
+- 信源核验门槛：组织内部材料记录授权与脱敏状态；绩效数字追溯到披露文件或经授权的内部口径说明。
+
 ## 图表与表格
 
 流程、组织关系、问题树、实施路线和真实指标；表格包括行动计划、责任和证据。

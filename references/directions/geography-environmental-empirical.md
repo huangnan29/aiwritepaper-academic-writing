@@ -45,6 +45,14 @@ PROMPT_ID: `geography-environmental-empirical`
 
 所有结果必须能回溯到原始文件、计算过程或已核验来源。
 
+## 文献信源
+
+- 发现与筛选：Web of Science（INSTITUTION_REQUIRED）；ScienceDirect（出版平台，逐篇判断）；CNKI地理学核心刊（注明目录版本）。
+- 证据与全文：NASA Earthdata、USGS、Copernicus（LOGIN_REQUIRED免费注册或OPEN_API）；地理空间数据云等官方数据集页面；OpenStreetMap仅作底图并标注许可。
+- 开放路线：Earthdata、USGS、Copernicus官方产品；OpenAlex、Crossref（OPEN_API）。
+- 不宜作核心引文：无版本号的网盘栅格、未注明投影与来源的地图截图。
+- 信源核验门槛：遥感产品记录名称、版本、时相、分辨率与下载日期；地图注明投影、比例尺与数据来源。
+
 ## 图表与表格
 
 研究区地图、采样点、剖面、空间分布和时间变化；地图必须含比例尺、指北针、图例和数据源。

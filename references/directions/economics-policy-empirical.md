@@ -44,6 +44,14 @@ PROMPT_ID: `economics-policy-empirical`
 
 所有结果必须能回溯到原始文件、计算过程或已核验来源。
 
+## 文献信源
+
+- 发现与筛选：EconLit、JSTOR、Web of Science SSCI（INSTITUTION_REQUIRED）；CNKI经济学核心刊（注明CSSCI目录版本）。
+- 证据与全文：世界银行、IMF、WTO开放数据（OPEN_API或OPEN_WEB）；国家统计局、海关总署官网；中国人民银行、发改委政策原文；CSMAR、Wind、CEIC（INSTITUTION_REQUIRED，注明授权）。
+- 开放路线：世行与IMF开放数据、统计局官网、NBER工作论文（OPEN_WEB，标注工作论文状态）、OpenAlex（OPEN_API）；SSRN未审稿只作线索并降级表述。
+- 不宜作核心引文：财经自媒体解读、SSRN未审稿当已发表因果证据。
+- 信源核验门槛：数据记录表号、期次与下载日期；工作论文与正式发表版本去重；政策引用注明文号与发布机构。
+
 ## 图表与表格
 
 制度时间线、理论机制、趋势和平行趋势、真实估计图；表格包括变量、描述统计、回归和稳健性。

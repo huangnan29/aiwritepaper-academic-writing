@@ -45,6 +45,14 @@ PROMPT_ID: `biomedical-experimental-journal`
 
 所有结果必须能回溯到原始文件、计算过程或已核验来源。
 
+## 文献信源
+
+- 发现与筛选：PubMed/MEDLINE（OPEN_WEB与OPEN_API）；Web of Science、Embase（INSTITUTION_REQUIRED，若可访问）；SinoMed中的CBM或CNKI医学核心刊（注明目录版本）。
+- 证据与全文：PMC与Europe PMC全文（OPEN_WEB）；出版社全文或作者合法存档版本；Cochrane Library方法与系统评价。
+- 开放路线：PubMed、PMC、Europe PMC（OPEN_API）；ClinicalTrials.gov与中国临床试验注册中心（OPEN_WEB）；bioRxiv（预印本，主张须降级）。
+- 不宜作核心引文：预印本当阳性结果终证、未核细胞系STR的二次引用。
+- 信源核验门槛：临床或动物试验主张核对注册号与伦理信息；预印本与正式发表版本去重。
+
 ## 图表与表格
 
 实验流程、剂量反应、流式/显微图、蛋白表达和误差条；表格报告样本量、重复和统计方法。

@@ -43,6 +43,14 @@ PROMPT_ID: `machine-learning-applied-empirical`
 - 误差案例、子群体表现和适用边界；
 - 涉及个人或敏感数据时的伦理、隐私和安全材料。
 
+## 文献信源
+
+- 发现与筛选：IEEE Xplore、ACM Digital Library（INSTITUTION_REQUIRED）；NeurIPS、ICML、ICLR等会议官方论文集（OPEN_WEB）；DBLP（OPEN_WEB，纯题录）；CNKI计算机类核心刊（注明目录版本）。
+- 证据与全文：会议官方论文集与OpenReview全文（OPEN_WEB）；UCI、OpenML、Hugging Face Datasets官方数据卡（OPEN_WEB，记录许可证）。
+- 开放路线：arXiv cs.LG/cs.AI/stat.ML（预印本，须核是否已正式发表）；Semantic Scholar、OpenAlex（OPEN_API）；Papers with Code仅作线索。
+- 不宜作核心引文：Kaggle讨论区数字、无代码与数据划分的博客“SOTA复现”。
+- 信源核验门槛：基线数字追溯到论文表格或官方排行榜；数据集记录名称、版本、划分与许可证；预印本与正式版去重。
+
 ## 图表与表格
 
 可使用数据流程、样本划分、模型结构、学习曲线、ROC/PR、校准、混淆矩阵、特征解释和误差分布。每张性能图必须来自真实运行输出，并标明数据划分、样本量和指标定义。

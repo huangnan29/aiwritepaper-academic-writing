@@ -44,6 +44,14 @@ PROMPT_ID: `management-case-analysis`
 
 所有结果必须能回溯到原始文件、计算过程或已核验来源。
 
+## 文献信源
+
+- 发现与筛选：CNKI管理学核心刊（注明CSSCI或北大核心目录版本）；Web of Science SSCI（INSTITUTION_REQUIRED）。
+- 证据与全文：上交所、深交所、港交所、SEC EDGAR年报与监管披露（OPEN_WEB）；国家统计局与行业协会官方统计（OPEN_WEB）；CSMAR、Wind（INSTITUTION_REQUIRED，注明数据授权）。
+- 开放路线：年报与监管披露原文、政府统计官网、OpenAlex（OPEN_API）。
+- 不宜作核心引文：自媒体企业传记、无法核验的“内部业绩”转载。
+- 信源核验门槛：案例事实追溯到披露文件名称、页码与披露日期；财务数字注明报表期间与口径。
+
 ## 图表与表格
 
 理论框架、业务流程、利益相关者、机制模型；表格包括来源清单、案例证据链和方案评估。

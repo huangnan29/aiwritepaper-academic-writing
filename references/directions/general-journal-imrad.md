@@ -44,6 +44,14 @@ PROMPT_ID: `general-journal-imrad`
 
 所有结果必须能回溯到原始文件、计算过程或已核验来源。
 
+## 文献信源
+
+- 发现与筛选：先跟实际学科走：PubMed（OPEN_WEB|OPEN_API）、IEEE Xplore摘要页（OPEN_WEB）或全文（INSTITUTION_REQUIRED）、Web of Science/SSCI（INSTITUTION_REQUIRED）、CNKI题录（OPEN_WEB，注明目录版本）或全文（LOGIN_REQUIRED|INSTITUTION_REQUIRED）；再补目标期刊所在出版社库。
+- 证据与全文：目标期刊作者指南（OPEN_WEB）与近期同栏目论文；出版社全文或作者合法存档版本（OPEN_WEB|INSTITUTION_REQUIRED，逐篇记录）。
+- 开放路线：Crossref、OpenAlex（OPEN_API）用于题录与DOI核验和补漏；学科对应开放库。
+- 不宜作核心引文：把“期刊”当研究方法；只用Google Scholar一条链收齐全部文献。
+- 信源核验门槛：引用格式、栏目结构与篇幅对齐目标期刊作者指南；先确定学科方法再套用IMRaD结构。
+
 ## 图表与表格
 
 按目标期刊限制选择最小充分图表；每个图表回答一个研究问题。

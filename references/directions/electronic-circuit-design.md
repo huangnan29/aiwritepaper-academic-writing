@@ -44,6 +44,14 @@ PROMPT_ID: `electronic-circuit-design`
 
 所有结果必须能回溯到原始文件、计算过程或已核验来源。
 
+## 文献信源
+
+- 发现与筛选：IEEE Xplore、IET Inspec（INSTITUTION_REQUIRED）；CNKI电子与仪器类核心刊（注明目录版本）。
+- 证据与全文：TI、ADI、Infineon等器件厂商官方数据手册（OPEN_WEB）；IEC、JEDEC、USB-IF等接口标准原文；出版社全文或作者合法存档版本。
+- 开放路线：厂商datasheet官网（OPEN_WEB）；JEDEC注册后可免费下载的标准（LOGIN_REQUIRED）；OpenAlex（OPEN_API）；arXiv eess类目（预印本，须核正式版）。
+- 不宜作核心引文：论坛抄录的datasheet、电商模块说明书。
+- 信源核验门槛：器件参数必须追溯到官方数据手册的具体版本号或日期；接口时序与电气特性以标准原文为准。
+
 ## 图表与表格
 
 系统框图、原理图、关键波形、PCB布局和测试连接；表格包括器件选型、指标预算和测试结果。

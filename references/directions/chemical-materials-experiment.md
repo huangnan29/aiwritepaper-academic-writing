@@ -44,6 +44,14 @@ PROMPT_ID: `chemical-materials-experiment`
 
 所有结果必须能回溯到原始文件、计算过程或已核验来源。
 
+## 文献信源
+
+- 发现与筛选：SciFinder或Reaxys（INSTITUTION_REQUIRED）；ACS Publications、RSC、ScienceDirect（出版平台，逐篇判断）；CNKI化学与材料类核心刊（注明目录版本）。
+- 证据与全文：出版社全文或作者合法存档版本；PubChem（OPEN_API）用于化合物标识核验。
+- 开放路线：PubChem；ChemRxiv（预印本，须核正式版）；OpenAlex、Europe PMC（OPEN_API）。
+- 不宜作核心引文：试剂电商页当“纯度证据”、自媒体“性能对比”。
+- 信源核验门槛：化合物用PubChem CID或CAS号核验标识；表征方法与数据主张追溯到已核验全文。
+
 ## 图表与表格
 
 合成流程、真实显微/谱学图、性能曲线和机理示意；表格包括配方、仪器条件和重复结果。

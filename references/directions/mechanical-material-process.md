@@ -44,6 +44,14 @@ PROMPT_ID: `mechanical-material-process`
 
 所有结果必须能回溯到原始文件、计算过程或已核验来源。
 
+## 文献信源
+
+- 发现与筛选：Engineering Village中的Ei Compendex（INSTITUTION_REQUIRED）；ScienceDirect、SpringerLink（出版平台，逐篇判断）；CNKI机械工程核心刊（注明目录版本）。
+- 证据与全文：ASME Digital Collection摘要页（OPEN_WEB）或全文（INSTITUTION_REQUIRED）；ISO、GB、ASTM标准原文和ASM等材料手册按实际路径记录 `OPEN_WEB|INSTITUTION_REQUIRED|MANUAL_ONLY`。
+- 开放路线：国家标准全文公开系统 openstd.samr.gov.cn（OPEN_WEB，GB强制性标准全文）；OpenAlex、Crossref（OPEN_API）；DOAJ。
+- 不宜作核心引文：钢材经销商参数页、无标准号的“性能表”截图。
+- 信源核验门槛：标准必须记录标准号、年份与现行有效状态；材料牌号与性能数据追溯到标准或权威手册条目。
+
 ## 图表与表格
 
 零件结构、载荷路径、工艺流程、热处理曲线和检测位置；表格包括材料性能、工艺参数和验收指标。

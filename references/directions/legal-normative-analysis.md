@@ -44,6 +44,14 @@ PROMPT_ID: `legal-normative-analysis`
 
 所有结果必须能回溯到原始文件、计算过程或已核验来源。
 
+## 文献信源
+
+- 发现与筛选：国家法律法规数据库 flk.npc.gov.cn（OPEN_WEB）；中国裁判文书网（OPEN_WEB，部分功能LOGIN_REQUIRED）；CNKI法学核心刊（注明CSSCI目录版本）。
+- 证据与全文：法源正文与司法解释官方文本；最高人民法院公报；全国人大常委会官网；北大法宝、威科先行（INSTITUTION_REQUIRED，须核到官方文本）；Westlaw、Lexis用于比较法（INSTITUTION_REQUIRED）。
+- 开放路线：flk.npc.gov.cn、政府与法院官网（OPEN_WEB）；裁判文书网按实际功能记录 `OPEN_WEB|LOGIN_REQUIRED|MANUAL_ONLY`。
+- 不宜作核心引文：自媒体“判例解读”、失效法规或草案当现行法。
+- 信源核验门槛：每条法源记录版本、施行日期与现行有效状态；判例记录案号与审理法院；商业库文本与官方文本核对一致。
+
 ## 图表与表格
 
 规范关系、权利义务和裁判路径图；表格包括法源层级、案例要素和制度比较。

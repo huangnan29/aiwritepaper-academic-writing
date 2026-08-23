@@ -43,6 +43,14 @@ PROMPT_ID: `software-system-engineering`
 
 所有结果必须能回溯到原始文件、计算过程或已核验来源。
 
+## 文献信源
+
+- 发现与筛选：IEEE Xplore、ACM Digital Library（INSTITUTION_REQUIRED，摘要页OPEN_WEB）；DBLP（OPEN_WEB，纯题录）；CNKI计算机类核心刊（注明北大核心或CSCD目录版本）。
+- 证据与全文：出版社全文或作者合法存档版本；Springer LNCS；Spring、PostgreSQL、RFC、W3C等官方技术文档（OPEN_WEB）。
+- 开放路线：OpenAlex、Crossref（OPEN_API）；arXiv cs.SE/cs.PL（预印本，须核正式发表版）；Semantic Scholar；官方技术文档。
+- 不宜作核心引文：CSDN与博客园未审帖、随机GitHub README、厂商营销页。
+- 信源核验门槛：框架与协议主张追溯到官方文档的具体版本或RFC编号；arXiv预印本与正式发表版本去重。
+
 ## 图表与表格
 
 用例图、业务流程、总体架构、部署图、ER图、状态机、接口时序图；表格包括需求追踪矩阵、数据字典和测试用例。

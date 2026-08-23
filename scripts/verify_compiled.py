@@ -27,6 +27,19 @@ def main() -> int:
     errors: List[str] = []
     directions = direction_files()
     compiled = sorted(COMPILED_DIR.glob("*-full.md"))
+    access_tags = ["OPEN_API", "OPEN_WEB", "LOGIN_REQUIRED", "INSTITUTION_REQUIRED", "MANUAL_ONLY"]
+    source_prefixes = ["发现与筛选", "证据与全文", "开放路线", "不宜作核心引文", "信源核验门槛"]
+
+    literature_common = read_source(COMMON_DIR / "literature-and-citation.md")
+    for heading in ["发现层", "证据层", "核验层"]:
+        if heading not in literature_common:
+            errors.append(f"公共文献规则缺少信源层级: {heading}")
+    for field in ["evidence_role", "access_mode", "publication_status"]:
+        if field not in literature_common:
+            errors.append(f"公共文献规则缺少证据矩阵字段: {field}")
+    for tag in access_tags:
+        if tag not in literature_common:
+            errors.append(f"公共文献规则缺少访问标记: {tag}")
 
     if len(directions) != 19:
         errors.append(f"方向源文件应为19个，实际为{len(directions)}个")
@@ -39,6 +52,24 @@ def main() -> int:
         errors.append(f"compiled文件集合不一致: 缺少={sorted(expected_names-actual_names)} 多出={sorted(actual_names-expected_names)}")
 
     for direction in directions:
+        direction_text = read_source(direction)
+        if direction_text.count("## 文献信源") != 1:
+            errors.append(f"文献信源章节不是恰好一次: {direction.name}")
+        else:
+            required_pos = direction_text.find("## 必需证据")
+            literature_pos = direction_text.find("## 文献信源")
+            figures_pos = direction_text.find("## 图表与表格")
+            if not (required_pos < literature_pos < figures_pos):
+                errors.append(f"文献信源章节位置错误: {direction.name}")
+            literature_section = direction_text[literature_pos:figures_pos]
+            for prefix in source_prefixes:
+                if literature_section.count(f"- {prefix}：") != 1:
+                    errors.append(f"文献信源条目不是恰好一次: {direction.name} -> {prefix}")
+            for prefix in source_prefixes[:3]:
+                line_match = re.search(rf"^- {re.escape(prefix)}：.*$", literature_section, re.MULTILINE)
+                if line_match and not any(tag in line_match.group(0) for tag in access_tags):
+                    errors.append(f"信源条目缺少访问标记: {direction.name} -> {prefix}")
+
         output = COMPILED_DIR / f"{direction.stem}-full.md"
         if not output.exists():
             continue
@@ -55,7 +86,7 @@ def main() -> int:
         direction_marker = f"<!-- 方向来源：references/directions/{direction.name} -->"
         if output_text.count(direction_marker) != 1:
             errors.append(f"方向标记不是恰好一次: {output.name}")
-        if output_text.count(read_source(direction)) != 1:
+        if output_text.count(direction_text) != 1:
             errors.append(f"方向正文不是恰好一次: {output.name}")
 
     routing = (SKILL_ROOT / "references" / "routing.md").read_text(encoding="utf-8")
@@ -92,6 +123,16 @@ def main() -> int:
     for script_name in ["compose_prompt.py", "build_compiled.py", "verify_compiled.py"]:
         if not (SKILL_ROOT / "scripts" / script_name).is_file():
             errors.append(f"缺少脚本: scripts/{script_name}")
+
+    audit_text = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in [SKILL_ROOT / "SKILL.md", SKILL_ROOT / "README.md", *COMMON_DIR.glob("*.md"), *directions]
+    )
+    if re.search(r"sci[- ]?hub", audit_text, re.IGNORECASE):
+        errors.append("正式规则仍包含Sci-Hub表述")
+    for required_term in ["IET Inspec", "Ei Compendex", "SinoMed", "CBM", "zbMATH Open"]:
+        if required_term not in audit_text:
+            errors.append(f"方向信源缺少规范名称: {required_term}")
 
     if errors:
         print("校验失败:")

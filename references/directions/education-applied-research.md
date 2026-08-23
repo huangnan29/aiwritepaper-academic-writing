@@ -45,6 +45,14 @@ PROMPT_ID: `education-applied-research`
 
 所有结果必须能回溯到原始文件、计算过程或已核验来源。
 
+## 文献信源
+
+- 发现与筛选：ERIC（OPEN_WEB）；CNKI教育学核心刊（注明CSSCI或北大核心目录版本）；Web of Science SSCI、ProQuest Education（INSTITUTION_REQUIRED）。
+- 证据与全文：教育部政策与课程标准官网（OPEN_WEB）；量表原始开发论文及手册出版社页面。
+- 开放路线：ERIC、教育部官网、OpenAlex与DOAJ（OPEN_API）。
+- 不宜作核心引文：教辅营销文、无信效度出处的“自编问卷结论”。
+- 信源核验门槛：量表必须引用原始开发文献并说明信效度来源；课标与政策注明文号和发布年份。
+
 ## 图表与表格
 
 研究框架、教学流程、干预时间线和真实结果图；表格包括变量、工具、样本和结果。
