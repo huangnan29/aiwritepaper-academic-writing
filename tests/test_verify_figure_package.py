@@ -64,7 +64,7 @@ class FigurePackageTests(unittest.TestCase):
         source_hash = hashlib.sha256((self.root / "data/results.csv").read_bytes()).hexdigest()
         execution_hash = hashlib.sha256((self.root / "figures/data-execution.log").read_bytes()).hexdigest()
         self.manifest = {
-            "schema_version": "1.1",
+            "schema_version": "1.2",
             "figures": [{
                 "figure_id": "fig-1", "title": "趋势图", "figure_type": "STATISTICAL",
                 "claim_bearing": True, "generation_route": "DATA_CODE", "data_status": "OBSERVED",
@@ -83,6 +83,7 @@ class FigurePackageTests(unittest.TestCase):
                 "caption_claim": "B组高于A组", "supported_manuscript_claims": [{"claim": "B组更高", "locator": "结果"}],
                 "limitations": [], "canvas_contains_figure_number_or_caption": False,
                 "generation_receipt": None,
+                "svg_layout_mode": None, "svg_layout": None,
                 "final_embed_file": "figures/fig-1-final.png",
                 "vlm_verification": {
                     "status": "PASS", "iterations": 1, "remaining_issues": [],
@@ -290,6 +291,7 @@ class FigurePackageTests(unittest.TestCase):
             "claim_bearing": False,
             "fallback_file": "figures/fallback.svg", "source_data": [],
             "transformation": {"method": "svg-render"}, "capability_gap": "IMAGE_GENERATOR unavailable",
+            "svg_layout_mode": "NATIVE", "svg_layout": None,
         })
         self.write_manifest()
         self.assertTrue(any("SVG_CJK_FONT_MISSING" in item for item in self.verify().errors))
@@ -304,9 +306,62 @@ class FigurePackageTests(unittest.TestCase):
             "generation_route": "SVG_FALLBACK", "data_status": "NOT_APPLICABLE",
             "claim_bearing": False, "fallback_file": "figures/fallback.svg", "source_data": [],
             "transformation": {"method": "svg-render"}, "capability_gap": "IMAGE_GENERATOR unavailable",
+            "svg_layout_mode": "NATIVE", "svg_layout": None,
         })
         self.write_manifest()
         self.assertTrue(any("SVG_LINE_CROSSING" in item for item in self.verify().errors))
+
+    def make_compiled_svg_figure(self) -> None:
+        figure = self.manifest["figures"][0]
+        fallback = self.root / "figures/fallback.svg"
+        fallback.write_text(
+            '<svg xmlns="http://www.w3.org/2000/svg"><style>text{font-family:"PingFang SC",sans-serif}</style>'
+            '<rect x="10" y="10" width="120" height="60"/><text x="20" y="40">中文节点</text></svg>',
+            encoding="utf-8",
+        )
+        spec = self.root / "figures/fig-1-spec.json"
+        spec.write_text(
+            '{"version":"1.0","figure_id":"fig-1","template":"process","direction":"LR",'
+            '"nodes":[{"id":"n1","label":"中文节点"}],"edges":[]}', encoding="utf-8"
+        )
+        report = self.root / "figures/fig-1-layout-report.json"
+        report.write_text(json.dumps({
+            "status": "PASS",
+            "input_sha256": hashlib.sha256(spec.read_bytes()).hexdigest(),
+            "output_sha256": hashlib.sha256(fallback.read_bytes()).hexdigest(),
+        }), encoding="utf-8")
+        renderer = SCRIPT.with_name("render_svg_layout.mjs")
+        figure.update({
+            "generation_route": "SVG_FALLBACK", "data_status": "NOT_APPLICABLE",
+            "claim_bearing": False, "fallback_file": "figures/fallback.svg", "source_data": [],
+            "transformation": {"method": "svg-layout-compiled"},
+            "capability_gap": "IMAGE_GENERATOR unavailable",
+            "svg_layout_mode": "COMPILED",
+            "svg_layout": {
+                "spec_file": "figures/fig-1-spec.json",
+                "spec_sha256": hashlib.sha256(spec.read_bytes()).hexdigest(),
+                "report_file": "figures/fig-1-layout-report.json",
+                "report_sha256": hashlib.sha256(report.read_bytes()).hexdigest(),
+                "renderer": "aiwritepaper-agentic-skill@0.8.2/render_svg_layout.mjs",
+                "renderer_sha256": hashlib.sha256(renderer.read_bytes()).hexdigest(),
+            },
+        })
+        self.write_manifest()
+
+    def test_valid_compiled_svg_layout(self) -> None:
+        self.make_compiled_svg_figure()
+        self.assertEqual(self.verify().errors, [])
+
+    def test_compiled_svg_wrong_output_hash_fails(self) -> None:
+        self.make_compiled_svg_figure()
+        report = self.root / "figures/fig-1-layout-report.json"
+        payload = json.loads(report.read_text(encoding="utf-8"))
+        payload["output_sha256"] = "0" * 64
+        report.write_text(json.dumps(payload), encoding="utf-8")
+        figure = self.manifest["figures"][0]
+        figure["svg_layout"]["report_sha256"] = hashlib.sha256(report.read_bytes()).hexdigest()
+        self.write_manifest()
+        self.assertTrue(any("SVG_LAYOUT_OUTPUT_MISMATCH" in item for item in self.verify().errors))
 
 
 if __name__ == "__main__":

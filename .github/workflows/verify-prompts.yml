@@ -19,3 +19,13 @@ jobs:
         run: python scripts/verify_compiled.py
       - name: 校验图表包机械门禁
         run: python -m unittest discover -s tests -p 'test_*.py'
+
+  svg-layout:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: 校验SVG布局编译器
+        run: node --test tests/test_render_svg_layout.mjs

@@ -6,7 +6,7 @@
   "additionalProperties": true,
   "required": ["schema_version", "figures"],
   "properties": {
-    "schema_version": {"const": "1.1"},
+    "schema_version": {"const": "1.2"},
     "figures": {
       "type": "array",
       "items": {"$ref": "#/$defs/figure"}
@@ -22,7 +22,7 @@
         "data_status", "prompt_file", "generated_file", "fallback_file", "source_data",
         "transformation", "caption_claim", "supported_manuscript_claims", "limitations",
         "canvas_contains_figure_number_or_caption", "final_embed_file", "generation_receipt",
-        "vlm_verification"
+        "svg_layout_mode", "svg_layout", "vlm_verification"
       ],
       "properties": {
         "figure_id": {"type": "string", "minLength": 1},
@@ -52,6 +52,8 @@
         "canvas_contains_figure_number_or_caption": {"const": false},
         "final_embed_file": {"type": "string", "pattern": "\\.(png|jpe?g|webp)$"},
         "generation_receipt": {"type": ["object", "null"]},
+        "svg_layout_mode": {"type": ["string", "null"], "enum": ["NATIVE", "COMPILED", null]},
+        "svg_layout": {"type": ["object", "null"]},
         "vlm_verification": {"type": "object"}
       },
       "allOf": [
@@ -76,6 +78,30 @@
               "transformation": {
                 "type": "object",
                 "required": ["script", "sha256", "execution_receipt"]
+              }
+            }
+          }
+        },
+        {
+          "if": {"properties": {"generation_route": {"const": "SVG_FALLBACK"}}},
+          "then": {
+            "properties": {
+              "svg_layout_mode": {"enum": ["NATIVE", "COMPILED"]}
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "generation_route": {"const": "SVG_FALLBACK"},
+              "svg_layout_mode": {"const": "COMPILED"}
+            }
+          },
+          "then": {
+            "properties": {
+              "svg_layout": {
+                "type": "object",
+                "required": ["spec_file", "spec_sha256", "report_file", "report_sha256", "renderer", "renderer_sha256"]
               }
             }
           }

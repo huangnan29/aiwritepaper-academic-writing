@@ -15,6 +15,7 @@ figure_plan:
     source_kind: "MANUSCRIPT_CONTEXT|DATASET|SOURCE_FILE"
     source_locator: "正文、schema、数据文件或原始科研文件"
     route: "IMAGE_GENERATION|DATA_CODE|DOMAIN_TOOL|EVIDENCE_FILE|SVG_FALLBACK"
+    svg_layout_mode: "NATIVE|COMPILED|null"
     placement: "第4章4.1节"
     final_format: "PNG"
     risks: []
@@ -61,7 +62,7 @@ figure_plan:
 
 ## 权威Figure Manifest
 
-`figures/figure-manifest.json` 是机器可读的唯一插图路由真源；`figures/figure-manifest.md` 是供人阅读的摘要，不能被导出程序用于重新选图。JSON根对象包含 `schema_version` 与 `figures[]`，当前版本为 `1.1`。每张图至少记录：
+`figures/figure-manifest.json` 是机器可读的唯一插图路由真源；`figures/figure-manifest.md` 是供人阅读的摘要，不能被导出程序用于重新选图。JSON根对象包含 `schema_version` 与 `figures[]`，当前版本为 `1.2`。每张图至少记录：
 
 ```json
 {
@@ -74,6 +75,8 @@ figure_plan:
   "prompt_file": null,
   "generated_file": null,
   "generation_receipt": null,
+  "svg_layout_mode": null,
+  "svg_layout": null,
   "fallback_file": null,
   "source_data": [{"dataset_id": "bench-v1", "file": "data/bench.csv", "sha256": "..."}],
   "transformation": {
@@ -113,8 +116,21 @@ figure_plan:
 - `DATA_CODE`：必须有 `source_data`、每个输入文件SHA-256、脚本、脚本SHA-256、实际执行回执和非空最终文件；执行回执记录实际命令、输入摘要、脚本摘要、输出摘要及原始日志，主张型统计图不能使用 `NOT_APPLICABLE`。
 - `DOMAIN_TOOL`：记录领域工具、输入文件与导出过程。
 - `EVIDENCE_FILE`：记录原始科研文件、采集或处理来源；不得生成证据区域。
-- `SVG_FALLBACK`：只在图片工具不可用、用户退出或格式禁止时使用，记录 `CAPABILITY_GAP`；SVG保留为fallback，最终文档默认嵌入经过核对的PNG。
+- `SVG_FALLBACK`：只在图片工具不可用、用户退出或格式禁止时使用，记录 `CAPABILITY_GAP`；`svg_layout_mode` 为 `NATIVE` 或 `COMPILED`。`COMPILED` 必须记录语义Spec、布局报告、渲染器标识及各自SHA-256；SVG保留为fallback，最终文档默认嵌入经过核对的PNG。
 - `canvas_contains_figure_number_or_caption` 必须为 `false`，避免与Word/LaTeX题注重复。
+
+`COMPILED` 的 `svg_layout` 使用固定字段：
+
+```json
+{
+  "spec_file": "figures/fig-2-1-spec.json",
+  "spec_sha256": "...",
+  "report_file": "figures/fig-2-1-layout-report.json",
+  "report_sha256": "...",
+  "renderer": "aiwritepaper-agentic-skill@0.8.2/render_svg_layout.mjs",
+  "renderer_sha256": "..."
+}
+```
 
 ### 图片工具调用回执
 

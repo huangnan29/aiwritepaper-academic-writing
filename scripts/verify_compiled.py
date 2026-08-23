@@ -40,8 +40,9 @@ def main() -> int:
         "output-contract.md": "# 公共规则四：",
         "academic-figures.md": "# 公共规则五：",
         "statistical-figures-and-trace.md": "# 公共规则六：",
-        "autonomous-completion.md": "# 公共规则七：",
-        "final-quality-gates.md": "# 公共规则八：",
+        "academic-prose-quality.md": "# 公共规则七：",
+        "autonomous-completion.md": "# 公共规则八：",
+        "final-quality-gates.md": "# 公共规则九：",
     }
     for common_name, expected_heading in expected_common_headings.items():
         if not read_source(COMMON_DIR / common_name).startswith(expected_heading):
@@ -141,6 +142,8 @@ def main() -> int:
     for script_name in ["compose_prompt.py", "build_compiled.py", "verify_compiled.py", "verify_figure_package.py"]:
         if not (SKILL_ROOT / "scripts" / script_name).is_file():
             errors.append(f"缺少脚本: scripts/{script_name}")
+    if not (SKILL_ROOT / "scripts" / "render_svg_layout.mjs").is_file():
+        errors.append("缺少脚本: scripts/render_svg_layout.mjs")
 
     installers = "\n".join(
         (SKILL_ROOT / name).read_text(encoding="utf-8") for name in ["install.sh", "install.ps1"]
@@ -150,22 +153,38 @@ def main() -> int:
             errors.append(f"跨平台安装器未完整接通: {agent_name}")
 
     statistical_rules = read_source(COMMON_DIR / "statistical-figures-and-trace.md")
+    academic_figure_rules = read_source(COMMON_DIR / "academic-figures.md")
+    figure_rules = academic_figure_rules + "\n" + statistical_rules
     for required_term in [
         "figure_plan", "figure-manifest.json", "final_embed_file", "DATA_CODE",
         "IMAGE_GENERATION", "SVG_FALLBACK", "data_status", "caption_claim", "VLM",
         "generation_receipt", "NATIVE_TOOL_RESULT", "checked_file_sha256", "schema_version",
         "execution_receipt", "output_sha256", "SVG降级图的机械校验",
+        "svg_layout_mode", "COMPILED", "figure-spec.json",
     ]:
-        if required_term not in statistical_rules:
-            errors.append(f"统计图公共规则缺少关键契约: {required_term}")
+        if required_term not in figure_rules:
+            errors.append(f"图表公共规则缺少关键契约: {required_term}")
+
+    prose_rules = read_source(COMMON_DIR / "academic-prose-quality.md")
+    for required_term in ["材料推动段落", "控制框架和清单", "句子与段落节奏", "全文只保留一份连续参考文献", "不能输出“AI率”"]:
+        if required_term not in prose_rules:
+            errors.append(f"学术正文质量规则缺少关键约束: {required_term}")
 
     schema_path = SKILL_ROOT / "references" / "schemas" / "figure-manifest.schema.json"
     try:
         schema = json.loads(schema_path.read_text(encoding="utf-8"))
-        if schema.get("properties", {}).get("schema_version", {}).get("const") != "1.1":
-            errors.append("Figure Manifest Schema版本不是1.1")
+        if schema.get("properties", {}).get("schema_version", {}).get("const") != "1.2":
+            errors.append("Figure Manifest Schema版本不是1.2")
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:
         errors.append(f"Figure Manifest Schema不可用: {exc}")
+
+    svg_schema_path = SKILL_ROOT / "references" / "schemas" / "svg-layout-spec.schema.json"
+    try:
+        svg_schema = json.loads(svg_schema_path.read_text(encoding="utf-8"))
+        if svg_schema.get("properties", {}).get("version", {}).get("const") != "1.0":
+            errors.append("SVG Layout Spec Schema版本不是1.0")
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        errors.append(f"SVG Layout Spec Schema不可用: {exc}")
 
     audit_text = "\n".join(
         path.read_text(encoding="utf-8")

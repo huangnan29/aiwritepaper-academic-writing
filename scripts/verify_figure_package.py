@@ -29,7 +29,7 @@ REQUIRED_FIELDS = {
     "data_status", "prompt_file", "generated_file", "fallback_file", "source_data",
     "transformation", "caption_claim", "supported_manuscript_claims", "limitations",
     "canvas_contains_figure_number_or_caption", "final_embed_file", "generation_receipt",
-    "vlm_verification",
+    "svg_layout_mode", "svg_layout", "vlm_verification",
 }
 
 
@@ -83,8 +83,8 @@ class FigureVerifier:
         if not isinstance(manifest, dict) or not isinstance(manifest.get("figures"), list):
             self.error("MANIFEST_SHAPE", "根对象必须包含figures数组")
             return manifest if isinstance(manifest, dict) else {}
-        if manifest.get("schema_version") != "1.1":
-            self.error("SCHEMA_VERSION", "当前仅接受schema_version=1.1")
+        if manifest.get("schema_version") != "1.2":
+            self.error("SCHEMA_VERSION", "当前仅接受schema_version=1.2")
 
         seen_ids: Set[str] = set()
         seen_final: Set[str] = set()
@@ -204,6 +204,11 @@ class FigureVerifier:
                     self.verify_svg(fallback, figure_id)
                 if not figure.get("capability_gap"):
                     self.error("CAPABILITY_GAP_MISSING", figure_id)
+                mode = figure.get("svg_layout_mode")
+                if mode not in {"NATIVE", "COMPILED"}:
+                    self.error("SVG_LAYOUT_MODE_INVALID", figure_id)
+                elif mode == "COMPILED":
+                    self.verify_compiled_svg_layout(figure.get("svg_layout"), fallback, figure_id)
 
             elif route in {"DOMAIN_TOOL", "EVIDENCE_FILE"}:
                 if not source_paths:
@@ -211,6 +216,37 @@ class FigureVerifier:
                 if not transformation.get("method"):
                     self.error("METHOD_MISSING", figure_id)
         return manifest
+
+    def verify_compiled_svg_layout(
+        self, layout: Any, fallback: Optional[Path], figure_id: str
+    ) -> None:
+        if not isinstance(layout, dict):
+            self.error("SVG_LAYOUT_MISSING", figure_id)
+            return
+        spec = self.resolve_file(layout.get("spec_file"), "svg_layout.spec_file", figure_id)
+        report = self.resolve_file(layout.get("report_file"), "svg_layout.report_file", figure_id)
+        for field, path in [("spec_sha256", spec), ("report_sha256", report)]:
+            if path and layout.get(field, "").lower() != self.sha256(path):
+                self.error("SVG_LAYOUT_HASH_MISMATCH", f"{figure_id}.{field}")
+        renderer = Path(__file__).with_name("render_svg_layout.mjs")
+        if not renderer.is_file():
+            self.error("SVG_LAYOUT_RENDERER_MISSING", figure_id)
+        elif layout.get("renderer_sha256", "").lower() != self.sha256(renderer):
+            self.error("SVG_LAYOUT_RENDERER_HASH_MISMATCH", figure_id)
+        if not isinstance(layout.get("renderer"), str) or not layout.get("renderer", "").strip():
+            self.error("SVG_LAYOUT_RENDERER_ID_MISSING", figure_id)
+        if report:
+            try:
+                payload = json.loads(report.read_text(encoding="utf-8"))
+            except (UnicodeError, json.JSONDecodeError) as exc:
+                self.error("SVG_LAYOUT_REPORT_INVALID", f"{figure_id}: {exc}")
+                return
+            if payload.get("status") != "PASS":
+                self.error("SVG_LAYOUT_REPORT_FAIL", figure_id)
+            if fallback and payload.get("output_sha256", "").lower() != self.sha256(fallback):
+                self.error("SVG_LAYOUT_OUTPUT_MISMATCH", figure_id)
+            if spec and payload.get("input_sha256", "").lower() != self.sha256(spec):
+                self.error("SVG_LAYOUT_INPUT_MISMATCH", figure_id)
 
     def verify_generation_receipt(
         self, receipt: Any, prompt: Optional[Path], generated: Optional[Path], figure_id: str

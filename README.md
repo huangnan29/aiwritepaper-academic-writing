@@ -4,7 +4,7 @@
 
 **从论文题目到一份完整执行提示词，再持续交付正文、配图、DOCX 与 PDF。**
 
-![Version](https://img.shields.io/badge/version-0.8.0-2563EB?style=flat-square)
+![Version](https://img.shields.io/badge/version-0.8.2-2563EB?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-16A34A?style=flat-square)
 ![Architecture](https://img.shields.io/badge/architecture-MD--first-7C3AED?style=flat-square)
 ![Directions](https://img.shields.io/badge/paper%20directions-19-EA580C?style=flat-square)
@@ -25,6 +25,7 @@
 | 文献与证据 | 先检索、核验并建立证据矩阵，不编造文献、数据或实验 |
 | 方向级信源 | 每个方向内置首选库、开放路线和不宜引用清单；无订阅时走开放路线 |
 | 论文生产 | 大纲、分章、累计字数检查、全文整合、同行评审与修订 |
+| 正文质量 | 材料推动段落，限制框架堆叠、项目汇报腔、局部书目重复和无证据的强结论 |
 | 学术配图 | 有图片工具时逐张生图；统计图由真实数据和代码生成 |
 | 图表证据链 | 大纲先建立figure plan；图表追溯数据、脚本、图题主张、正文使用和局限 |
 | 文档交付 | 生成并检查DOCX、PDF、目录、标题层级、题注和页码；最终文件按论文题目与时间戳命名 |
@@ -79,6 +80,17 @@ final-execution-prompt.md
 - 文献、图片和表格未达标时，不提前进入排版；
 - 文件存在或PDF可打开，不等于论文已经完成。
 
+### 学术正文自然表达
+
+- 正文自然度来自真实材料、明确判断和证据边界，不以规避检测为目标；
+- 一个段落处理一个主张，写清主体、动作、对象、时间、口径和来源；
+- 全文只保留一个中心分析框架，不连续堆叠四维、三重、五层、六类、三阶段；
+- 摘要不写成项目战报，未运行的模型、实验和干预不能写成成果；
+- 各章不重复插入局部参考文献清单，章节首尾不机械复述同一框架；
+- “构建、赋能、机制、路径、体系、显著、全面、有效”必须对应具体动作或证据，不能代替论证。
+
+完整规则见 `references/common/academic-prose-quality.md`。
+
 ### 最终文档命名
 
 最终DOCX与PDF共用同一文件名主体和生成时间戳：
@@ -108,7 +120,7 @@ final-execution-prompt.md
 - **Gemini 3.7 Flash**：能力报告明确写有 `generate_image`，但6张结构/流程图全部走代码绘图；版面正文中位字号仅10pt、无TOC字段。更严重的是把未实际运行的LightGBM-LSTM、MIP和Shapley机制写成已构建并验证，并报告19%—21%、97.8%、2.3%等本地产物无法证明的结果，因此触发学术诚信失败门。
 - **MiniMax M3**：当前Claude Code会话没有暴露图片生成工具，不能据此断言M3本身应直接生图；MiniMax平台另有[Image-01图片生成接口](https://platform.minimaxi.com/docs/guides/image-generation)及支持 `text_to_image` 的[官方MCP](https://platform.minimaxi.com/docs/guides/mcp-guide)，本次工具链未接通。最终正文把逐章局部参考文献列表重复插入，出现210条编号项；证据CSV错列，DOCX实际为0个表格、0个Heading 1且无TOC字段，与自报PASS不一致。
 
-v0.8.0据此新增图片调用与VLM回执、数据执行血缘、DOCX标题/目录/题注解析、PDF深度解析和更严格的真实性门。未来实测必须注明Skill版本、运行客户端、实际工具和是否发生模型接力。
+v0.8.0据此新增图片调用与VLM回执、数据执行血缘、DOCX标题/目录/题注解析、PDF深度解析和更严格的真实性门；v0.8.2继续增加学术正文自然表达与弱模型SVG布局编译。未来实测必须注明Skill版本、运行客户端、实际工具和是否发生模型接力。
 
 ## 文献信源
 
@@ -175,7 +187,7 @@ v0.8.0据此新增图片调用与VLM回执、数据执行血缘、DOCX标题/目
 - `IMAGE_GENERATION` 必须保存图片工具实际返回结果或客户端调用片段，记录工具、模型、时间、调用ID以及Prompt、回执、生成文件SHA-256；
 - 只有模型文字声称“已调用Imagine/ImageGen/Nano Banana”属于 `DECLARED_ONLY`，机械校验失败；
 - VLM的 `PASS` 必须绑定视觉工具回执和被检查最终图片SHA-256，不能只填写状态；
-- `figure-manifest.json` 使用Schema 1.1，结构定义见 `references/schemas/figure-manifest.schema.json`；
+- `figure-manifest.json` 使用Schema 1.2，结构定义见 `references/schemas/figure-manifest.schema.json`；
 - 人类摘要中的每个图号和最终插图路径必须与权威JSON恰好对应一次。
 
 ### SVG降级质量
@@ -187,6 +199,18 @@ v0.8.0据此新增图片调用与VLM回执、数据执行血缘、DOCX标题/目
 - 无法避免交叉时优先绕行、拆图或使用跨线桥；
 - 静态校验可拦截直线/折线交叉和横穿矩形节点；复杂曲线仍需VLM或人工核验；
 - 在论文实际显示尺寸检查PNG、DOCX与PDF。
+
+### 弱模型SVG布局编译
+
+SVG只执行单向降级，不影响强模型：
+
+1. 图片工具可用时继续使用ImageGen/Imagine/Nano Banana；
+2. 无图片工具时允许模型直接生成 `NATIVE` SVG，检查通过就保留；
+3. 原生SVG出现重叠、溢出、穿越、交叉或端点错误时，改写语义化 `figure-spec.json`；
+4. `render_svg_layout.mjs`只计算中文换行、节点尺寸、分层位置、端口、正交连线和画布；
+5. 布局报告通过后再渲染最终PNG，并进行VLM或人工核验。
+
+Spec不允许包含坐标和path，模型仍决定节点、分组与箭头语义。Schema见 `references/schemas/svg-layout-spec.schema.json`。
 
 ## Word交付
 
@@ -391,13 +415,16 @@ aiwritepaper-agentic-skill/
 │   ├── compose_prompt.py   # 运行时只做确定性文件拼接
 │   ├── build_compiled.py   # 维护时重建19份完整提示词
 │   ├── verify_compiled.py  # 只读校验源文件、路由和版本同步
-│   └── verify_figure_package.py # 机械校验图表包、哈希与嵌图路由
+│   ├── verify_figure_package.py # 机械校验图表包、哈希与嵌图路由
+│   └── render_svg_layout.mjs # 无依赖的确定性SVG布局编译器
 ├── tests/
-│   └── test_verify_figure_package.py
+│   ├── test_verify_figure_package.py
+│   └── test_render_svg_layout.mjs
 ├── references/
 │   ├── compiled-prompts/    # 运行时只读取其中一个完整提示词
 │   ├── directions/          # 19个方向增量源
-│   ├── common/              # 通用规则源，含统计图与Figure Trace
+│   ├── common/              # 通用规则源，含正文质量、统计图与Figure Trace
+│   ├── schemas/             # Figure Manifest与SVG Layout Spec
 │   ├── routing.md            # 唯一方向路由真源
 │   ├── topic-selection.md    # 无题目时按需读取
 │   └── deliverables/         # 开题与答辩按需附加
@@ -415,7 +442,7 @@ aiwritepaper-agentic-skill/
 
 ## 维护与版本
 
-- 当前版本：`0.8.0`
+- 当前版本：`0.8.2`
 - 更新记录：[CHANGELOG.md](CHANGELOG.md)
 - Skill入口：[SKILL.md](SKILL.md)
 - 历史复杂流水线版可通过Git标签`v0.3.1-runtime-gates`恢复

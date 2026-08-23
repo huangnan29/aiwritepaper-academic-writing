@@ -22,6 +22,7 @@ COMMON_FILES = [
     "output-contract.md",
     "academic-figures.md",
     "statistical-figures-and-trace.md",
+    "academic-prose-quality.md",
     "autonomous-completion.md",
     "final-quality-gates.md",
 ]
