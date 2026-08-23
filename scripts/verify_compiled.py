@@ -31,6 +31,19 @@ def main() -> int:
     source_prefixes = ["发现与筛选", "证据与全文", "开放路线", "不宜作核心引文", "信源核验门槛"]
 
     literature_common = read_source(COMMON_DIR / "literature-and-citation.md")
+    expected_common_headings = {
+        "capability-and-runtime.md": "# 公共规则一：",
+        "integrity-and-evidence.md": "# 公共规则二：",
+        "literature-and-citation.md": "# 公共规则三：",
+        "output-contract.md": "# 公共规则四：",
+        "academic-figures.md": "# 公共规则五：",
+        "statistical-figures-and-trace.md": "# 公共规则六：",
+        "autonomous-completion.md": "# 公共规则七：",
+        "final-quality-gates.md": "# 公共规则八：",
+    }
+    for common_name, expected_heading in expected_common_headings.items():
+        if not read_source(COMMON_DIR / common_name).startswith(expected_heading):
+            errors.append(f"公共规则编号或标题错误: {common_name} -> {expected_heading}")
     for heading in ["发现层", "证据层", "核验层"]:
         if heading not in literature_common:
             errors.append(f"公共文献规则缺少信源层级: {heading}")
@@ -120,9 +133,17 @@ def main() -> int:
             errors.append(f"SKILL.md未接通: {reference}")
     if "references/figure-skills/" in skill_text:
         errors.append("SKILL.md仍引用空的references/figure-skills目录")
-    for script_name in ["compose_prompt.py", "build_compiled.py", "verify_compiled.py"]:
+    for script_name in ["compose_prompt.py", "build_compiled.py", "verify_compiled.py", "verify_figure_package.py"]:
         if not (SKILL_ROOT / "scripts" / script_name).is_file():
             errors.append(f"缺少脚本: scripts/{script_name}")
+
+    statistical_rules = read_source(COMMON_DIR / "statistical-figures-and-trace.md")
+    for required_term in [
+        "figure_plan", "figure-manifest.json", "final_embed_file", "DATA_CODE",
+        "IMAGE_GENERATION", "SVG_FALLBACK", "data_status", "caption_claim", "VLM",
+    ]:
+        if required_term not in statistical_rules:
+            errors.append(f"统计图公共规则缺少关键契约: {required_term}")
 
     audit_text = "\n".join(
         path.read_text(encoding="utf-8")

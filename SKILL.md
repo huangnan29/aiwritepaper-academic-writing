@@ -4,7 +4,7 @@ description: 根据题目和材料完成毕业论文、学位论文、期刊论�
 license: MIT
 metadata:
   author: huangnan29
-  version: "0.6.0"
+  version: "0.7.0"
   repository: https://github.com/huangnan29/aiwritepaper-agentic-skill
 ---
 
@@ -67,6 +67,8 @@ python3 "<SKILL_DIR>/scripts/compose_prompt.py" \
 按照 `final-execution-prompt.md` 直接执行。已有题目的 `FULL_BUILD` 不输出路由方案后停顿，不要求用户再次批准大纲，不把论文正文只留在聊天窗口。
 
 执行模型自主选择当前可用工具。只有数据统计图、DOCX/PDF导出或本次任务确实需要时，才在输出目录创建项目专用代码；不得调用Skill维护脚本决定正文、证据、章节状态或 `PASS`。
+
+`scripts/verify_figure_package.py` 只允许检查图表Manifest、文件、哈希、Markdown链接和DOCX嵌图一致性；它的结构通过不代表图表结论正确，也不能单独决定论文 `PASS`。
 
 图片工具已经成功生成某图时，正文、DOCX和PDF必须插入该生成图或由它合成的最终PNG；同名SVG只能作为备用或修正源。最终嵌入路径以图表清单中的 `final_embed_file` 为唯一依据，不能按文件名或扩展名自行改选SVG。
 

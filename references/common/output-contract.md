@@ -4,19 +4,19 @@
 
 运行开始时保留 `run-params.md`，并通过文件级确定性拼接生成 `final-execution-prompt.md`；不得由模型重新生成完整方向提示词。
 
-`FULL_BUILD` 输出：`run-params.md`、`final-execution-prompt.md`、`00-capability-report.md`、`01-research-contract.md`、`02-search-log.md`、`03-evidence-matrix.csv`、`04-reference-audit.md`、`references.bib`、`05-outline.md`、`06-argument-map.md`、`chapters/`、`figures/figure-manifest.md`、`tables/table-data-and-sources.md`、`07-paper-full.md`、`08-claim-citation-audit.md`、`09-peer-review.md`、`10-revision-log.md`、`final-paper.docx`、可选 `final-paper.tex`、`final-paper.pdf`、`11-format-validation.md`、`12-final-qa-report.md` 和 `run-manifest.json`。没有真实生成的文件不得列入完成清单。
+`FULL_BUILD` 输出：`run-params.md`、`final-execution-prompt.md`、`00-capability-report.md`、`01-research-contract.md`、`02-search-log.md`、`03-evidence-matrix.csv`、`04-reference-audit.md`、`references.bib`、`05-outline.md`、`06-argument-map.md`、`chapters/`、`figures/figure-manifest.json`、`figures/figure-manifest.md`、`tables/table-data-and-sources.md`、`07-paper-full.md`、`08-claim-citation-audit.md`、`09-peer-review.md`、`10-revision-log.md`、`final-paper.docx`、可选 `final-paper.tex`、`final-paper.pdf`、`11-format-validation.md`、`12-final-qa-report.md` 和 `run-manifest.json`。没有真实生成的文件不得列入完成清单。
 
 `PROPOSAL_ONLY` 输出 `run-params.md`、`final-execution-prompt.md`、研究契约、检索与文献核验文件、`proposal-report.md` 及可用工具允许的DOCX/PDF。`DEFENSE_ONLY` 输出 `run-params.md`、`final-execution-prompt.md`、答辩大纲、逐页内容及可用工具允许的PPTX/PDF。两种模式都不得虚构结果。
 
-大纲必须给每章和主要三级标题分配字数，分配总和落在目标正文长度允许区间内。逐章写作，每章读取契约、大纲、论证地图和前章摘要；每章完成后立即核算该章与累计正文长度。章节低于计划的90%时，在进入下一章前扩充已有小节的论证、证据、设计细节、反例、限制或验证方案。不得在结论、附录、致谢或参考文献之后追加“扩展章节”补字数。
+大纲必须给每章和主要三级标题分配字数，分配总和落在目标正文长度允许区间内，并按 `statistical-figures-and-trace.md` 建立 `figure_plan[]`。逐章写作，每章读取契约、大纲、论证地图和前章摘要；每章完成后立即核算该章与累计正文长度。章节低于计划的90%时，在进入下一章前扩充已有小节的论证、证据、设计细节、反例、限制或验证方案。不得在结论、附录、致谢或参考文献之后追加“扩展章节”补字数。
 
 每段围绕一个中心命题。摘要、正文、结果和结论必须保持一致，结论不得引入新证据。图表必须服务论证并有来源，表格在Word中保持原生可编辑。
 
 全文整合时只允许一个摘要、一套连续正文、一份参考文献和一份致谢。章节顺序必须与批准的大纲一致，不能因为文件名排序把补写内容放到附录或参考文献之后。章节、图表或引用修改后重新整合并导出。
 
-全文整合时，`07-paper-full.md`中的每个图片链接必须逐项等于 `figures/figure-manifest.md` 对应图号的 `final_embed_file`。禁止使用目录通配、同名文件优先级或“优先SVG”逻辑自动选图。图片工具已成功生成位图时，Markdown不得继续引用其旧SVG版本。
+全文整合时，`07-paper-full.md`中的每个图片链接必须逐项等于权威 `figures/figure-manifest.json` 对应图号的 `final_embed_file`。`figure-manifest.md` 只供人阅读。禁止使用目录通配、同名文件优先级或“优先SVG”逻辑自动选图。图片工具已成功生成位图时，Markdown不得继续引用其旧SVG版本。
 
-提供学校模板时模板优先。没有模板时只能标记为通用草稿格式。DOCX与PDF从同一份定稿生成，图片实际嵌入，标题使用真实样式，目录、页码、题注和交叉引用可更新。根据当前环境自主选择文档工具；只有确实需要时才在本次输出目录创建项目专用脚本。Skill内 `compose_prompt.py` 只允许用于确定性合成最终提示词；维护脚本与其他Skill脚本不得参与论文内容、证据或最终状态判断。
+提供学校模板时模板优先。没有模板时只能标记为通用草稿格式。DOCX与PDF从同一份定稿生成，图片实际嵌入，标题使用真实样式，目录、页码、题注和交叉引用可更新。根据当前环境自主选择文档工具；只有确实需要时才在本次输出目录创建项目专用脚本。Skill内 `compose_prompt.py` 只允许用于确定性合成最终提示词；`verify_figure_package.py` 只允许验证Manifest、文件、哈希、Markdown和DOCX嵌入一致性；维护脚本与其他Skill脚本不得参与论文内容、证据或最终状态判断。
 
 ## 默认学术论文排版
 
@@ -36,7 +36,7 @@
 
 图片的替代文本用于无障碍说明，不应作为可见图题重复输出。导出后按图表清单逐个检查Word可见段落：相同图号出现0次或超过1次均需修复。表号同样只能保留一个可见题注。
 
-Word插图程序必须逐项读取 `final_embed_file`，默认嵌入最终PNG，不得通过查找同名 `.svg`、沿用旧Markdown链接或按扩展名排序选择图片。导出后解包DOCX检查 `word/media/`，确认每个图号实际嵌入的是对应最终位图；必要时比较文件摘要、像素尺寸或可识别视觉内容。PDF中再抽查同一页，确保显示内容与 `final_embed_file` 一致。
+Word插图程序必须逐项读取权威JSON中的 `final_embed_file`，默认嵌入最终PNG，不得通过查找同名 `.svg`、读取Markdown摘要、沿用旧链接或按扩展名排序选择图片。导出后解包DOCX检查 `word/media/`，确认每个图号实际嵌入的是对应最终位图；必要时比较文件摘要、像素尺寸或可识别视觉内容。PDF中再抽查同一页，确保显示内容与 `final_embed_file` 一致。
 
 ## Word左侧导航目录
 

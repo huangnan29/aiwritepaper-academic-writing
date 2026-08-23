@@ -17,3 +17,5 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: 校验提示词与路由同步
         run: python scripts/verify_compiled.py
+      - name: 校验图表包机械门禁
+        run: python -m unittest discover -s tests -p 'test_*.py'

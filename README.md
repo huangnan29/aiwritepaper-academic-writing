@@ -4,7 +4,7 @@
 
 **从论文题目到一份完整执行提示词，再持续交付正文、配图、DOCX 与 PDF。**
 
-![Version](https://img.shields.io/badge/version-0.6.0-2563EB?style=flat-square)
+![Version](https://img.shields.io/badge/version-0.7.0-2563EB?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-16A34A?style=flat-square)
 ![Architecture](https://img.shields.io/badge/architecture-MD--first-7C3AED?style=flat-square)
 ![Directions](https://img.shields.io/badge/paper%20directions-19-EA580C?style=flat-square)
@@ -26,6 +26,7 @@
 | 方向级信源 | 每个方向内置首选库、开放路线和不宜引用清单；无订阅时走开放路线 |
 | 论文生产 | 大纲、分章、累计字数检查、全文整合、同行评审与修订 |
 | 学术配图 | 有图片工具时逐张生图；统计图由真实数据和代码生成 |
+| 图表证据链 | 大纲先建立figure plan；图表追溯数据、脚本、图题主张、正文使用和局限 |
 | 文档交付 | 生成并检查DOCX、PDF、目录、标题层级、题注和页码 |
 | 条件模式 | 支持单独配图、只导出文档、只审计、只做方向判断、开题报告和答辩材料 |
 
@@ -42,7 +43,7 @@
     ↓
 final-execution-prompt.md
     ↓
-检索 → 大纲 → 分章 → 配图 → 整合 → DOCX/PDF → QA
+检索 → 大纲与figure plan → 分章 → 配图与Figure Trace → 整合 → DOCX/PDF → QA
 ```
 
 每个 `references/compiled-prompts/*-full.md` 都是完整、自包含的论文生产提示词。模型选中一个方向后，不再复述这份长文本；`scripts/compose_prompt.py` 只做确定性文件拼接，并输出字节数和SHA-256。模型随后从头到尾读取一次最终MD，后续只执行这一份文件。
@@ -104,6 +105,18 @@ final-execution-prompt.md
 | 公式、化学结构、电路、地图 | 对应领域工具 | 不让图片模型猜测符号和连接 |
 | 无图片生成能力的结构图 | HTML/SVG → PNG | 检查中文字体、连线、箭头和连接点 |
 
+### 统计图与图表证据链
+
+- 统计图先定义分析问题和读图任务，再选择最简单、可辩护的图形；
+- 少于3个数据点、单个百分比、单一类别或与表格完全重复时不强行画图；
+- 禁止把 `np.random`、`rnorm`、`runif`、手写数组或演示模板输出当作论文结果；
+- 正式统计图保存真实数据文件、单位、样本量或观测粒度、绘图脚本和脚本SHA-256；
+- 数据驱动网络图必须有节点边表或邻接矩阵；结构概念图仍执行ImageGen优先路线；
+- 色盲安全、坐标轴单位、误差棒、300 DPI和论文实际尺寸可读性均为必查项；
+- 当前Agent有视觉能力时，对统计图和复杂结构图最多进行两轮VLM修复；仍有问题标记 `NEEDS_REVIEW`。
+
+详细规则见 `references/common/statistical-figures-and-trace.md`。
+
 ### 精确流程图
 
 生图Prompt必须明确：
@@ -117,7 +130,7 @@ final-execution-prompt.md
 
 ### 最终插图优先级
 
-每张图只有一个最终入口：`final_embed_file`。
+每张图只有一个最终入口：权威 `figures/figure-manifest.json` 中的 `final_embed_file`。`figure-manifest.md` 只供人阅读。
 
 - Imagine、`imagegen`、`image_gen`或Nano Banana成功生成后，最终Markdown、DOCX和PDF必须使用该位图；
 - 如果增加文字或箭头覆盖层，先合成为最终PNG，再设置为 `final_embed_file`；
@@ -212,7 +225,8 @@ paper-output/
 ├── 06-argument-map.md
 ├── chapters/
 ├── figures/
-│   └── figure-manifest.md
+│   ├── figure-manifest.json  # 权威机器路由
+│   └── figure-manifest.md    # 人类可读摘要
 ├── tables/
 ├── 07-paper-full.md
 ├── 08-claim-citation-audit.md
@@ -312,7 +326,7 @@ npx skills add huangnan29/aiwritepaper-agentic-skill
 使用 $aiwritepaper-agentic-skill，运行FIGURES_ONLY。
 
 读取当前论文和figures目录。有图片工具时逐张调用；统计图使用真实数据和代码。
-更新figure-manifest.md和final_embed_file，不改写正文主张。
+更新figure-manifest.json、figure-manifest.md和final_embed_file，不改写正文主张。
 ```
 
 ## 项目结构
@@ -324,11 +338,14 @@ aiwritepaper-agentic-skill/
 ├── scripts/
 │   ├── compose_prompt.py   # 运行时只做确定性文件拼接
 │   ├── build_compiled.py   # 维护时重建19份完整提示词
-│   └── verify_compiled.py  # 只读校验源文件、路由和版本同步
+│   ├── verify_compiled.py  # 只读校验源文件、路由和版本同步
+│   └── verify_figure_package.py # 机械校验图表包、哈希与嵌图路由
+├── tests/
+│   └── test_verify_figure_package.py
 ├── references/
 │   ├── compiled-prompts/    # 运行时只读取其中一个完整提示词
 │   ├── directions/          # 19个方向增量源
-│   ├── common/              # 通用规则源
+│   ├── common/              # 通用规则源，含统计图与Figure Trace
 │   ├── routing.md            # 唯一方向路由真源
 │   ├── topic-selection.md    # 无题目时按需读取
 │   └── deliverables/         # 开题与答辩按需附加
@@ -346,7 +363,7 @@ aiwritepaper-agentic-skill/
 
 ## 维护与版本
 
-- 当前版本：`0.6.0`
+- 当前版本：`0.7.0`
 - 更新记录：[CHANGELOG.md](CHANGELOG.md)
 - Skill入口：[SKILL.md](SKILL.md)
 - 历史复杂流水线版可通过Git标签`v0.3.1-runtime-gates`恢复

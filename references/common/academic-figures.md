@@ -2,6 +2,8 @@
 
 先确定图要表达或证明什么，再根据当前实际工具选择路径。图片输入或理解、编写SVG、把SVG渲染为PNG、平台另有图片产品，都不等于本次已调用图片生成工具。
 
+数据统计图的选择、反虚构、可访问性、图表规划、Manifest与主张追踪同时执行下一份公共规则 `statistical-figures-and-trace.md`；该规则不能被用来把结构图从ImageGen路线改回代码框图。
+
 ## 路由
 
 - 当前Agent有图片生成能力时，优先使用实际暴露的内置工具，例如Codex `imagegen`/`image_gen`、Grok Imagine、Gemini Nano Banana或等价图片工具。流程图、组织架构、软件架构、部署图、ER图、UML、研究框架、因果图、时间线、机制、装置和场景图均应逐张真实调用。每张图先从正文、源码、schema、数据或研究材料建立事实与结构清单，再保存独立详细Prompt和最终位图。
@@ -20,7 +22,7 @@ SVG降级图必须先布局节点，再规划连接线。连接线优先使用�
 
 ## 通用质量门
 
-每张图在 `figures/figure-manifest.md` 记录图号、图题、正文首次引用位置、图类、来源、生成方式、模型或工具、Prompt文件或可编辑源、最终文件、限制和核对状态。图片能力Agent的每张适合生图的图都必须有独立Prompt与真实PNG/JPEG/WebP；不能用SVG、HTML截图、占位PNG或图片理解能力冒充。只有用户明确退出、期刊禁止或工具真实不可用时才记录豁免。
+每张图在权威 `figures/figure-manifest.json` 记录机器可读路由，在 `figures/figure-manifest.md` 提供供人阅读的摘要。图片能力Agent的每张适合生图的图都必须有独立Prompt与真实PNG/JPEG/WebP；不能用SVG、HTML截图、占位PNG或图片理解能力冒充。只有用户明确退出、期刊禁止或工具真实不可用时才记录豁免。
 
 ## 最终嵌入文件优先级
 
@@ -32,6 +34,6 @@ SVG降级图必须先布局节点，再规划连接线。连接线优先使用�
 - 如果生成图需要确定性文字、箭头或图例覆盖，先完成合成并导出如 `fig-4-1-final.png`，再把该PNG设为 `final_embed_file`；不能把覆盖层SVG本身插入最终论文；
 - 图片生成结果未通过事实或视觉核对时，应编辑或重新生成，必要时标记能力缺口；不能静默改插SVG并仍声称使用了Imagine。
 
-建议清单至少记录：`figure_id`、`generation_method`、`generated_file`、`source_file`、`fallback_file`、`overlay_source`、`final_embed_file`、`prompt_file`、`first_reference`、`human_verified`、`limitations`。其中只有 `final_embed_file` 是最终论文插图入口。
+JSON清单字段和条件规则以 `statistical-figures-and-trace.md` 为准，其中只有 `final_embed_file` 是最终论文插图入口。Markdown摘要不得覆盖JSON值。
 
 PNG记录最终物理宽度、像素宽高和有效DPI。正文先引用、再展示、后解释。结构、事实、节点、箭头、中文、缩放可读性、裁切、远程资源和最终文档中的显示结果未经核对时，不得将该图标记为通过。

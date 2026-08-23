@@ -6,6 +6,7 @@
 - references/common/literature-and-citation.md
 - references/common/output-contract.md
 - references/common/academic-figures.md
+- references/common/statistical-figures-and-trace.md
 - references/common/autonomous-completion.md
 - references/common/final-quality-gates.md
 方向来源：
@@ -122,19 +123,19 @@ arXiv、bioRxiv、ChemRxiv、SSRN、NBER工作论文可以收录，但必须在�
 
 运行开始时保留 `run-params.md`，并通过文件级确定性拼接生成 `final-execution-prompt.md`；不得由模型重新生成完整方向提示词。
 
-`FULL_BUILD` 输出：`run-params.md`、`final-execution-prompt.md`、`00-capability-report.md`、`01-research-contract.md`、`02-search-log.md`、`03-evidence-matrix.csv`、`04-reference-audit.md`、`references.bib`、`05-outline.md`、`06-argument-map.md`、`chapters/`、`figures/figure-manifest.md`、`tables/table-data-and-sources.md`、`07-paper-full.md`、`08-claim-citation-audit.md`、`09-peer-review.md`、`10-revision-log.md`、`final-paper.docx`、可选 `final-paper.tex`、`final-paper.pdf`、`11-format-validation.md`、`12-final-qa-report.md` 和 `run-manifest.json`。没有真实生成的文件不得列入完成清单。
+`FULL_BUILD` 输出：`run-params.md`、`final-execution-prompt.md`、`00-capability-report.md`、`01-research-contract.md`、`02-search-log.md`、`03-evidence-matrix.csv`、`04-reference-audit.md`、`references.bib`、`05-outline.md`、`06-argument-map.md`、`chapters/`、`figures/figure-manifest.json`、`figures/figure-manifest.md`、`tables/table-data-and-sources.md`、`07-paper-full.md`、`08-claim-citation-audit.md`、`09-peer-review.md`、`10-revision-log.md`、`final-paper.docx`、可选 `final-paper.tex`、`final-paper.pdf`、`11-format-validation.md`、`12-final-qa-report.md` 和 `run-manifest.json`。没有真实生成的文件不得列入完成清单。
 
 `PROPOSAL_ONLY` 输出 `run-params.md`、`final-execution-prompt.md`、研究契约、检索与文献核验文件、`proposal-report.md` 及可用工具允许的DOCX/PDF。`DEFENSE_ONLY` 输出 `run-params.md`、`final-execution-prompt.md`、答辩大纲、逐页内容及可用工具允许的PPTX/PDF。两种模式都不得虚构结果。
 
-大纲必须给每章和主要三级标题分配字数，分配总和落在目标正文长度允许区间内。逐章写作，每章读取契约、大纲、论证地图和前章摘要；每章完成后立即核算该章与累计正文长度。章节低于计划的90%时，在进入下一章前扩充已有小节的论证、证据、设计细节、反例、限制或验证方案。不得在结论、附录、致谢或参考文献之后追加“扩展章节”补字数。
+大纲必须给每章和主要三级标题分配字数，分配总和落在目标正文长度允许区间内，并按 `statistical-figures-and-trace.md` 建立 `figure_plan[]`。逐章写作，每章读取契约、大纲、论证地图和前章摘要；每章完成后立即核算该章与累计正文长度。章节低于计划的90%时，在进入下一章前扩充已有小节的论证、证据、设计细节、反例、限制或验证方案。不得在结论、附录、致谢或参考文献之后追加“扩展章节”补字数。
 
 每段围绕一个中心命题。摘要、正文、结果和结论必须保持一致，结论不得引入新证据。图表必须服务论证并有来源，表格在Word中保持原生可编辑。
 
 全文整合时只允许一个摘要、一套连续正文、一份参考文献和一份致谢。章节顺序必须与批准的大纲一致，不能因为文件名排序把补写内容放到附录或参考文献之后。章节、图表或引用修改后重新整合并导出。
 
-全文整合时，`07-paper-full.md`中的每个图片链接必须逐项等于 `figures/figure-manifest.md` 对应图号的 `final_embed_file`。禁止使用目录通配、同名文件优先级或“优先SVG”逻辑自动选图。图片工具已成功生成位图时，Markdown不得继续引用其旧SVG版本。
+全文整合时，`07-paper-full.md`中的每个图片链接必须逐项等于权威 `figures/figure-manifest.json` 对应图号的 `final_embed_file`。`figure-manifest.md` 只供人阅读。禁止使用目录通配、同名文件优先级或“优先SVG”逻辑自动选图。图片工具已成功生成位图时，Markdown不得继续引用其旧SVG版本。
 
-提供学校模板时模板优先。没有模板时只能标记为通用草稿格式。DOCX与PDF从同一份定稿生成，图片实际嵌入，标题使用真实样式，目录、页码、题注和交叉引用可更新。根据当前环境自主选择文档工具；只有确实需要时才在本次输出目录创建项目专用脚本。Skill内 `compose_prompt.py` 只允许用于确定性合成最终提示词；维护脚本与其他Skill脚本不得参与论文内容、证据或最终状态判断。
+提供学校模板时模板优先。没有模板时只能标记为通用草稿格式。DOCX与PDF从同一份定稿生成，图片实际嵌入，标题使用真实样式，目录、页码、题注和交叉引用可更新。根据当前环境自主选择文档工具；只有确实需要时才在本次输出目录创建项目专用脚本。Skill内 `compose_prompt.py` 只允许用于确定性合成最终提示词；`verify_figure_package.py` 只允许验证Manifest、文件、哈希、Markdown和DOCX嵌入一致性；维护脚本与其他Skill脚本不得参与论文内容、证据或最终状态判断。
 
 ## 默认学术论文排版
 
@@ -154,7 +155,7 @@ arXiv、bioRxiv、ChemRxiv、SSRN、NBER工作论文可以收录，但必须在�
 
 图片的替代文本用于无障碍说明，不应作为可见图题重复输出。导出后按图表清单逐个检查Word可见段落：相同图号出现0次或超过1次均需修复。表号同样只能保留一个可见题注。
 
-Word插图程序必须逐项读取 `final_embed_file`，默认嵌入最终PNG，不得通过查找同名 `.svg`、沿用旧Markdown链接或按扩展名排序选择图片。导出后解包DOCX检查 `word/media/`，确认每个图号实际嵌入的是对应最终位图；必要时比较文件摘要、像素尺寸或可识别视觉内容。PDF中再抽查同一页，确保显示内容与 `final_embed_file` 一致。
+Word插图程序必须逐项读取权威JSON中的 `final_embed_file`，默认嵌入最终PNG，不得通过查找同名 `.svg`、读取Markdown摘要、沿用旧链接或按扩展名排序选择图片。导出后解包DOCX检查 `word/media/`，确认每个图号实际嵌入的是对应最终位图；必要时比较文件摘要、像素尺寸或可识别视觉内容。PDF中再抽查同一页，确保显示内容与 `final_embed_file` 一致。
 
 ## Word左侧导航目录
 
@@ -169,6 +170,8 @@ Word左侧导航窗格依赖真实标题样式，不等同于正文中的手工�
 # 公共规则五：学术配图路由与证据边界
 
 先确定图要表达或证明什么，再根据当前实际工具选择路径。图片输入或理解、编写SVG、把SVG渲染为PNG、平台另有图片产品，都不等于本次已调用图片生成工具。
+
+数据统计图的选择、反虚构、可访问性、图表规划、Manifest与主张追踪同时执行下一份公共规则 `statistical-figures-and-trace.md`；该规则不能被用来把结构图从ImageGen路线改回代码框图。
 
 ## 路由
 
@@ -188,7 +191,7 @@ SVG降级图必须先布局节点，再规划连接线。连接线优先使用�
 
 ## 通用质量门
 
-每张图在 `figures/figure-manifest.md` 记录图号、图题、正文首次引用位置、图类、来源、生成方式、模型或工具、Prompt文件或可编辑源、最终文件、限制和核对状态。图片能力Agent的每张适合生图的图都必须有独立Prompt与真实PNG/JPEG/WebP；不能用SVG、HTML截图、占位PNG或图片理解能力冒充。只有用户明确退出、期刊禁止或工具真实不可用时才记录豁免。
+每张图在权威 `figures/figure-manifest.json` 记录机器可读路由，在 `figures/figure-manifest.md` 提供供人阅读的摘要。图片能力Agent的每张适合生图的图都必须有独立Prompt与真实PNG/JPEG/WebP；不能用SVG、HTML截图、占位PNG或图片理解能力冒充。只有用户明确退出、期刊禁止或工具真实不可用时才记录豁免。
 
 ## 最终嵌入文件优先级
 
@@ -200,15 +203,129 @@ SVG降级图必须先布局节点，再规划连接线。连接线优先使用�
 - 如果生成图需要确定性文字、箭头或图例覆盖，先完成合成并导出如 `fig-4-1-final.png`，再把该PNG设为 `final_embed_file`；不能把覆盖层SVG本身插入最终论文；
 - 图片生成结果未通过事实或视觉核对时，应编辑或重新生成，必要时标记能力缺口；不能静默改插SVG并仍声称使用了Imagine。
 
-建议清单至少记录：`figure_id`、`generation_method`、`generated_file`、`source_file`、`fallback_file`、`overlay_source`、`final_embed_file`、`prompt_file`、`first_reference`、`human_verified`、`limitations`。其中只有 `final_embed_file` 是最终论文插图入口。
+JSON清单字段和条件规则以 `statistical-figures-and-trace.md` 为准，其中只有 `final_embed_file` 是最终论文插图入口。Markdown摘要不得覆盖JSON值。
 
 PNG记录最终物理宽度、像素宽高和有效DPI。正文先引用、再展示、后解释。结构、事实、节点、箭头、中文、缩放可读性、裁切、远程资源和最终文档中的显示结果未经核对时，不得将该图标记为通过。
 
+<!-- 公共来源：references/common/statistical-figures-and-trace.md -->
+
+# 公共规则六：统计图、图表规划与证据追踪
+
+本规则补充“学术配图路由”，只强化统计图与所有图表的证据链，不改变结构图的ImageGen优先级。架构、流程、ER、UML、机制、装置和研究框架仍按图片能力路由；统计图必须读取真实数据并由代码生成。
+
+## 图表规划契约
+
+详细大纲必须先建立 `figure_plan[]`，再进入制图。每项至少记录：
+
+```yaml
+figure_plan:
+  - figure_id: "fig-4-1"
+    purpose: "该图回答的具体问题"
+    figure_type: "ARCHITECTURE|PROCESS|ER_UML|STATISTICAL|NETWORK_DATA|DOMAIN|EVIDENCE_IMAGE"
+    claim_bearing: true
+    source_kind: "MANUSCRIPT_CONTEXT|DATASET|SOURCE_FILE"
+    source_locator: "正文、schema、数据文件或原始科研文件"
+    route: "IMAGE_GENERATION|DATA_CODE|DOMAIN_TOOL|EVIDENCE_FILE|SVG_FALLBACK"
+    placement: "第4章4.1节"
+    final_format: "PNG"
+    risks: []
+```
+
+计划只决定目的、来源、路线、位置和风险，不得提前生成实验结果或任意数字。没有真实数据时，统计图候选必须改为测试指标体系、数据采集方案、待测表结构或纯文字说明。
+
+## 统计图选择
+
+先写一句分析问题与一句预期读图任务，再选择最简单、可辩护的图形：
+
+| 数据关系 | 首选图形 | 关键条件 |
+|---|---|---|
+| 时间或有序趋势 | 折线图 | 通常至少8个有意义时间点；点太少改用斜率图、柱状图或表格 |
+| 类别比较与排序 | 柱状图、点图或棒棒糖图 | 长标签用横向；无语义顺序时排序 |
+| 分布 | 直方图、箱线图或小提琴图 | 说明样本量、分组和异常值规则 |
+| 两变量关系 | 散点图与回归/平滑线 | 通常至少12个同粒度观测；保留样本量或分母 |
+| 多变量关系 | 相关性热图 | 报告相关口径与缺失值处理 |
+| 效应量 | 森林图 | 效应量、区间和权重可追溯 |
+| 发表偏倚 | 漏斗图 | 仅用于适用的系统综述或Meta分析 |
+| 数据驱动网络 | 网络图 | 必须有真实节点边表或邻接矩阵 |
+
+以下情况不强行画统计图：少于3个数据点、单个百分比或均值、只有一个类别、所有值相同、图形与现有表格完全重复、数据无法解释坐标含义。精确查数优先表格，比较形状优先图形。
+
+禁止使用3D图、彩虹色图、无说明的截断坐标轴、用双Y轴制造相关性、仅为装饰的图形和无法解释的数据编码。饼图不是默认路线，确需使用时限制少量类别并明确分母。
+
+## 数据真实性与可复现性
+
+- 正式统计图必须有真实数据文件、字段说明、单位、样本量或观测粒度、处理脚本和脚本SHA-256。
+- `data_status` 只能为 `OBSERVED`、`VERIFIED_EXTERNAL`、`SIMULATED_RESEARCH` 或 `NOT_APPLICABLE`。`SIMULATED_RESEARCH` 只适用于研究方法本身就是仿真且存在可执行模型、参数、种子和输出数据文件的情况。
+- `PROPOSED`、`HARDCODED_EXAMPLE`、任意手写数组、`np.random`、`rnorm`、`runif`或演示模板输出不得作为论文结果图。随机重采样、Bootstrap或正式仿真可以使用随机数，但必须读取真实输入或记录研究模型、固定种子与输出文件。
+- 绘图脚本出现随机函数时，Manifest增加 `randomness: {"purpose": "bootstrap|simulation|other", "seed": 42, "output_file": "..."}`；没有用途和种子声明时机械校验失败。
+- 示例代码必须失败关闭：数据占位未替换时主动报错，不得渲染看似完整的示例图片。
+- 图中数值、正文数值和表格数值必须来自同一数据版本与计算口径；不能靠视觉模型验证统计计算。
+
+## 出版与可访问性质量
+
+- 默认输出最终PNG并保留可编辑源；期刊要求时同时提供PDF/EPS。最终PNG有效分辨率至少300 DPI。
+- 参考尺寸：单栏约84 mm、1.5栏约127 mm、双栏约175 mm；在实际插入尺寸检查字号和裁切。
+- 连续色使用viridis或cividis等感知均匀方案；分类色同时提供形状、线型、纹理或直接标签，不能只依赖红绿差异。
+- 坐标轴写清变量、单位与变换；多系列有图例或直接标签；均值比较按研究设计报告SD、SE或置信区间，不能用无定义误差棒。
+- 最终显示文字通常不小于8 pt；中文使用跨平台CJK字体并在PNG、DOCX、PDF中检查缺字。
+- 图片画布内部不得写论文外部题注形式的“图X-X + 完整图题”；轴标题和面板标题可以保留，正式图号与图题只在文档题注中出现一次。
+
+## 权威Figure Manifest
+
+`figures/figure-manifest.json` 是机器可读的唯一插图路由真源；`figures/figure-manifest.md` 是供人阅读的摘要，不能被导出程序用于重新选图。JSON根对象包含 `schema_version` 与 `figures[]`。每张图至少记录：
+
+```json
+{
+  "figure_id": "fig-4-1",
+  "title": "图题文字",
+  "figure_type": "STATISTICAL",
+  "claim_bearing": true,
+  "generation_route": "DATA_CODE",
+  "data_status": "OBSERVED",
+  "prompt_file": null,
+  "generated_file": null,
+  "fallback_file": null,
+  "source_data": [{"dataset_id": "bench-v1", "file": "data/bench.csv"}],
+  "transformation": {"script": "figures/plot_bench.py", "sha256": "..."},
+  "caption_claim": "图题或图注表达的可检验主张",
+  "supported_manuscript_claims": [{"claim": "正文主张", "locator": "第7章7.2节"}],
+  "limitations": [],
+  "canvas_contains_figure_number_or_caption": false,
+  "final_embed_file": "figures/fig-4-1-final.png",
+  "vlm_verification": {"status": "PASS", "iterations": 1, "remaining_issues": []}
+}
+```
+
+条件字段规则：
+
+- `IMAGE_GENERATION`：必须有独立 `prompt_file` 与真实 `generated_file`；最终文件若不同，必须记录文字、箭头或格式合成过程，不能改用纯SVG重画。
+- `DATA_CODE`：必须有 `source_data`、脚本、脚本SHA-256和非空最终文件；主张型统计图不能使用 `NOT_APPLICABLE`。
+- `DOMAIN_TOOL`：记录领域工具、输入文件与导出过程。
+- `EVIDENCE_FILE`：记录原始科研文件、采集或处理来源；不得生成证据区域。
+- `SVG_FALLBACK`：只在图片工具不可用、用户退出或格式禁止时使用，记录 `CAPABILITY_GAP`；SVG保留为fallback，最终文档默认嵌入经过核对的PNG。
+- `canvas_contains_figure_number_or_caption` 必须为 `false`，避免与Word/LaTeX题注重复。
+
+## VLM渲染核验
+
+当前Agent具备视觉能力时，对主张型统计图和复杂结构图执行渲染核验。最多修复两轮，第三次仍有问题则标记 `NEEDS_REVIEW`，不能假装通过。
+
+所有图片检查：裁切、文字重叠、最小字号、中文缺字、颜色区分、外部题注重复、实际论文尺寸可读性。
+
+统计图增加检查：数据系列是否遗漏、图中数值与数据是否一致、误差棒尺度、坐标轴单位、分母与样本量、图题主张是否超出数据。VLM只能发现可见异常，数值仍由代码复算。
+
+流程、架构、ER/UML增加检查：节点数量和逐字标签、分组层级、每条箭头的起点终点、分支条件、连接线交叉与穿越、连接点位置、主次路径和图例。不能只检查“好看”。
+
+## 图表—主张追踪
+
+主张型图表必须能追溯到数据或上下文、转换过程、图题主张、正文使用位置和已知限制。每条 `supported_manuscript_claims` 必须在正文真实引用该图；正文所有实质性用图主张也必须反向出现在Manifest中。空 `limitations: []` 只表示未声明限制，不等于系统确认没有限制。
+
+机械校验只能验证字段、文件、哈希和路由一致性，不能证明图表在学术上正确。最终状态仍由模型结合真实数据、渲染结果、DOCX/PDF和用户要求判断。
+
 <!-- 公共来源：references/common/autonomous-completion.md -->
 
-# 公共规则六：弱模型友好的持续完成机制
+# 公共规则七：弱模型友好的持续完成机制
 
-本流程由模型自主决策。Skill内 `compose_prompt.py` 仅做运行参数、唯一完整提示词与条件附加规则的确定性文件拼接；不得调用任何Skill脚本控制方向、章节、证据、整合或最终状态。工具和项目专用临时代码只在当前论文确有需要时使用，并写入本次输出目录。
+本流程由模型自主决策。Skill内 `compose_prompt.py` 仅做运行参数、唯一完整提示词与条件附加规则的确定性文件拼接；`verify_figure_package.py` 仅做图表包的机械一致性检查。不得调用任何Skill脚本控制方向、章节、证据、整合、学术判断或最终状态。工具和项目专用临时代码只在当前论文确有需要时使用，并写入本次输出目录。
 
 ## 执行顺序
 
@@ -238,7 +355,7 @@ PNG记录最终物理宽度、像素宽高和有效DPI。正文先引用、再�
 
 <!-- 公共来源：references/common/final-quality-gates.md -->
 
-# 公共规则七：审计与最终验收
+# 公共规则八：审计与最终验收
 
 全文整合后检查标题编号、摘要一致性、方法与技术栈、术语、数字来源、图表引用、引文匹配、参考文献覆盖、重复章节、个人信息和未来计划误写为结果。
 
@@ -252,10 +369,15 @@ PNG记录最终物理宽度、像素宽高和有效DPI。正文先引用、再�
 - 标题、摘要、各章、参考文献和致谢均存在；
 - 实际字数、图、表和文献达到合同要求；
 - 图表不裁切、不越界，表格宽度合理；
+- 详细大纲包含 `figure_plan[]`，每张实际图片均能回到计划中的目的、来源、路线和位置；
+- 权威 `figures/figure-manifest.json` 可解析、图号唯一、条件字段完整，Markdown摘要没有覆盖JSON路由；
 - 图片能力Agent应生图的每张图均有独立Prompt和真实位图；数据统计图有数据与代码；SVG降级图在PNG、DOCX、PDF中没有字体替换、方框、乱码、缺字、溢出或裁切；
+- 主张型统计图的 `data_status` 不是 `PROPOSED` 或 `HARDCODED_EXAMPLE`，真实数据、脚本与脚本SHA-256均存在；研究仿真只有在方法本身为仿真且保留参数、种子和输出数据时才允许；
 - 每个图号只有一个 `final_embed_file`；图片工具成功生成后，该字段指向生成位图或以其为底图合成的最终PNG，不能指向SVG备用源；
 - `07-paper-full.md`、DOCX的 `word/media/` 和PDF实际显示内容均与 `final_embed_file` 一致，不存在Imagine已生成但最终插入旧SVG的情况；
 - SVG连接线尽量不交叉、不穿越节点或文字，转折整齐，箭头与连接点位置合理；
+- 当前Agent具备视觉能力时，主张型统计图和复杂结构图已完成VLM渲染核验；两轮修复后仍有问题则为 `NEEDS_REVIEW`，不得标记通过；
+- 图表的 `caption_claim`、正文实质性用图主张、源数据/上下文、转换过程和limitations双向可追溯；空limitations只表示未声明，不等于确认没有限制；
 - Word中每个图号和表号只有一个可见题注，不存在图片内题注与Word题注重复；
 - Word图片和图题不侵入页脚，与页码保持清晰间距，不形成“图题后多出页码”的视觉假重复；
 - Word章、节、小节使用内置Heading 1/2/3及正确大纲级别，自动目录可更新且左侧导航窗格能够形成分层目录；
@@ -263,6 +385,8 @@ PNG记录最终物理宽度、像素宽高和有效DPI。正文先引用、再�
 - 没有远程图片、临时路径、调试文字和模型自述；
 - 文献、数字、图表、伦理和个人信息审计通过；
 - 所有最终文件计算 SHA-256。
+
+存在Python能力时运行 `scripts/verify_figure_package.py` 做机械校验。该脚本通过只证明字段、文件、哈希和嵌入路由一致，不证明图表的学术结论正确；脚本失败时不得标记 `PASS`，脚本通过也不能替代视觉与学术判断。
 
 把实际值和目标值写入 `12-final-qa-report.md` 与 `run-manifest.json`：正文长度及目标区间、文献数、图片数、表格数、DOCX/PDF状态、Critical/Important数量和能力缺口。状态只能为：
 
