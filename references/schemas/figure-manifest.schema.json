@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/huangnan29/aiwritepaper-agentic-skill/figure-manifest.schema.json",
+  "title": "AIWritePaper Figure Manifest",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["schema_version", "figures"],
+  "properties": {
+    "schema_version": {"const": "1.1"},
+    "figures": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/figure"}
+    }
+  },
+  "$defs": {
+    "nullablePath": {"type": ["string", "null"]},
+    "figure": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "figure_id", "title", "figure_type", "claim_bearing", "generation_route",
+        "data_status", "prompt_file", "generated_file", "fallback_file", "source_data",
+        "transformation", "caption_claim", "supported_manuscript_claims", "limitations",
+        "canvas_contains_figure_number_or_caption", "final_embed_file", "generation_receipt",
+        "vlm_verification"
+      ],
+      "properties": {
+        "figure_id": {"type": "string", "minLength": 1},
+        "title": {"type": "string", "minLength": 1},
+        "figure_type": {"enum": ["ARCHITECTURE", "PROCESS", "ER_UML", "STATISTICAL", "NETWORK_DATA", "DOMAIN", "EVIDENCE_IMAGE"]},
+        "claim_bearing": {"type": "boolean"},
+        "generation_route": {"enum": ["IMAGE_GENERATION", "DATA_CODE", "DOMAIN_TOOL", "EVIDENCE_FILE", "SVG_FALLBACK"]},
+        "data_status": {"enum": ["OBSERVED", "VERIFIED_EXTERNAL", "SIMULATED_RESEARCH", "NOT_APPLICABLE"]},
+        "prompt_file": {"$ref": "#/$defs/nullablePath"},
+        "generated_file": {"$ref": "#/$defs/nullablePath"},
+        "fallback_file": {"$ref": "#/$defs/nullablePath"},
+        "source_data": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["file", "sha256"],
+            "properties": {
+              "file": {"type": "string", "minLength": 1},
+              "sha256": {"type": "string", "pattern": "^[0-9a-fA-F]{64}$"}
+            }
+          }
+        },
+        "transformation": {"type": "object"},
+        "caption_claim": {"type": ["string", "null"]},
+        "supported_manuscript_claims": {"type": "array"},
+        "limitations": {"type": "array"},
+        "canvas_contains_figure_number_or_caption": {"const": false},
+        "final_embed_file": {"type": "string", "pattern": "\\.(png|jpe?g|webp)$"},
+        "generation_receipt": {"type": ["object", "null"]},
+        "vlm_verification": {"type": "object"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"generation_route": {"const": "IMAGE_GENERATION"}}},
+          "then": {
+            "properties": {
+              "prompt_file": {"type": "string", "minLength": 1},
+              "generated_file": {"type": "string", "minLength": 1},
+              "generation_receipt": {
+                "type": "object",
+                "required": ["evidence_level", "tool", "provider", "model", "invoked_at", "call_id", "receipt_file", "receipt_sha256", "prompt_sha256", "generated_sha256"]
+              }
+            }
+          }
+        },
+        {
+          "if": {"properties": {"generation_route": {"const": "DATA_CODE"}}},
+          "then": {
+            "properties": {
+              "source_data": {"minItems": 1},
+              "transformation": {
+                "type": "object",
+                "required": ["script", "sha256", "execution_receipt"]
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 from typing import List, Optional
@@ -31,6 +32,7 @@ def main() -> int:
     source_prefixes = ["发现与筛选", "证据与全文", "开放路线", "不宜作核心引文", "信源核验门槛"]
 
     literature_common = read_source(COMMON_DIR / "literature-and-citation.md")
+    output_contract = read_source(COMMON_DIR / "output-contract.md")
     expected_common_headings = {
         "capability-and-runtime.md": "# 公共规则一：",
         "integrity-and-evidence.md": "# 公共规则二：",
@@ -53,6 +55,9 @@ def main() -> int:
     for tag in access_tags:
         if tag not in literature_common:
             errors.append(f"公共文献规则缺少访问标记: {tag}")
+    for term in ["GENERATED_AT_LOCAL", "YYYYMMDD-HHMMSS", "安全论文题目", "final-paper.docx", "run-manifest.json"]:
+        if term not in output_contract:
+            errors.append(f"输出契约缺少最终文件命名规则: {term}")
 
     if len(directions) != 19:
         errors.append(f"方向源文件应为19个，实际为{len(directions)}个")
@@ -137,13 +142,30 @@ def main() -> int:
         if not (SKILL_ROOT / "scripts" / script_name).is_file():
             errors.append(f"缺少脚本: scripts/{script_name}")
 
+    installers = "\n".join(
+        (SKILL_ROOT / name).read_text(encoding="utf-8") for name in ["install.sh", "install.ps1"]
+    )
+    for agent_name in ["zcode", "deepseek-tui"]:
+        if installers.count(agent_name) < 2:
+            errors.append(f"跨平台安装器未完整接通: {agent_name}")
+
     statistical_rules = read_source(COMMON_DIR / "statistical-figures-and-trace.md")
     for required_term in [
         "figure_plan", "figure-manifest.json", "final_embed_file", "DATA_CODE",
         "IMAGE_GENERATION", "SVG_FALLBACK", "data_status", "caption_claim", "VLM",
+        "generation_receipt", "NATIVE_TOOL_RESULT", "checked_file_sha256", "schema_version",
+        "execution_receipt", "output_sha256", "SVG降级图的机械校验",
     ]:
         if required_term not in statistical_rules:
             errors.append(f"统计图公共规则缺少关键契约: {required_term}")
+
+    schema_path = SKILL_ROOT / "references" / "schemas" / "figure-manifest.schema.json"
+    try:
+        schema = json.loads(schema_path.read_text(encoding="utf-8"))
+        if schema.get("properties", {}).get("schema_version", {}).get("const") != "1.1":
+            errors.append("Figure Manifest Schema版本不是1.1")
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        errors.append(f"Figure Manifest Schema不可用: {exc}")
 
     audit_text = "\n".join(
         path.read_text(encoding="utf-8")

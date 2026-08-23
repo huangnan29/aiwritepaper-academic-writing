@@ -1,5 +1,20 @@
 # 更新记录
 
+## 0.8.0 - 2026-08-23
+
+- 最终DOCX/PDF改为“安全论文题目_YYYYMMDD-HHMMSS”命名，两种格式共用同一时间戳；Manifest记录时间、时区、路径和SHA-256。
+- README新增2026-08-23同题实测快照，明确单次未校准审计边界，并记录Grok、Kimi→K3、Gemini 3.7 Flash与MiniMax M3的实际优缺点。
+- 安装器新增ZCode（Z.ai）与DeepSeek-tui（Codewhale）的用户级和项目级Skill路径。
+- Figure Manifest升级到Schema 1.1，新增标准 `references/schemas/figure-manifest.schema.json`。
+- `IMAGE_GENERATION` 新增真实调用回执契约，绑定工具、模型、时间、调用ID以及Prompt、回执、生成文件SHA-256；只有模型自述时机械校验失败。
+- VLM的 `PASS`/`PASS_WITH_NOTES` 新增视觉工具回执、检查时间和被检查最终图片SHA-256；无视觉能力时必须明确 `SKIPPED` 原因。
+- 图表Markdown摘要与权威JSON新增一致性校验，每个 `figure_id` 和 `final_embed_file` 必须恰好对应一次。
+- DOCX验收新增Heading 1/2/3、TOC字段、图题缺失/重复和媒体摘要检查。
+- PDF验收由文件头检查升级为真实解析、页数、疑似空白页和图像对象数量检查；缺少解析依赖时明确警告。
+- `DATA_CODE` 新增数据执行回执，绑定实际命令、运行日志、源数据、脚本与最终输出SHA-256。
+- SVG静态几何检查新增直线/折线交叉与横穿矩形节点检测；复杂贝塞尔路径明确保留VLM核验。
+- 图表隔离测试从10项增加到20项，覆盖调用回执、VLM回执、数据执行血缘、摘要漂移、Word目录、重复图题和SVG直线交叉。
+
 ## 0.7.0 - 2026-08-23
 
 - 吸收ARS的统计可视化优点，新增图表类型决策、色盲安全、坐标轴与单位、误差棒、出版尺寸、300 DPI和“不应画图”规则。

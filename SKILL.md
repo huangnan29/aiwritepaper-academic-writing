@@ -4,7 +4,7 @@ description: 根据题目和材料完成毕业论文、学位论文、期刊论�
 license: MIT
 metadata:
   author: huangnan29
-  version: "0.7.0"
+  version: "0.8.0"
   repository: https://github.com/huangnan29/aiwritepaper-agentic-skill
 ---
 
@@ -68,8 +68,8 @@ python3 "<SKILL_DIR>/scripts/compose_prompt.py" \
 
 执行模型自主选择当前可用工具。只有数据统计图、DOCX/PDF导出或本次任务确实需要时，才在输出目录创建项目专用代码；不得调用Skill维护脚本决定正文、证据、章节状态或 `PASS`。
 
-`scripts/verify_figure_package.py` 只允许检查图表Manifest、文件、哈希、Markdown链接和DOCX嵌图一致性；它的结构通过不代表图表结论正确，也不能单独决定论文 `PASS`。
+`scripts/verify_figure_package.py` 只允许检查图表Manifest、图片/VLM回执、文件摘要、Markdown路由、DOCX嵌图与标题/目录/题注结构以及基础PDF解析；它的结构通过不代表图表结论正确，也不能单独决定论文 `PASS`。
 
 图片工具已经成功生成某图时，正文、DOCX和PDF必须插入该生成图或由它合成的最终PNG；同名SVG只能作为备用或修正源。最终嵌入路径以图表清单中的 `final_embed_file` 为唯一依据，不能按文件名或扩展名自行改选SVG。
 
-最终答复只报告真实完成内容、论文题目、实际正文长度、文献/图片/表格数量、DOCX/PDF/QA路径、能力缺口和最终状态。任何硬目标未满足时不得标记 `PASS`。
+最终答复只报告真实完成内容、论文题目、实际正文长度、文献/图片/表格数量、按“安全论文题目_YYYYMMDD-HHMMSS”生成且共用同一时间戳的DOCX/PDF路径、QA路径、能力缺口和最终状态。任何硬目标未满足时不得标记 `PASS`。

@@ -4,7 +4,18 @@
 
 运行开始时保留 `run-params.md`，并通过文件级确定性拼接生成 `final-execution-prompt.md`；不得由模型重新生成完整方向提示词。
 
-`FULL_BUILD` 输出：`run-params.md`、`final-execution-prompt.md`、`00-capability-report.md`、`01-research-contract.md`、`02-search-log.md`、`03-evidence-matrix.csv`、`04-reference-audit.md`、`references.bib`、`05-outline.md`、`06-argument-map.md`、`chapters/`、`figures/figure-manifest.json`、`figures/figure-manifest.md`、`tables/table-data-and-sources.md`、`07-paper-full.md`、`08-claim-citation-audit.md`、`09-peer-review.md`、`10-revision-log.md`、`final-paper.docx`、可选 `final-paper.tex`、`final-paper.pdf`、`11-format-validation.md`、`12-final-qa-report.md` 和 `run-manifest.json`。没有真实生成的文件不得列入完成清单。
+`FULL_BUILD` 输出：`run-params.md`、`final-execution-prompt.md`、`00-capability-report.md`、`01-research-contract.md`、`02-search-log.md`、`03-evidence-matrix.csv`、`04-reference-audit.md`、`references.bib`、`05-outline.md`、`06-argument-map.md`、`chapters/`、`figures/figure-manifest.json`、`figures/figure-manifest.md`、`tables/table-data-and-sources.md`、`07-paper-full.md`、`08-claim-citation-audit.md`、`09-peer-review.md`、`10-revision-log.md`、按下述规则命名的DOCX与PDF、可选同名TEX、`11-format-validation.md`、`12-final-qa-report.md` 和 `run-manifest.json`。没有真实生成的文件不得列入完成清单。
+
+## 最终文档文件名
+
+开始最终导出时冻结一次本地生成时间 `GENERATED_AT_LOCAL`，格式为 `YYYYMMDD-HHMMSS`。把论文题目转换为安全文件名：保留中文、字母、数字、空格、短横线和下划线；将 `/\\:*?"<>|`、控制字符和连续空白替换或折叠为单个下划线；去除首尾空格、点与下划线；题目过长时在不破坏字符的前提下截断，使文件名主体不超过120个字符。最终文件名固定为：
+
+```text
+<安全论文题目>_<GENERATED_AT_LOCAL>.docx
+<安全论文题目>_<GENERATED_AT_LOCAL>.pdf
+```
+
+DOCX与PDF必须使用同一文件名主体和同一时间戳。`final-paper.docx`、`final-paper.pdf`只能作为本次运行内部临时文件名，不能进入最终完成清单、最终回复或 `run-manifest.json`；成功导出后将本次创建的临时文件原子重命名为正式文件。不得覆盖同名既有文件，发生冲突时重新冻结更晚的时间戳。`run-manifest.json`必须记录ISO 8601本地时间、时区、正式DOCX/PDF相对路径与SHA-256。
 
 `PROPOSAL_ONLY` 输出 `run-params.md`、`final-execution-prompt.md`、研究契约、检索与文献核验文件、`proposal-report.md` 及可用工具允许的DOCX/PDF。`DEFENSE_ONLY` 输出 `run-params.md`、`final-execution-prompt.md`、答辩大纲、逐页内容及可用工具允许的PPTX/PDF。两种模式都不得虚构结果。
 

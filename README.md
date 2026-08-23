@@ -4,12 +4,12 @@
 
 **从论文题目到一份完整执行提示词，再持续交付正文、配图、DOCX 与 PDF。**
 
-![Version](https://img.shields.io/badge/version-0.7.0-2563EB?style=flat-square)
+![Version](https://img.shields.io/badge/version-0.8.0-2563EB?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-16A34A?style=flat-square)
 ![Architecture](https://img.shields.io/badge/architecture-MD--first-7C3AED?style=flat-square)
 ![Directions](https://img.shields.io/badge/paper%20directions-19-EA580C?style=flat-square)
 
-[快速开始](#快速开始) · [工作方式](#工作方式) · [配图策略](#配图策略) · [Word交付](#word交付) · [安装路径](#安装路径)
+[快速开始](#快速开始) · [工作方式](#工作方式) · [同题实测](#2026-08-23同题实测快照) · [配图策略](#配图策略) · [Word交付](#word交付) · [安装路径](#安装路径)
 
 </div>
 
@@ -27,7 +27,7 @@
 | 论文生产 | 大纲、分章、累计字数检查、全文整合、同行评审与修订 |
 | 学术配图 | 有图片工具时逐张生图；统计图由真实数据和代码生成 |
 | 图表证据链 | 大纲先建立figure plan；图表追溯数据、脚本、图题主张、正文使用和局限 |
-| 文档交付 | 生成并检查DOCX、PDF、目录、标题层级、题注和页码 |
+| 文档交付 | 生成并检查DOCX、PDF、目录、标题层级、题注和页码；最终文件按论文题目与时间戳命名 |
 | 条件模式 | 支持单独配图、只导出文档、只审计、只做方向判断、开题报告和答辩材料 |
 
 ## 工作方式
@@ -79,6 +79,37 @@ final-execution-prompt.md
 - 文献、图片和表格未达标时，不提前进入排版；
 - 文件存在或PDF可打开，不等于论文已经完成。
 
+### 最终文档命名
+
+最终DOCX与PDF共用同一文件名主体和生成时间戳：
+
+```text
+数字化转型背景下连锁零售企业库存协同管理研究_20260823-103553.docx
+数字化转型背景下连锁零售企业库存协同管理研究_20260823-103553.pdf
+```
+
+题目中的文件系统禁用字符会转换为下划线，`run-manifest.json`记录本地生成时间、时区、正式路径和SHA-256。`final-paper.docx/.pdf`只允许作为本次运行的内部临时文件名，不能作为最终交付。
+
+## 2026-08-23同题实测快照
+
+以下为同一题目、同一Skill v0.7.0、无用户材料条件下的单次本地审计。分数是**未校准的交付审计分**，用于暴露当前工具链问题，不是稳定模型排行榜；运行时暴露的图片、浏览器和文档工具不同，Kimi组还在后期因周限额由WorkBuddy K3接力完成。
+
+| 执行环境 | 证据与诚信 25 | 内容论证 20 | 结构完整 15 | 配图 15 | DOCX/PDF 15 | 自审诚实 10 | 总分 |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Grok Build | 23 | 18 | 14 | 14 | 12 | 9 | **90** |
+| Kimi → WorkBuddy K3接力 | 20 | 17 | 14 | 12 | 13 | 8 | **84** |
+| Gemini 3.7 Flash / Antigravity | 4 | 8 | 11 | 5 | 7 | 1 | **36** |
+| MiniMax M3 / Claude Code | 6 | 8 | 4 | 6 | 3 | 1 | **28** |
+
+主要观察：
+
+- **Grok Build**：唯一实际采用图片生成路线的结果，4张生成图进入最终文档；正文能区分观察事实、推断和建议，自报 `PARTIAL` 与实际缺口基本一致。主要问题是PDF目录未展开、缺少三级标题以及v0.7尚无图片调用回执。
+- **Kimi → K3接力**：正文、54条引用、6图7表和Word标题层级最完整，SVG结构图清晰。局限是后期换模型接力，且PDF目录页仍未展开，因此不能把全部成果单独归因给K3。
+- **Gemini 3.7 Flash**：能力报告明确写有 `generate_image`，但6张结构/流程图全部走代码绘图；版面正文中位字号仅10pt、无TOC字段。更严重的是把未实际运行的LightGBM-LSTM、MIP和Shapley机制写成已构建并验证，并报告19%—21%、97.8%、2.3%等本地产物无法证明的结果，因此触发学术诚信失败门。
+- **MiniMax M3**：当前Claude Code会话没有暴露图片生成工具，不能据此断言M3本身应直接生图；MiniMax平台另有[Image-01图片生成接口](https://platform.minimaxi.com/docs/guides/image-generation)及支持 `text_to_image` 的[官方MCP](https://platform.minimaxi.com/docs/guides/mcp-guide)，本次工具链未接通。最终正文把逐章局部参考文献列表重复插入，出现210条编号项；证据CSV错列，DOCX实际为0个表格、0个Heading 1且无TOC字段，与自报PASS不一致。
+
+v0.8.0据此新增图片调用与VLM回执、数据执行血缘、DOCX标题/目录/题注解析、PDF深度解析和更严格的真实性门。未来实测必须注明Skill版本、运行客户端、实际工具和是否发生模型接力。
+
 ## 文献信源
 
 每个方向提示词内置该学科的文献信源清单，信源分三层使用：
@@ -111,6 +142,7 @@ final-execution-prompt.md
 - 少于3个数据点、单个百分比、单一类别或与表格完全重复时不强行画图；
 - 禁止把 `np.random`、`rnorm`、`runif`、手写数组或演示模板输出当作论文结果；
 - 正式统计图保存真实数据文件、单位、样本量或观测粒度、绘图脚本和脚本SHA-256；
+- 数据文件、脚本、执行日志和最终输出分别计算SHA-256，运行回执记录实际命令与输入输出关系；
 - 数据驱动网络图必须有节点边表或邻接矩阵；结构概念图仍执行ImageGen优先路线；
 - 色盲安全、坐标轴单位、误差棒、300 DPI和论文实际尺寸可读性均为必查项；
 - 当前Agent有视觉能力时，对统计图和复杂结构图最多进行两轮VLM修复；仍有问题标记 `NEEDS_REVIEW`。
@@ -138,6 +170,14 @@ final-execution-prompt.md
 - 整合和导出阶段不得扫描同名文件并重新选择SVG；
 - DOCX导出后检查`word/media/`，PDF再做视觉核对。
 
+### 图片调用与视觉检查回执
+
+- `IMAGE_GENERATION` 必须保存图片工具实际返回结果或客户端调用片段，记录工具、模型、时间、调用ID以及Prompt、回执、生成文件SHA-256；
+- 只有模型文字声称“已调用Imagine/ImageGen/Nano Banana”属于 `DECLARED_ONLY`，机械校验失败；
+- VLM的 `PASS` 必须绑定视觉工具回执和被检查最终图片SHA-256，不能只填写状态；
+- `figure-manifest.json` 使用Schema 1.1，结构定义见 `references/schemas/figure-manifest.schema.json`；
+- 人类摘要中的每个图号和最终插图路径必须与权威JSON恰好对应一次。
+
 ### SVG降级质量
 
 - 中文使用明确的跨平台字体栈；
@@ -145,6 +185,7 @@ final-execution-prompt.md
 - 转折位置整齐，连接点位于合理的节点边界；
 - 箭头准确落在目标边界，不悬空、不伸入文字；
 - 无法避免交叉时优先绕行、拆图或使用跨线桥；
+- 静态校验可拦截直线/折线交叉和横穿矩形节点；复杂曲线仍需VLM或人工核验；
 - 在论文实际显示尺寸检查PNG、DOCX与PDF。
 
 ## Word交付
@@ -226,14 +267,15 @@ paper-output/
 ├── chapters/
 ├── figures/
 │   ├── figure-manifest.json  # 权威机器路由
-│   └── figure-manifest.md    # 人类可读摘要
+│   ├── figure-manifest.md    # 人类可读摘要
+│   └── receipts/             # 图片调用与视觉检查原始回执
 ├── tables/
 ├── 07-paper-full.md
 ├── 08-claim-citation-audit.md
 ├── 09-peer-review.md
 ├── 10-revision-log.md
-├── final-paper.docx
-├── final-paper.pdf
+├── <论文题目>_<YYYYMMDD-HHMMSS>.docx
+├── <论文题目>_<YYYYMMDD-HHMMSS>.pdf
 ├── 11-format-validation.md
 ├── 12-final-qa-report.md
 └── run-manifest.json
@@ -270,6 +312,12 @@ npx skills add huangnan29/aiwritepaper-agentic-skill
 
 # Antigravity
 ./install.sh --agent antigravity --scope user
+
+# ZCode（Z.ai）
+./install.sh --agent zcode --scope user
+
+# DeepSeek-tui（Codewhale）
+./install.sh --agent deepseek-tui --scope user
 ```
 
 更新已有安装时追加`--force`。
@@ -284,6 +332,8 @@ npx skills add huangnan29/aiwritepaper-agentic-skill
 .\install.ps1 -Agent grok -Scope user
 .\install.ps1 -Agent workbuddy -Scope user
 .\install.ps1 -Agent antigravity -Scope user
+.\install.ps1 -Agent zcode -Scope user
+.\install.ps1 -Agent deepseek-tui -Scope user
 ```
 
 更新已有安装时追加`-Force`。
@@ -302,6 +352,8 @@ npx skills add huangnan29/aiwritepaper-agentic-skill
 | GitHub Copilot | `.github/skills/aiwritepaper-agentic-skill` | `~/.copilot/skills/aiwritepaper-agentic-skill` |
 | OpenCode | `.opencode/skills/aiwritepaper-agentic-skill` | `~/.config/opencode/skills/aiwritepaper-agentic-skill` |
 | WorkBuddy | `.workbuddy/skills/aiwritepaper-agentic-skill` | `~/.workbuddy/skills/aiwritepaper-agentic-skill` |
+| ZCode（Z.ai） | `.zcode/skills/aiwritepaper-agentic-skill` | `~/.zcode/skills/aiwritepaper-agentic-skill` |
+| DeepSeek-tui（Codewhale） | `.codewhale/skills/aiwritepaper-agentic-skill` | `~/.codewhale/skills/aiwritepaper-agentic-skill` |
 | 通用Agent | `.agents/skills/aiwritepaper-agentic-skill` | `~/.agents/skills/aiwritepaper-agentic-skill` |
 
 ## 使用示例
@@ -363,7 +415,7 @@ aiwritepaper-agentic-skill/
 
 ## 维护与版本
 
-- 当前版本：`0.7.0`
+- 当前版本：`0.8.0`
 - 更新记录：[CHANGELOG.md](CHANGELOG.md)
 - Skill入口：[SKILL.md](SKILL.md)
 - 历史复杂流水线版可通过Git标签`v0.3.1-runtime-gates`恢复

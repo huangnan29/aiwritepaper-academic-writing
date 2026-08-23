@@ -28,25 +28,69 @@ class FigurePackageTests(unittest.TestCase):
         (self.root / "data/results.csv").write_text("group,value\nA,1\nB,2\n", encoding="utf-8")
         (self.root / "figures/plot.py").write_text("print('plot from data/results.csv')\n", encoding="utf-8")
         (self.root / "figures/fig-1-final.png").write_bytes(b"\x89PNG\r\n\x1a\nfixture")
+        (self.root / "figures/vlm-receipt.txt").write_text("视觉工具检查结果：通过", encoding="utf-8")
+        (self.root / "figures/data-execution.log").write_text(
+            "uv run python figures/plot.py --input data/results.csv --output figures/fig-1-final.png",
+            encoding="utf-8",
+        )
         (self.root / "07-paper-full.md").write_text(
             "正文先引用图1。\n\n![趋势图](figures/fig-1-final.png)\n", encoding="utf-8"
         )
+        (self.root / "figures/figure-manifest.md").write_text(
+            "| figure_id | final_embed_file |\n|---|---|\n| fig-1 | figures/fig-1-final.png |\n",
+            encoding="utf-8",
+        )
+        document_xml = '''<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>
+<w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>第一章 绪论</w:t></w:r></w:p>
+<w:p><w:pPr><w:pStyle w:val="Heading2"/></w:pPr><w:r><w:t>1.1 背景</w:t></w:r></w:p>
+<w:p><w:pPr><w:pStyle w:val="Heading3"/></w:pPr><w:r><w:t>1.1.1 问题</w:t></w:r></w:p>
+<w:p><w:r><w:instrText>TOC \\o "1-3"</w:instrText></w:r></w:p>
+<w:p><w:r><w:t>图1 趋势图</w:t></w:r></w:p>
+</w:body></w:document>'''
         with zipfile.ZipFile(self.root / "final-paper.docx", "w") as archive:
             archive.write(self.root / "figures/fig-1-final.png", "word/media/image1.png")
-        (self.root / "final-paper.pdf").write_bytes(b"%PDF-1.4\n%%EOF")
+            archive.writestr("word/document.xml", document_xml)
+        try:
+            from pypdf import PdfWriter
+            writer = PdfWriter()
+            writer.add_blank_page(width=595, height=842)
+            with (self.root / "final-paper.pdf").open("wb") as handle:
+                writer.write(handle)
+        except ImportError:
+            (self.root / "final-paper.pdf").write_bytes(b"%PDF-1.4\n%%EOF")
         script_hash = hashlib.sha256((self.root / "figures/plot.py").read_bytes()).hexdigest()
+        final_hash = hashlib.sha256((self.root / "figures/fig-1-final.png").read_bytes()).hexdigest()
+        vlm_receipt_hash = hashlib.sha256((self.root / "figures/vlm-receipt.txt").read_bytes()).hexdigest()
+        source_hash = hashlib.sha256((self.root / "data/results.csv").read_bytes()).hexdigest()
+        execution_hash = hashlib.sha256((self.root / "figures/data-execution.log").read_bytes()).hexdigest()
         self.manifest = {
-            "schema_version": "1.0",
+            "schema_version": "1.1",
             "figures": [{
                 "figure_id": "fig-1", "title": "趋势图", "figure_type": "STATISTICAL",
                 "claim_bearing": True, "generation_route": "DATA_CODE", "data_status": "OBSERVED",
                 "prompt_file": None, "generated_file": None, "fallback_file": None,
-                "source_data": [{"dataset_id": "results-v1", "file": "data/results.csv"}],
-                "transformation": {"script": "figures/plot.py", "sha256": script_hash},
+                "source_data": [{"dataset_id": "results-v1", "file": "data/results.csv", "sha256": source_hash}],
+                "transformation": {
+                    "script": "figures/plot.py", "sha256": script_hash,
+                    "execution_receipt": {
+                        "command": "uv run python figures/plot.py --input data/results.csv --output figures/fig-1-final.png",
+                        "receipt_file": "figures/data-execution.log", "receipt_sha256": execution_hash,
+                        "script_sha256": script_hash,
+                        "inputs": [{"file": "data/results.csv", "sha256": source_hash}],
+                        "output_sha256": final_hash,
+                    },
+                },
                 "caption_claim": "B组高于A组", "supported_manuscript_claims": [{"claim": "B组更高", "locator": "结果"}],
                 "limitations": [], "canvas_contains_figure_number_or_caption": False,
+                "generation_receipt": None,
                 "final_embed_file": "figures/fig-1-final.png",
-                "vlm_verification": {"status": "PASS", "iterations": 1, "remaining_issues": []},
+                "vlm_verification": {
+                    "status": "PASS", "iterations": 1, "remaining_issues": [],
+                    "evidence_level": "VISUAL_TOOL_RESULT", "tool": "view_image",
+                    "checked_at": "2026-08-23T09:05:00-07:00",
+                    "checked_file_sha256": final_hash, "receipt_file": "figures/vlm-receipt.txt",
+                    "receipt_sha256": vlm_receipt_hash,
+                },
             }],
         }
         self.write_manifest()
@@ -62,6 +106,7 @@ class FigurePackageTests(unittest.TestCase):
     def verify(self) -> MODULE.FigureVerifier:
         verifier = MODULE.FigureVerifier(self.root)
         verifier.verify_manifest(self.root / "figures/figure-manifest.json")
+        verifier.verify_manifest_summary(self.root / "figures/figure-manifest.md")
         verifier.verify_markdown(self.root / "07-paper-full.md")
         verifier.verify_docx(self.root / "final-paper.docx")
         verifier.verify_pdf(self.root / "final-paper.pdf")
@@ -80,12 +125,28 @@ class FigurePackageTests(unittest.TestCase):
         self.write_manifest()
         self.assertTrue(any("SCRIPT_HASH_MISMATCH" in item for item in self.verify().errors))
 
+    def test_data_execution_input_mismatch_fails(self) -> None:
+        self.manifest["figures"][0]["transformation"]["execution_receipt"]["inputs"][0]["sha256"] = "0" * 64
+        self.write_manifest()
+        self.assertTrue(any("DATA_EXECUTION_INPUT_MISMATCH" in item for item in self.verify().errors))
+
+    def test_source_data_hash_mismatch_fails(self) -> None:
+        self.manifest["figures"][0]["source_data"][0]["sha256"] = "0" * 64
+        self.write_manifest()
+        self.assertTrue(any("SOURCE_DATA_HASH_MISMATCH" in item for item in self.verify().errors))
+
     def test_markdown_wrong_image_fails(self) -> None:
         (self.root / "figures/other.png").write_bytes(b"other")
         (self.root / "07-paper-full.md").write_text("![错误](figures/other.png)\n", encoding="utf-8")
         errors = self.verify().errors
         self.assertTrue(any("MARKDOWN_ROUTE" in item for item in errors))
         self.assertTrue(any("MARKDOWN_EXTRA_IMAGES" in item for item in errors))
+
+    def test_manifest_summary_wrong_route_fails(self) -> None:
+        (self.root / "figures/figure-manifest.md").write_text(
+            "| figure_id | final_embed_file |\n|---|---|\n| fig-1 | figures/old.svg |\n", encoding="utf-8"
+        )
+        self.assertTrue(any("MANIFEST_SUMMARY_ROUTE" in item for item in self.verify().errors))
 
     def test_randomness_requires_declaration(self) -> None:
         (self.root / "figures/plot.py").write_text("import numpy as np\nnp.random.seed(42)\n", encoding="utf-8")
@@ -113,24 +174,111 @@ class FigurePackageTests(unittest.TestCase):
     def test_valid_image_generation_embeds_generated_file(self) -> None:
         figure = self.manifest["figures"][0]
         (self.root / "figures/prompt.md").write_text("prompt", encoding="utf-8")
+        (self.root / "figures/tool-receipt.json").write_text(
+            '{"source":"native tool result","call_id":"call-123"}', encoding="utf-8"
+        )
+        prompt_hash = hashlib.sha256((self.root / "figures/prompt.md").read_bytes()).hexdigest()
+        generated_hash = hashlib.sha256((self.root / "figures/fig-1-final.png").read_bytes()).hexdigest()
+        receipt_hash = hashlib.sha256((self.root / "figures/tool-receipt.json").read_bytes()).hexdigest()
         figure.update({
             "generation_route": "IMAGE_GENERATION", "data_status": "NOT_APPLICABLE",
             "claim_bearing": False,
             "prompt_file": "figures/prompt.md", "generated_file": "figures/fig-1-final.png",
             "source_data": [], "transformation": {"method": "none"},
+            "generation_receipt": {
+                "evidence_level": "NATIVE_TOOL_RESULT", "tool": "imagegen", "provider": "OpenAI",
+                "model": "gpt-image", "invoked_at": "2026-08-23T09:00:00-07:00",
+                "call_id": "call-123", "receipt_file": "figures/tool-receipt.json",
+                "receipt_sha256": receipt_hash, "prompt_sha256": prompt_hash,
+                "generated_sha256": generated_hash,
+            },
         })
         self.write_manifest()
         self.assertEqual(self.verify().errors, [])
+
+    def test_image_generation_without_receipt_fails(self) -> None:
+        figure = self.manifest["figures"][0]
+        (self.root / "figures/prompt.md").write_text("prompt", encoding="utf-8")
+        figure.update({
+            "generation_route": "IMAGE_GENERATION", "data_status": "NOT_APPLICABLE",
+            "claim_bearing": False, "prompt_file": "figures/prompt.md",
+            "generated_file": "figures/fig-1-final.png", "source_data": [],
+            "transformation": {"method": "none"}, "generation_receipt": None,
+        })
+        self.write_manifest()
+        self.assertTrue(any("GENERATION_RECEIPT_MISSING" in item for item in self.verify().errors))
+
+    def test_declared_only_generation_receipt_fails(self) -> None:
+        figure = self.manifest["figures"][0]
+        (self.root / "figures/prompt.md").write_text("prompt", encoding="utf-8")
+        (self.root / "figures/tool-receipt.txt").write_text("模型自述", encoding="utf-8")
+        figure.update({
+            "generation_route": "IMAGE_GENERATION", "data_status": "NOT_APPLICABLE",
+            "claim_bearing": False, "prompt_file": "figures/prompt.md",
+            "generated_file": "figures/fig-1-final.png", "source_data": [],
+            "transformation": {"method": "none"},
+            "generation_receipt": {
+                "evidence_level": "DECLARED_ONLY", "tool": "Imagine", "provider": "Grok",
+                "model": "NOT_EXPOSED", "invoked_at": "2026-08-23T09:00:00-07:00",
+                "call_id": "NOT_EXPOSED", "receipt_file": "figures/tool-receipt.txt",
+                "receipt_sha256": hashlib.sha256((self.root / "figures/tool-receipt.txt").read_bytes()).hexdigest(),
+                "prompt_sha256": hashlib.sha256((self.root / "figures/prompt.md").read_bytes()).hexdigest(),
+                "generated_sha256": hashlib.sha256((self.root / "figures/fig-1-final.png").read_bytes()).hexdigest(),
+            },
+        })
+        self.write_manifest()
+        self.assertTrue(any("GENERATION_RECEIPT_UNVERIFIED" in item for item in self.verify().errors))
 
     def test_caption_inside_canvas_fails(self) -> None:
         self.manifest["figures"][0]["canvas_contains_figure_number_or_caption"] = True
         self.write_manifest()
         self.assertTrue(any("CAPTION_IN_CANVAS" in item for item in self.verify().errors))
 
+    def test_declared_only_vlm_pass_fails(self) -> None:
+        self.manifest["figures"][0]["vlm_verification"]["evidence_level"] = "DECLARED_ONLY"
+        self.write_manifest()
+        self.assertTrue(any("VLM_RECEIPT_UNVERIFIED" in item for item in self.verify().errors))
+
+    def test_vlm_checked_wrong_file_fails(self) -> None:
+        self.manifest["figures"][0]["vlm_verification"]["checked_file_sha256"] = "0" * 64
+        self.write_manifest()
+        self.assertTrue(any("VLM_CHECKED_FILE_MISMATCH" in item for item in self.verify().errors))
+
     def test_docx_media_mismatch_fails(self) -> None:
         with zipfile.ZipFile(self.root / "final-paper.docx", "w") as archive:
             archive.writestr("word/media/image1.png", b"wrong-image")
+            archive.writestr(
+                "word/document.xml",
+                '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body/></w:document>',
+            )
         self.assertTrue(any("DOCX_MEDIA_MISMATCH" in item for item in self.verify().errors))
+
+    def test_docx_missing_toc_fails(self) -> None:
+        with zipfile.ZipFile(self.root / "final-paper.docx", "w") as archive:
+            archive.write(self.root / "figures/fig-1-final.png", "word/media/image1.png")
+            archive.writestr(
+                "word/document.xml",
+                '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>'
+                '<w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>第一章</w:t></w:r></w:p>'
+                '<w:p><w:pPr><w:pStyle w:val="Heading2"/></w:pPr><w:r><w:t>1.1</w:t></w:r></w:p>'
+                '<w:p><w:r><w:t>图1 趋势图</w:t></w:r></w:p>'
+                '</w:body></w:document>',
+            )
+        self.assertTrue(any("DOCX_TOC_FIELD_MISSING" in item for item in self.verify().errors))
+
+    def test_docx_duplicate_figure_caption_fails(self) -> None:
+        with zipfile.ZipFile(self.root / "final-paper.docx", "w") as archive:
+            archive.write(self.root / "figures/fig-1-final.png", "word/media/image1.png")
+            archive.writestr(
+                "word/document.xml",
+                '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>'
+                '<w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>第一章</w:t></w:r></w:p>'
+                '<w:p><w:pPr><w:pStyle w:val="Heading2"/></w:pPr><w:r><w:t>1.1</w:t></w:r></w:p>'
+                '<w:p><w:r><w:instrText>TOC \\o "1-3"</w:instrText></w:r></w:p>'
+                '<w:p><w:r><w:t>图1 趋势图</w:t></w:r></w:p><w:p><w:r><w:t>图1 趋势图</w:t></w:r></w:p>'
+                '</w:body></w:document>',
+            )
+        self.assertTrue(any("DOCX_FIGURE_CAPTION_DUPLICATE" in item for item in self.verify().errors))
 
     def test_svg_fallback_requires_cjk_font(self) -> None:
         figure = self.manifest["figures"][0]
@@ -145,6 +293,20 @@ class FigurePackageTests(unittest.TestCase):
         })
         self.write_manifest()
         self.assertTrue(any("SVG_CJK_FONT_MISSING" in item for item in self.verify().errors))
+
+    def test_svg_crossing_lines_fail(self) -> None:
+        figure = self.manifest["figures"][0]
+        (self.root / "figures/fallback.svg").write_text(
+            '<svg xmlns="http://www.w3.org/2000/svg"><line x1="0" y1="0" x2="100" y2="100"/>'
+            '<line x1="0" y1="100" x2="100" y2="0"/></svg>', encoding="utf-8"
+        )
+        figure.update({
+            "generation_route": "SVG_FALLBACK", "data_status": "NOT_APPLICABLE",
+            "claim_bearing": False, "fallback_file": "figures/fallback.svg", "source_data": [],
+            "transformation": {"method": "svg-render"}, "capability_gap": "IMAGE_GENERATOR unavailable",
+        })
+        self.write_manifest()
+        self.assertTrue(any("SVG_LINE_CROSSING" in item for item in self.verify().errors))
 
 
 if __name__ == "__main__":

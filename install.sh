@@ -17,7 +17,7 @@ print_usage() {
 用法：
   ./install.sh --agent <agent> --scope <user|project> [--force]
 
-agent 可选值：codex、claude、cursor、kimi、gemini、antigravity、copilot、opencode、workbuddy、grok、universal
+agent 可选值：codex、claude、cursor、kimi、gemini、antigravity、copilot、opencode、workbuddy、grok、zcode、zai、deepseek、deepseek-tui、universal
 scope 可选值：user、project
 --force：目标目录已存在时，确认后覆盖
 EOF
@@ -66,8 +66,8 @@ done
 [ -n "$SCOPE" ] || fail '必须使用 --scope 指定 user 或 project。'
 
 case "$AGENT" in
-    codex|claude|cursor|kimi|gemini|antigravity|copilot|opencode|workbuddy|grok|universal) ;;
-    *) fail "不支持的 agent：${AGENT}。可选值为 codex、claude、cursor、kimi、gemini、antigravity、copilot、opencode、workbuddy、grok、universal。" ;;
+    codex|claude|cursor|kimi|gemini|antigravity|copilot|opencode|workbuddy|grok|zcode|zai|deepseek|deepseek-tui|universal) ;;
+    *) fail "不支持的 agent：${AGENT}。请使用 --help 查看支持列表。" ;;
 esac
 
 case "$SCOPE" in
@@ -106,6 +106,10 @@ case "$AGENT:$SCOPE" in
     workbuddy:user) INSTALL_ROOT="$BASE_DIR/.workbuddy/skills" ;;
     grok:project) INSTALL_ROOT="$BASE_DIR/.grok/skills" ;;
     grok:user) INSTALL_ROOT="$BASE_DIR/.grok/skills" ;;
+    zcode:project|zai:project) INSTALL_ROOT="$BASE_DIR/.zcode/skills" ;;
+    zcode:user|zai:user) INSTALL_ROOT="$BASE_DIR/.zcode/skills" ;;
+    deepseek:project|deepseek-tui:project) INSTALL_ROOT="$BASE_DIR/.codewhale/skills" ;;
+    deepseek:user|deepseek-tui:user) INSTALL_ROOT="$BASE_DIR/.codewhale/skills" ;;
     universal:project) INSTALL_ROOT="$BASE_DIR/.agents/skills" ;;
     universal:user) INSTALL_ROOT="$BASE_DIR/.agents/skills" ;;
     *) fail '无法计算安装目标目录。' ;;

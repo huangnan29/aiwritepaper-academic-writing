@@ -61,7 +61,7 @@ figure_plan:
 
 ## 权威Figure Manifest
 
-`figures/figure-manifest.json` 是机器可读的唯一插图路由真源；`figures/figure-manifest.md` 是供人阅读的摘要，不能被导出程序用于重新选图。JSON根对象包含 `schema_version` 与 `figures[]`。每张图至少记录：
+`figures/figure-manifest.json` 是机器可读的唯一插图路由真源；`figures/figure-manifest.md` 是供人阅读的摘要，不能被导出程序用于重新选图。JSON根对象包含 `schema_version` 与 `figures[]`，当前版本为 `1.1`。每张图至少记录：
 
 ```json
 {
@@ -73,30 +73,81 @@ figure_plan:
   "data_status": "OBSERVED",
   "prompt_file": null,
   "generated_file": null,
+  "generation_receipt": null,
   "fallback_file": null,
-  "source_data": [{"dataset_id": "bench-v1", "file": "data/bench.csv"}],
-  "transformation": {"script": "figures/plot_bench.py", "sha256": "..."},
+  "source_data": [{"dataset_id": "bench-v1", "file": "data/bench.csv", "sha256": "..."}],
+  "transformation": {
+    "script": "figures/plot_bench.py",
+    "sha256": "...",
+    "execution_receipt": {
+      "command": "实际执行命令",
+      "receipt_file": "figures/receipts/fig-4-1-data-run.log",
+      "receipt_sha256": "...",
+      "script_sha256": "...",
+      "inputs": [{"file": "data/bench.csv", "sha256": "..."}],
+      "output_sha256": "..."
+    }
+  },
   "caption_claim": "图题或图注表达的可检验主张",
   "supported_manuscript_claims": [{"claim": "正文主张", "locator": "第7章7.2节"}],
   "limitations": [],
   "canvas_contains_figure_number_or_caption": false,
   "final_embed_file": "figures/fig-4-1-final.png",
-  "vlm_verification": {"status": "PASS", "iterations": 1, "remaining_issues": []}
+  "vlm_verification": {
+    "status": "PASS",
+    "iterations": 1,
+    "remaining_issues": [],
+    "evidence_level": "VISUAL_TOOL_RESULT",
+    "tool": "实际视觉工具",
+    "checked_at": "2026-08-23T09:05:00-07:00",
+    "checked_file_sha256": "...",
+    "receipt_file": "figures/receipts/fig-4-1-vlm.txt",
+    "receipt_sha256": "..."
+  }
 }
 ```
 
 条件字段规则：
 
 - `IMAGE_GENERATION`：必须有独立 `prompt_file` 与真实 `generated_file`；最终文件若不同，必须记录文字、箭头或格式合成过程，不能改用纯SVG重画。
-- `DATA_CODE`：必须有 `source_data`、脚本、脚本SHA-256和非空最终文件；主张型统计图不能使用 `NOT_APPLICABLE`。
+- `DATA_CODE`：必须有 `source_data`、每个输入文件SHA-256、脚本、脚本SHA-256、实际执行回执和非空最终文件；执行回执记录实际命令、输入摘要、脚本摘要、输出摘要及原始日志，主张型统计图不能使用 `NOT_APPLICABLE`。
 - `DOMAIN_TOOL`：记录领域工具、输入文件与导出过程。
 - `EVIDENCE_FILE`：记录原始科研文件、采集或处理来源；不得生成证据区域。
 - `SVG_FALLBACK`：只在图片工具不可用、用户退出或格式禁止时使用，记录 `CAPABILITY_GAP`；SVG保留为fallback，最终文档默认嵌入经过核对的PNG。
 - `canvas_contains_figure_number_or_caption` 必须为 `false`，避免与Word/LaTeX题注重复。
 
+### 图片工具调用回执
+
+`IMAGE_GENERATION` 不能只靠模型声称“已经调用”。每次调用后立即把客户端实际返回的工具结果或终端调用片段原样保存到当前输出目录，例如 `figures/receipts/fig-2-1-imagegen.json`；不得事后根据记忆补写或伪造。Manifest中的 `generation_receipt` 至少记录：
+
+```json
+{
+  "evidence_level": "NATIVE_TOOL_RESULT",
+  "tool": "imagegen",
+  "provider": "OpenAI",
+  "model": "gpt-image",
+  "invoked_at": "2026-08-23T09:00:00-07:00",
+  "call_id": "服务实际返回的调用ID",
+  "receipt_file": "figures/receipts/fig-2-1-imagegen.json",
+  "receipt_sha256": "...",
+  "prompt_sha256": "...",
+  "generated_sha256": "..."
+}
+```
+
+- `NATIVE_TOOL_RESULT`：客户端提供原生工具结果和真实调用ID；
+- `CLIENT_TRANSCRIPT`：客户端不暴露原生ID，但可保存含调用时间、工具名和输出定位的实际调用片段；`call_id` 写 `NOT_EXPOSED`；
+- `DECLARED_ONLY`：只有模型自述，不能证明发生过图片调用，机械校验失败且最终状态不得为 `PASS`。
+
+回执只能证明本地保存的Prompt、工具结果与生成文件摘要相互一致，不能冒充服务商签名证明。客户端既不暴露调用结果也无法保存调用片段时，如实使用 `DECLARED_ONLY` 或记录 `CAPABILITY_GAP`，不能编造ID。
+
+机器可读结构同时由 `references/schemas/figure-manifest.schema.json` 定义。`figure-manifest.md` 每张图只保留一行摘要，且必须恰好出现一次 `figure_id` 和一次对应的 `final_embed_file`；它不能列出另一个“推荐插图”路径。机械校验同时读取两份清单，摘要缺失或路由不一致时失败。
+
 ## VLM渲染核验
 
 当前Agent具备视觉能力时，对主张型统计图和复杂结构图执行渲染核验。最多修复两轮，第三次仍有问题则标记 `NEEDS_REVIEW`，不能假装通过。
+
+`PASS`与`PASS_WITH_NOTES`必须保存视觉工具实际返回结果或客户端调用片段，并记录被检查的 `final_embed_file` SHA-256、工具、检查时间、回执文件及其SHA-256。`DECLARED_ONLY`表示只有模型自述，机械校验失败。没有视觉工具时使用 `SKIPPED` 并填写具体 `reason`，不得伪造视觉检查；需要视觉检查的复杂图因此保持能力缺口。
 
 所有图片检查：裁切、文字重叠、最小字号、中文缺字、颜色区分、外部题注重复、实际论文尺寸可读性。
 
@@ -109,3 +160,5 @@ figure_plan:
 主张型图表必须能追溯到数据或上下文、转换过程、图题主张、正文使用位置和已知限制。每条 `supported_manuscript_claims` 必须在正文真实引用该图；正文所有实质性用图主张也必须反向出现在Manifest中。空 `limitations: []` 只表示未声明限制，不等于系统确认没有限制。
 
 机械校验只能验证字段、文件、哈希和路由一致性，不能证明图表在学术上正确。最终状态仍由模型结合真实数据、渲染结果、DOCX/PDF和用户要求判断。
+
+SVG降级图的机械校验额外检查可解析的直线、折线与矩形节点：非共享端点交叉或连线横穿节点时失败。复杂贝塞尔 `path`、曲线箭头、文字边界和视觉拥挤仍必须通过VLM或人工检查，静态几何检查不得宣称覆盖全部SVG布局。

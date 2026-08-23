@@ -24,7 +24,7 @@ function Show-Usage {
 用法：
   .\install.ps1 -Agent <agent> -Scope <user|project> [-Force]
 
-Agent 可选值：codex、claude、cursor、kimi、gemini、antigravity、copilot、opencode、workbuddy、grok、universal
+Agent 可选值：codex、claude、cursor、kimi、gemini、antigravity、copilot、opencode、workbuddy、grok、zcode、zai、deepseek、deepseek-tui、universal
 Scope 可选值：user、project
 -Force：目标目录已存在时，确认后覆盖
 '@
@@ -52,9 +52,13 @@ switch ($AgentKey) {
     'opencode' { }
     'workbuddy' { }
     'grok' { }
+    'zcode' { }
+    'zai' { }
+    'deepseek' { }
+    'deepseek-tui' { }
     'universal' { }
     default {
-        Stop-Install ('不支持的 agent：{0}。可选值为 codex、claude、cursor、kimi、gemini、antigravity、copilot、opencode、workbuddy、grok、universal。' -f $Agent)
+        Stop-Install ('不支持的 agent：{0}。请使用 -Agent 指定受支持的Agent。' -f $Agent)
     }
 }
 
@@ -91,6 +95,10 @@ if ($ScopeKey -eq 'user') {
         'opencode' { $InstallRoot = Join-Path $BasePath '.config\opencode\skills' }
         'workbuddy' { $InstallRoot = Join-Path $BasePath '.workbuddy\skills' }
         'grok' { $InstallRoot = Join-Path $BasePath '.grok\skills' }
+        'zcode' { $InstallRoot = Join-Path $BasePath '.zcode\skills' }
+        'zai' { $InstallRoot = Join-Path $BasePath '.zcode\skills' }
+        'deepseek' { $InstallRoot = Join-Path $BasePath '.codewhale\skills' }
+        'deepseek-tui' { $InstallRoot = Join-Path $BasePath '.codewhale\skills' }
         'universal' { $InstallRoot = Join-Path $BasePath '.agents\skills' }
     }
 } else {
@@ -105,6 +113,10 @@ if ($ScopeKey -eq 'user') {
         'opencode' { $InstallRoot = Join-Path $BasePath '.opencode\skills' }
         'workbuddy' { $InstallRoot = Join-Path $BasePath '.workbuddy\skills' }
         'grok' { $InstallRoot = Join-Path $BasePath '.grok\skills' }
+        'zcode' { $InstallRoot = Join-Path $BasePath '.zcode\skills' }
+        'zai' { $InstallRoot = Join-Path $BasePath '.zcode\skills' }
+        'deepseek' { $InstallRoot = Join-Path $BasePath '.codewhale\skills' }
+        'deepseek-tui' { $InstallRoot = Join-Path $BasePath '.codewhale\skills' }
         'universal' { $InstallRoot = Join-Path $BasePath '.agents\skills' }
     }
 }
