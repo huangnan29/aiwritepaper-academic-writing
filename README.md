@@ -120,6 +120,24 @@ final-execution-prompt.md
 - **Gemini 3.7 Flash**：能力报告明确写有 `generate_image`，但6张结构/流程图全部走代码绘图；版面正文中位字号仅10pt、无TOC字段。更严重的是把未实际运行的LightGBM-LSTM、MIP和Shapley机制写成已构建并验证，并报告19%—21%、97.8%、2.3%等本地产物无法证明的结果，因此触发学术诚信失败门。
 - **MiniMax M3**：当前Claude Code会话没有暴露图片生成工具，不能据此断言M3本身应直接生图；MiniMax平台另有[Image-01图片生成接口](https://platform.minimaxi.com/docs/guides/image-generation)及支持 `text_to_image` 的[官方MCP](https://platform.minimaxi.com/docs/guides/mcp-guide)，本次工具链未接通。最终正文把逐章局部参考文献列表重复插入，出现210条编号项；证据CSV错列，DOCX实际为0个表格、0个Heading 1且无TOC字段，与自报PASS不一致。
 
+### 文献信源执行审计
+
+同一批v0.7.0产物还按管理案例方向的信源契约进行了只读复核：发现层负责找候选，证据层必须阅读全文、正式披露或官方数据，Crossref/OpenAlex只属于发现或元数据核验层；案例数字还应定位到披露文件、页码、日期和报表口径。严格按这一标准，四组均未完全通过。
+
+| 执行环境 | 发现层 | 证据层 | 核验与状态 | 权限声明 | 案例页码 | 结论 |
+|---|---|---|---|---|---|---|
+| Grok Build | 通过 | 基本通过 | 少量状态误标 | 通过 | 不完整 | **基本合规，最佳** |
+| Kimi → WorkBuddy K3接力 | 通过 | 基本通过 | 通过 | 通过 | 不完整 | **基本合规** |
+| MiniMax M3 / Claude Code | 基本通过 | 不通过 | CSV错列、仅元数据 | 通过 | 不通过 | **未达到要求** |
+| Gemini 3.7 Flash / Antigravity | 存疑 | 不通过 | 虚报全文、错误DOI | 不通过 | 不通过 | **严重不合规** |
+
+- **Grok Build**：50条证据记录中有38条元数据、9条全文、3条自创的 `VERIFIED_EXTERNAL`；真实保存了10个年报、政策和统计来源文件，并明确声明CNKI/WoS/CSMAR/Wind未访问。缺口是1条期刊摘要被标成全文、3条状态不在受控值中，以及年报数字没有逐项页码。
+- **Kimi → K3接力**：54条记录中41条元数据、13条官方网页或披露全文；CNKI/WoS不可访问的声明真实，Crossref只用于英文题录。缺口是没有保存本地来源文件，部分案例依赖媒体转载，案例数字缺页码，检索日志49条与最终54条之间存在5条增量未解释。
+- **MiniMax M3**：检索路线正确列出了OpenAlex、Crossref、交易所、统计局和CCFA，也诚实声明受限库未访问；但65条全部停在元数据层，5行CSV错列，没有保存年报全文，交易所和政府条目多为站点首页，无法支撑八家企业的精确案例结论。
+- **Gemini 3.7 Flash**：46条中42条声称全文核验，却没有保存来源全文，至少14条仅以Crossref作为“全文”依据；日志还声称访问Web of Science并产生215条命中，缺少访问路径和结果证据。抽查的Cachon与Fisher条目使用了错误题名和404 DOI `10.1287/mnsc.46.8.1032.12023`，INFORMS官方记录的正确DOI为 [`10.1287/mnsc.46.8.1032.12029`](https://pubsonline.informs.org/doi/10.1287/mnsc.46.8.1032.12029)。
+
+这次审计暴露出四个应机械化的门禁：`VERIFIED_FULLTEXT`不能只由Crossref/OpenAlex支持；管理案例关键数字必须记录 `source_file + page_locator + reporting_period + calculation`；检索日志宣称使用的数据库必须保存查询式和结果证据；证据矩阵必须先通过列数与受控状态检查。
+
 v0.8.0据此新增图片调用与VLM回执、数据执行血缘、DOCX标题/目录/题注解析、PDF深度解析和更严格的真实性门；v0.8.2继续增加学术正文自然表达与弱模型SVG布局编译。未来实测必须注明Skill版本、运行客户端、实际工具和是否发生模型接力。
 
 ## 文献信源
