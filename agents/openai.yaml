@@ -1,6 +1,6 @@
 interface:
   display_name: "AIWritePaper 单提示词论文生产"
-  short_description: "确定性合成一份完整MD，完成论文、开题、答辩与文档"
-  default_prompt: "使用 $aiwritepaper-agentic-skill 根据题目选择唯一方向，确定性合成 final-execution-prompt.md，并完成论文、配图、DOCX/PDF或指定验收。"
+  short_description: "单一MD完成论文，并闭环验收配图、字数与文档"
+  default_prompt: "使用 $aiwritepaper-agentic-skill 根据题目选择唯一方向和当前Agent适配层，确定性合成 final-execution-prompt.md，完成论文、逐张配图、DOCX/PDF与闭环验收。"
 policy:
   allow_implicit_invocation: true

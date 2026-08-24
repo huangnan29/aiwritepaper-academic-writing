@@ -7,6 +7,8 @@ import hashlib
 import importlib.util
 import json
 from pathlib import Path
+import subprocess
+import sys
 import tempfile
 import unittest
 import zipfile
@@ -25,6 +27,17 @@ class FigurePackageTests(unittest.TestCase):
         self.root = Path(self.temp.name)
         (self.root / "figures").mkdir()
         (self.root / "data").mkdir()
+        (self.root / "00-capability-report.json").write_text(json.dumps({
+            "schema_version": "1.0", "agent_adapter": "codex",
+            "observed_at": "2026-08-24T09:00:00-07:00",
+            "image_generation": {
+                "available": True, "callers": ["CURRENT_AGENT"],
+                "tools": ["imagegen"], "evidence": "测试工具清单",
+            },
+            "visual_inspection": {"available": True, "callers": ["CURRENT_AGENT"], "tools": ["view_image"], "evidence": "测试"},
+            "docx_export": {"available": True, "callers": ["CURRENT_AGENT"], "tools": ["python-docx"], "evidence": "测试"},
+            "pdf_export": {"available": True, "callers": ["CURRENT_AGENT"], "tools": ["pypdf"], "evidence": "测试"},
+        }, ensure_ascii=False), encoding="utf-8")
         (self.root / "data/results.csv").write_text("group,value\nA,1\nB,2\n", encoding="utf-8")
         (self.root / "figures/plot.py").write_text("print('plot from data/results.csv')\n", encoding="utf-8")
         (self.root / "figures/fig-1-final.png").write_bytes(b"\x89PNG\r\n\x1a\nfixture")
@@ -58,15 +71,19 @@ class FigurePackageTests(unittest.TestCase):
                 writer.write(handle)
         except ImportError:
             (self.root / "final-paper.pdf").write_bytes(b"%PDF-1.4\n%%EOF")
+        (self.root / "run-manifest.json").write_text(json.dumps({
+            "docx": "final-paper.docx", "pdf": "final-paper.pdf",
+        }), encoding="utf-8")
         script_hash = hashlib.sha256((self.root / "figures/plot.py").read_bytes()).hexdigest()
         final_hash = hashlib.sha256((self.root / "figures/fig-1-final.png").read_bytes()).hexdigest()
         vlm_receipt_hash = hashlib.sha256((self.root / "figures/vlm-receipt.txt").read_bytes()).hexdigest()
         source_hash = hashlib.sha256((self.root / "data/results.csv").read_bytes()).hexdigest()
         execution_hash = hashlib.sha256((self.root / "figures/data-execution.log").read_bytes()).hexdigest()
         self.manifest = {
-            "schema_version": "1.2",
+            "schema_version": "1.3",
             "figures": [{
-                "figure_id": "fig-1", "title": "趋势图", "figure_type": "STATISTICAL",
+                "figure_id": "fig-1", "display_number": "1", "title": "趋势图", "figure_type": "STATISTICAL",
+                "imagegen_eligible": False, "route_exemption": "DOMAIN_EXACTNESS",
                 "claim_bearing": True, "generation_route": "DATA_CODE", "data_status": "OBSERVED",
                 "prompt_file": None, "generated_file": None, "fallback_file": None,
                 "source_data": [{"dataset_id": "results-v1", "file": "data/results.csv", "sha256": source_hash}],
@@ -106,6 +123,7 @@ class FigurePackageTests(unittest.TestCase):
 
     def verify(self) -> MODULE.FigureVerifier:
         verifier = MODULE.FigureVerifier(self.root)
+        verifier.verify_capability_report(self.root / "00-capability-report.json")
         verifier.verify_manifest(self.root / "figures/figure-manifest.json")
         verifier.verify_manifest_summary(self.root / "figures/figure-manifest.md")
         verifier.verify_markdown(self.root / "07-paper-full.md")
@@ -115,6 +133,14 @@ class FigurePackageTests(unittest.TestCase):
 
     def test_valid_package(self) -> None:
         self.assertEqual(self.verify().errors, [])
+
+    def test_cli_reads_document_paths_from_run_manifest(self) -> None:
+        result = subprocess.run(
+            [sys.executable, str(SCRIPT), "--root", str(self.root)],
+            capture_output=True, text=True, check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(json.loads(result.stdout)["status"], "STRUCTURE_OK")
 
     def test_proposed_data_status_fails(self) -> None:
         self.manifest["figures"][0]["data_status"] = "PROPOSED"
@@ -171,6 +197,25 @@ class FigurePackageTests(unittest.TestCase):
         self.write_manifest()
         errors = self.verify().errors
         self.assertTrue(any("FINAL_FORMAT" in item for item in errors))
+
+    def test_imagegen_available_blocks_structural_svg(self) -> None:
+        figure = self.manifest["figures"][0]
+        (self.root / "figures/fallback.svg").write_text(
+            '<svg xmlns="http://www.w3.org/2000/svg"><style>text{font-family:"PingFang SC"}</style></svg>',
+            encoding="utf-8",
+        )
+        figure.update({
+            "figure_type": "PROCESS", "imagegen_eligible": True,
+            "route_exemption": "IMAGE_TOOL_UNAVAILABLE", "generation_route": "SVG_FALLBACK",
+            "data_status": "NOT_APPLICABLE", "claim_bearing": False,
+            "fallback_file": "figures/fallback.svg", "source_data": [],
+            "transformation": {"method": "svg-render"}, "capability_gap": "子执行器未暴露工具",
+            "svg_layout_mode": "NATIVE", "svg_layout": None,
+        })
+        self.write_manifest()
+        errors = self.verify().errors
+        self.assertTrue(any("IMAGEGEN_BYPASSED" in item for item in errors))
+        self.assertTrue(any("FALSE_IMAGE_TOOL_GAP" in item for item in errors))
 
     def test_valid_image_generation_embeds_generated_file(self) -> None:
         figure = self.manifest["figures"][0]
@@ -342,7 +387,7 @@ class FigurePackageTests(unittest.TestCase):
                 "spec_sha256": hashlib.sha256(spec.read_bytes()).hexdigest(),
                 "report_file": "figures/fig-1-layout-report.json",
                 "report_sha256": hashlib.sha256(report.read_bytes()).hexdigest(),
-                "renderer": "aiwritepaper-agentic-skill@0.8.2/render_svg_layout.mjs",
+                "renderer": "aiwritepaper-agentic-skill@0.9.0/render_svg_layout.mjs",
                 "renderer_sha256": hashlib.sha256(renderer.read_bytes()).hexdigest(),
             },
         })

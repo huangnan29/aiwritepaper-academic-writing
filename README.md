@@ -4,7 +4,7 @@
 
 **从论文题目到一份完整执行提示词，再持续交付正文、配图、DOCX 与 PDF。**
 
-![Version](https://img.shields.io/badge/version-0.8.2-2563EB?style=flat-square)
+![Version](https://img.shields.io/badge/version-0.9.0-2563EB?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-16A34A?style=flat-square)
 ![Architecture](https://img.shields.io/badge/architecture-MD--first-7C3AED?style=flat-square)
 ![Directions](https://img.shields.io/badge/paper%20directions-19-EA580C?style=flat-square)
@@ -14,7 +14,29 @@
 </div>
 
 > [!NOTE]
-> 当前版本采用 **MD-first 单提示词执行**。Skill先判断论文方向，模型只写本次参数头，再通过确定性文件拼接生成 `final-execution-prompt.md`。正式执行阶段不再跳转多层规则，脚本也不控制论文内容、证据或最终状态。
+> 当前版本采用 **MD-first 单提示词执行 + Agent能力适配 + 确定性交付验收**。模型继续负责方向、检索、论证、写作和配图语义；脚本只统计字数、核对图片路由、文件、目录、表格与哈希，不生成论文内容。
+
+## v0.9.0解决什么
+
+```text
+统一Skill规则
+    ↓
+按当前客户端合入一个Agent适配文件
+    ↓
+模型完成论文与完整图片任务单
+    ↓
+当前执行器或父代理逐张调用真实图片工具
+    ↓
+图表验收 + 正文/文献/文档验收
+    ↓
+失败返回对应阶段修复，通过后才允许交付
+```
+
+- **Agent适配**：Codex、Grok、Gemini/Antigravity、Claude/Cursor、Kimi/WorkBuddy和通用终端Agent只维护短小工具映射，19个论文方向仍共用同一套规则。
+- **父子代理生图交接**：只要当前执行器、父代理、客户端或MCP任一层可以生图，适合生图的结构图就不能降级为SVG；Grok父代理不得只补第一张概念图。
+- **统一字数**：最终正文由确定性检查器按同一口径重新统计，模型自报和章节预算不能覆盖结果。
+- **文档闭环**：正式DOCX/PDF必须带相同时间戳，Manifest路径和哈希真实存在；Word目录、Heading层级、表格和图片题注缺失会阻止交付。
+- **双状态**：`RESEARCH_STATUS` 描述研究材料是否完整，`DELIVERY_STATUS` 描述文件是否合格；诚实降级的研究方案不再与损坏的Word交付混为一谈。
 
 ## 你会得到什么
 
@@ -29,6 +51,7 @@
 | 学术配图 | 有图片工具时逐张生图；统计图由真实数据和代码生成 |
 | 图表证据链 | 大纲先建立figure plan；图表追溯数据、脚本、图题主张、正文使用和局限 |
 | 文档交付 | 生成并检查DOCX、PDF、目录、标题层级、题注和页码；最终文件按论文题目与时间戳命名 |
+| 闭环验收 | 图表与正文/证据/文档分别机械验收，失败后返回对应阶段修复 |
 | 条件模式 | 支持单独配图、只导出文档、只审计、只做方向判断、开题报告和答辩材料 |
 
 ## 工作方式
@@ -44,7 +67,9 @@
     ↓
 final-execution-prompt.md
     ↓
-检索 → 大纲与figure plan → 分章 → 配图与Figure Trace → 整合 → DOCX/PDF → QA
+检索 → 大纲与figure plan → 分章 → Agent/父代理逐张配图 → 整合 → DOCX/PDF
+    ↓
+图表验收 → 正文/证据/文档验收 → QA
 ```
 
 每个 `references/compiled-prompts/*-full.md` 都是完整、自包含的论文生产提示词。模型选中一个方向后，不再复述这份长文本；`scripts/compose_prompt.py` 只做确定性文件拼接，并输出字节数和SHA-256。模型随后从头到尾读取一次最终MD，后续只执行这一份文件。
@@ -55,6 +80,19 @@ final-execution-prompt.md
 - compiled prompt原文字节不经过模型生成；
 - 参数、完整规则和开题/答辩附加规则仍合成一份最终MD；
 - 维护脚本只负责拼接与同步校验，不参与论文决策。
+
+### Agent适配文件
+
+| 当前客户端 | 合入最终MD的适配文件 | 关键职责 |
+|---|---|---|
+| Codex | `integrations/codex.md` | 映射imagegen、视觉与文档工具 |
+| Grok Build / Bot | `integrations/grok.md` | 父代理遍历完整Imagine任务单 |
+| Gemini / Antigravity | `integrations/gemini-antigravity.md` | 只认实际暴露的Nano Banana等工具 |
+| Claude Code / Cursor | `integrations/claude-cursor.md` | 区分图片读取、SVG与真实图片生成 |
+| Kimi / WorkBuddy / MiniMax客户端 | `integrations/kimi-workbuddy.md` | 不按模型品牌推断终端工具权限 |
+| 其他终端Agent | `integrations/universal-terminal.md` | 通用能力检查与失败关闭 |
+
+适配文件在执行前与唯一方向提示词确定性合并，正式生产阶段仍只读取一份 `final-execution-prompt.md`。
 
 ## 默认规则
 
@@ -69,7 +107,7 @@ final-execution-prompt.md
 - 低于22,500不得标记 `PASS`；
 - 用户明确给出的字数、文献、图片和表格目标始终优先。
 
-正文统计范围为第一章至结论的主体论述，不含摘要、目录、参考文献、致谢、附录、代码和图表题注。
+正文统计范围为第一章至结论的主体论述，不含摘要、目录、参考文献、致谢、附录、代码、Markdown表格行和图表题注。最终值由 `verify_manuscript_delivery.py` 统一计算。
 
 ### 弱模型持续完成
 
@@ -140,6 +178,12 @@ final-execution-prompt.md
 
 v0.8.0据此新增图片调用与VLM回执、数据执行血缘、DOCX标题/目录/题注解析、PDF深度解析和更严格的真实性门；v0.8.2继续增加学术正文自然表达与弱模型SVG布局编译。未来实测必须注明Skill版本、运行客户端、实际工具和是否发生模型接力。
 
+### 2026-08-24 Grok Bot十二题回归审计
+
+十二个不同方向的v0.8.2结果证明MD-first正文与真实性边界总体稳定，但暴露了“提示词有规则、执行器仍绕过”的缺口：84张图中只有11张走图片生成、8张为真实数据代码图、65张仍为SVG；11篇只由父代理补一张概念图，库存协同一次图片生成也没有调用。按统一口径只有5篇达到22,500字正文下限，只有6篇通过当时的图表机械验收；12组实际DOCX/PDF均被打包层移除了Manifest记录的时间戳。
+
+v0.9.0据此不再继续堆叠提示语，而是新增机器能力报告、父子代理完整图片任务交接、`IMAGEGEN_BYPASSED`硬门、统一正文/证据/文档验收和打包后路径哈希复核。该审计仍是单次本地结果，不构成模型能力排行榜。
+
 ## 文献信源
 
 每个方向提示词内置该学科的文献信源清单，信源分三层使用：
@@ -205,7 +249,7 @@ v0.8.0据此新增图片调用与VLM回执、数据执行血缘、DOCX标题/目
 - `IMAGE_GENERATION` 必须保存图片工具实际返回结果或客户端调用片段，记录工具、模型、时间、调用ID以及Prompt、回执、生成文件SHA-256；
 - 只有模型文字声称“已调用Imagine/ImageGen/Nano Banana”属于 `DECLARED_ONLY`，机械校验失败；
 - VLM的 `PASS` 必须绑定视觉工具回执和被检查最终图片SHA-256，不能只填写状态；
-- `figure-manifest.json` 使用Schema 1.2，结构定义见 `references/schemas/figure-manifest.schema.json`；
+- `figure-manifest.json` 使用Schema 1.3，新增 `display_number`、`imagegen_eligible` 与 `route_exemption`；
 - 人类摘要中的每个图号和最终插图路径必须与权威JSON恰好对应一次。
 
 ### SVG降级质量
@@ -299,6 +343,7 @@ paper-output/
 ├── run-params.md
 ├── final-execution-prompt.md
 ├── 00-capability-report.md
+├── 00-capability-report.json
 ├── 01-research-contract.md
 ├── 02-search-log.md
 ├── 03-evidence-matrix.csv
@@ -308,8 +353,10 @@ paper-output/
 ├── 06-argument-map.md
 ├── chapters/
 ├── figures/
+│   ├── figure-plan.json      # 完整图片任务单
 │   ├── figure-manifest.json  # 权威机器路由
 │   ├── figure-manifest.md    # 人类可读摘要
+│   ├── figure-verification.json
 │   └── receipts/             # 图片调用与视觉检查原始回执
 ├── tables/
 ├── 07-paper-full.md
@@ -320,6 +367,7 @@ paper-output/
 ├── <论文题目>_<YYYYMMDD-HHMMSS>.pdf
 ├── 11-format-validation.md
 ├── 12-final-qa-report.md
+├── 13-delivery-verification.json
 └── run-manifest.json
 ```
 
@@ -434,15 +482,18 @@ aiwritepaper-agentic-skill/
 │   ├── build_compiled.py   # 维护时重建19份完整提示词
 │   ├── verify_compiled.py  # 只读校验源文件、路由和版本同步
 │   ├── verify_figure_package.py # 机械校验图表包、哈希与嵌图路由
+│   ├── verify_manuscript_delivery.py # 统一校验字数、证据矩阵和DOCX/PDF交付
 │   └── render_svg_layout.mjs # 无依赖的确定性SVG布局编译器
 ├── tests/
 │   ├── test_verify_figure_package.py
+│   ├── test_verify_manuscript_delivery.py
 │   └── test_render_svg_layout.mjs
 ├── references/
 │   ├── compiled-prompts/    # 运行时只读取其中一个完整提示词
 │   ├── directions/          # 19个方向增量源
 │   ├── common/              # 通用规则源，含正文质量、统计图与Figure Trace
 │   ├── schemas/             # Figure Manifest与SVG Layout Spec
+│   ├── integrations/        # 各Agent短小能力适配文件
 │   ├── routing.md            # 唯一方向路由真源
 │   ├── topic-selection.md    # 无题目时按需读取
 │   └── deliverables/         # 开题与答辩按需附加
@@ -460,7 +511,7 @@ aiwritepaper-agentic-skill/
 
 ## 维护与版本
 
-- 当前版本：`0.8.2`
+- 当前版本：`0.9.0`
 - 更新记录：[CHANGELOG.md](CHANGELOG.md)
 - Skill入口：[SKILL.md](SKILL.md)
 - 历史复杂流水线版可通过Git标签`v0.3.1-runtime-gates`恢复

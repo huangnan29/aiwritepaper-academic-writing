@@ -4,7 +4,7 @@ description: 根据题目和材料完成毕业论文、学位论文、期刊论�
 license: MIT
 metadata:
   author: huangnan29
-  version: "0.8.2"
+  version: "0.9.0"
   repository: https://github.com/huangnan29/aiwritepaper-agentic-skill
 ---
 
@@ -33,13 +33,26 @@ metadata:
 
 `ROUTE_ONLY` 到此结束，只报告题目、研究问题、唯一方向提示词、证据需求、材料缺口和降级方案，不进入论文生产。
 
-## 三、确定性合成最终执行提示词
+## 三、选择当前Agent适配层
+
+根据实际运行客户端选择一个且仅一个适配文件，并把它合入最终执行提示词。适配层只映射工具名称、父子代理能力交接和验收调用，不改变论文方向或内容：
+
+- Codex：`references/integrations/codex.md`
+- Grok Build或Grok Bot：`references/integrations/grok.md`
+- Gemini CLI或Antigravity：`references/integrations/gemini-antigravity.md`
+- Claude Code或Cursor：`references/integrations/claude-cursor.md`
+- Kimi Code、WorkBuddy或其承载的MiniMax模型：`references/integrations/kimi-workbuddy.md`
+- OpenCode、GitHub Copilot、ZCode、DeepSeek-tui及其他终端Agent：`references/integrations/universal-terminal.md`
+
+不要按模型宣传能力推断工具。适配文件要求检查当前执行器、父代理、客户端和MCP/插件实际暴露的能力；任一层可以调用图片生成时，不能把“当前子执行器无工具”当成整个任务无工具。
+
+## 四、确定性合成最终执行提示词
 
 除 `ROUTE_ONLY` 和尚未选题的情况外，在用户输出目录创建 `run-params.md`，只写以下本次运行内容：
 
 1. 真实运行参数：模式、输出目录、`MODEL_LABEL`、题目、论文类型、学科、研究对象、核心问题、语言、目标正文长度、引用格式、最低文献数、图片数、表格数、模板和用户材料；
 2. 用户明确的目录、工具、真实性、格式和停止条件；
-3. 能力缺口与降级边界，不提前写研究结果。
+3. 当前Agent适配文件、可能的父代理调用层、能力缺口与降级边界，不提前写研究结果。
 
 `MODEL_LABEL` 只用于多模型对比测试、运行清单和结果区分；它不进入论文署名，也不改变正文内容或学术结论。用户没有指定时使用当前工作目录名称。
 
@@ -49,6 +62,7 @@ metadata:
 python3 "<SKILL_DIR>/scripts/compose_prompt.py" \
   --params "<OUTPUT_DIR>/run-params.md" \
   --compiled "<SKILL_DIR>/references/compiled-prompts/<PROMPT>-full.md" \
+  --addon "<SKILL_DIR>/references/integrations/<ADAPTER>.md" \
   --output "<OUTPUT_DIR>/final-execution-prompt.md"
 ```
 
@@ -62,13 +76,15 @@ python3 "<SKILL_DIR>/scripts/compose_prompt.py" \
 
 用户没有另行指定 `OUTPUT_DIR` 时使用当前工作目录。目录边界明确时，除读取Skill与用户授权材料外，只在该输出目录写入，不访问其他模型结果目录。
 
-## 四、持续执行
+## 五、持续执行与闭环验收
 
 按照 `final-execution-prompt.md` 直接执行。已有题目的 `FULL_BUILD` 不输出路由方案后停顿，不要求用户再次批准大纲，不把论文正文只留在聊天窗口。
 
 执行模型自主选择当前可用工具。只有数据统计图、DOCX/PDF导出或本次任务确实需要时，才在输出目录创建项目专用代码；不得调用Skill维护脚本决定正文、证据、章节状态或 `PASS`。
 
-`scripts/verify_figure_package.py` 只允许检查图表Manifest、图片/VLM回执、文件摘要、Markdown路由、DOCX嵌图与标题/目录/题注结构以及基础PDF解析；它的结构通过不代表图表结论正确，也不能单独决定论文 `PASS`。
+`scripts/verify_figure_package.py` 只允许检查能力报告与配图路由、图表Manifest、图片/VLM回执、文件摘要、Markdown路由、DOCX嵌图与标题/目录/题注结构以及基础PDF解析；`scripts/verify_manuscript_delivery.py` 只允许统一统计正文、检查证据矩阵结构、正式文件名、路径、哈希、Word表格/目录和PDF基础状态。两者都不决定论文观点、证据取舍或研究完成度。
+
+最终交付前必须运行两个检查器。图表检查失败时回到配图阶段；正文、文献或文档检查失败时回到对应阶段。任何检查失败都不得写 `DELIVERY_STATUS: PASS`。脚本通过只表示机械交付一致，不证明学术结论正确。
 
 图片工具已经成功生成某图时，正文、DOCX和PDF必须插入该生成图或由它合成的最终PNG；同名SVG只能作为备用或修正源。最终嵌入路径以图表清单中的 `final_embed_file` 为唯一依据，不能按文件名或扩展名自行改选SVG。
 

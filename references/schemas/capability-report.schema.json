@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/huangnan29/aiwritepaper-agentic-skill/capability-report.schema.json",
+  "title": "AIWritePaper Capability Report",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["schema_version", "agent_adapter", "observed_at", "image_generation", "visual_inspection", "docx_export", "pdf_export"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "agent_adapter": {"type": "string", "minLength": 1},
+    "observed_at": {"type": "string", "minLength": 1},
+    "image_generation": {"$ref": "#/$defs/capability"},
+    "visual_inspection": {"$ref": "#/$defs/capability"},
+    "docx_export": {"$ref": "#/$defs/capability"},
+    "pdf_export": {"$ref": "#/$defs/capability"}
+  },
+  "$defs": {
+    "capability": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["available", "callers", "tools", "evidence"],
+      "properties": {
+        "available": {"type": "boolean"},
+        "callers": {
+          "type": "array",
+          "items": {"enum": ["CURRENT_AGENT", "PARENT_AGENT", "CLIENT", "MCP_OR_PLUGIN"]}
+        },
+        "tools": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "evidence": {"type": "string", "minLength": 1}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"available": {"const": true}}},
+          "then": {"properties": {"callers": {"minItems": 1}, "tools": {"minItems": 1}}}
+        }
+      ]
+    }
+  }
+}

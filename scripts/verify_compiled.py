@@ -133,13 +133,22 @@ def main() -> int:
         "references/prompt-composition.md",
         "references/deliverables/proposal-report.md",
         "references/deliverables/defense-presentation.md",
+        "references/integrations/codex.md",
+        "references/integrations/grok.md",
+        "references/integrations/gemini-antigravity.md",
+        "references/integrations/claude-cursor.md",
+        "references/integrations/kimi-workbuddy.md",
+        "references/integrations/universal-terminal.md",
     ]
     for reference in required_refs:
         if reference not in skill_text:
             errors.append(f"SKILL.md未接通: {reference}")
     if "references/figure-skills/" in skill_text:
         errors.append("SKILL.md仍引用空的references/figure-skills目录")
-    for script_name in ["compose_prompt.py", "build_compiled.py", "verify_compiled.py", "verify_figure_package.py"]:
+    for script_name in [
+        "compose_prompt.py", "build_compiled.py", "verify_compiled.py",
+        "verify_figure_package.py", "verify_manuscript_delivery.py",
+    ]:
         if not (SKILL_ROOT / "scripts" / script_name).is_file():
             errors.append(f"缺少脚本: scripts/{script_name}")
     if not (SKILL_ROOT / "scripts" / "render_svg_layout.mjs").is_file():
@@ -161,6 +170,7 @@ def main() -> int:
         "generation_receipt", "NATIVE_TOOL_RESULT", "checked_file_sha256", "schema_version",
         "execution_receipt", "output_sha256", "SVG降级图的机械校验",
         "svg_layout_mode", "COMPILED", "figure-spec.json",
+        "display_number", "imagegen_eligible", "route_exemption", "IMAGEGEN_BYPASSED",
     ]:
         if required_term not in figure_rules:
             errors.append(f"图表公共规则缺少关键契约: {required_term}")
@@ -173,10 +183,18 @@ def main() -> int:
     schema_path = SKILL_ROOT / "references" / "schemas" / "figure-manifest.schema.json"
     try:
         schema = json.loads(schema_path.read_text(encoding="utf-8"))
-        if schema.get("properties", {}).get("schema_version", {}).get("const") != "1.2":
-            errors.append("Figure Manifest Schema版本不是1.2")
+        if schema.get("properties", {}).get("schema_version", {}).get("const") != "1.3":
+            errors.append("Figure Manifest Schema版本不是1.3")
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:
         errors.append(f"Figure Manifest Schema不可用: {exc}")
+
+    capability_schema_path = SKILL_ROOT / "references" / "schemas" / "capability-report.schema.json"
+    try:
+        capability_schema = json.loads(capability_schema_path.read_text(encoding="utf-8"))
+        if capability_schema.get("properties", {}).get("schema_version", {}).get("const") != "1.0":
+            errors.append("Capability Report Schema版本不是1.0")
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        errors.append(f"Capability Report Schema不可用: {exc}")
 
     svg_schema_path = SKILL_ROOT / "references" / "schemas" / "svg-layout-spec.schema.json"
     try:

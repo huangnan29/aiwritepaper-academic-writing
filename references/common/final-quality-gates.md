@@ -13,10 +13,12 @@
 - 全文只有一份连续参考文献，各章没有重复插入局部书目；摘要、章节首尾与结论没有机械复述同一套多层分类；
 - 主体段落由具体材料、推理和边界推动，不以大量加粗列表、空泛框架词或无证据的“显著、全面、有效”代替论证；
 - 实际字数、图、表和文献达到合同要求；
+- `00-capability-report.json` 可解析，且图片生成能力覆盖当前执行器、父代理、客户端与MCP/插件；
 - 图表不裁切、不越界，表格宽度合理；
 - 详细大纲包含 `figure_plan[]`，每张实际图片均能回到计划中的目的、来源、路线和位置；
 - 权威 `figures/figure-manifest.json` 可解析、图号唯一、条件字段完整，Markdown摘要没有覆盖JSON路由；
 - 图片能力Agent应生图的每张图均有独立Prompt和真实位图；数据统计图有数据与代码；SVG降级图在PNG、DOCX、PDF中没有字体替换、方框、乱码、缺字、溢出或裁切；
+- 图片生成能力可用时，任何 `imagegen_eligible=true` 的图都没有进入SVG降级；父代理代调时完整图片任务单已逐张执行，不是只补第一张概念图；
 - `IMAGE_GENERATION` 每次调用均保存原生工具结果或客户端调用片段，Manifest记录Prompt、回执和原始生成文件SHA-256；只有模型自述、回执缺失或摘要不匹配时不得标记通过；
 - 主张型统计图的 `data_status` 不是 `PROPOSED` 或 `HARDCODED_EXAMPLE`，真实数据、脚本与脚本SHA-256均存在；研究仿真只有在方法本身为仿真且保留参数、种子和输出数据时才允许；
 - `DATA_CODE` 的每个源数据文件均有SHA-256，实际执行回执绑定命令、运行日志、输入、脚本和最终输出摘要；只有脚本文件而没有执行证据时不得通过；
@@ -37,9 +39,24 @@
 - 所有最终文件计算 SHA-256。
 - 最终DOCX与PDF文件名均为“安全论文题目_YYYYMMDD-HHMMSS”，共用同一时间戳；`run-manifest.json`记录生成时间、时区、正式路径和SHA-256，不能把 `final-paper.docx/.pdf` 列为最终交付。
 
-存在Python能力时运行 `scripts/verify_figure_package.py` 做机械校验。该脚本同时解析DOCX的标题样式、TOC字段、图题重复和媒体摘要，并使用可用PDF解析器检查页数、疑似空白页与图像对象；缺少深度PDF解析依赖时必须保留警告。脚本通过只证明结构、回执、文件摘要和嵌入路由一致，不证明图表的学术结论正确；脚本失败时不得标记 `PASS`，脚本通过也不能替代视觉与学术判断。
+存在Python能力时依次运行 `scripts/verify_figure_package.py` 与 `scripts/verify_manuscript_delivery.py`，分别把结果写入 `figures/figure-verification.json` 和 `13-delivery-verification.json`。前者检查能力与路由、DOCX图片/图题和PDF基础状态；后者统一统计正文、检查证据矩阵、正式文件名、路径、哈希、Word表格/目录和PDF。任一脚本失败时 `DELIVERY_STATUS=FAIL`，返回对应阶段修复后重新运行；脚本通过不证明学术结论正确，也不能替代视觉与学术判断。
 
-把实际值和目标值写入 `12-final-qa-report.md` 与 `run-manifest.json`：正文长度及目标区间、文献数、图片数、表格数、DOCX/PDF状态、Critical/Important数量和能力缺口。状态只能为：
+```bash
+python3 "<SKILL_DIR>/scripts/verify_figure_package.py" \
+  --root "<OUTPUT_DIR>" \
+  --report "figures/figure-verification.json"
+
+python3 "<SKILL_DIR>/scripts/verify_manuscript_delivery.py" \
+  --root "<OUTPUT_DIR>" \
+  --target "<TARGET_LENGTH>" \
+  --minimum "<MIN_LENGTH>" \
+  --maximum "<MAX_LENGTH>" \
+  --report "13-delivery-verification.json"
+```
+
+`FIGURES_ONLY` 且用户没有要求重新导出文档时，第一个命令增加 `--skip-documents`；`FULL_BUILD` 不得跳过文档检查。检查器默认从 `run-manifest.json` 读取正式DOCX/PDF路径，避免模型传入另一个临时文件规避验收。
+
+把实际值和目标值写入 `12-final-qa-report.md` 与 `run-manifest.json`：正文长度及目标区间、文献数、图片数、表格数、DOCX/PDF状态、Critical/Important数量、能力缺口、`RESEARCH_STATUS`、`DELIVERY_STATUS`和两份验收报告路径。总状态只能为：
 
 - `PASS`：所有用户硬目标和真实性边界均满足；
 - `PARTIAL`：核心初稿可用，但存在明确能力、材料、模板、数量或格式缺口；

@@ -62,13 +62,16 @@ figure_plan:
 
 ## 权威Figure Manifest
 
-`figures/figure-manifest.json` 是机器可读的唯一插图路由真源；`figures/figure-manifest.md` 是供人阅读的摘要，不能被导出程序用于重新选图。JSON根对象包含 `schema_version` 与 `figures[]`，当前版本为 `1.2`。每张图至少记录：
+`figures/figure-manifest.json` 是机器可读的唯一插图路由真源；`figures/figure-manifest.md` 是供人阅读的摘要，不能被导出程序用于重新选图。JSON根对象包含 `schema_version` 与 `figures[]`，当前版本为 `1.3`。每张图至少记录：
 
 ```json
 {
   "figure_id": "fig-4-1",
+  "display_number": "4-1",
   "title": "图题文字",
   "figure_type": "STATISTICAL",
+  "imagegen_eligible": false,
+  "route_exemption": null,
   "claim_bearing": true,
   "generation_route": "DATA_CODE",
   "data_status": "OBSERVED",
@@ -113,6 +116,9 @@ figure_plan:
 条件字段规则：
 
 - `IMAGE_GENERATION`：必须有独立 `prompt_file` 与真实 `generated_file`；最终文件若不同，必须记录文字、箭头或格式合成过程，不能改用纯SVG重画。
+- `display_number` 是Word/PDF唯一图号来源，必须在全文唯一；不得从 `figure_id` 或文件名猜测图号。
+- 流程、架构、ER/UML、组织、机制、研究框架、时间线和概念场景通常设置 `imagegen_eligible=true`。当能力报告显示图片生成可用时，这些图只能使用 `IMAGE_GENERATION`，否则机械校验返回 `IMAGEGEN_BYPASSED`。
+- `route_exemption` 只能为 `USER_REQUESTED_VECTOR`、`PUBLICATION_RESTRICTION`、`IMAGE_TOOL_UNAVAILABLE`、`DOMAIN_EXACTNESS`、`EVIDENCE_REQUIRED` 或 `null`。图片能力可用时，`IMAGE_TOOL_UNAVAILABLE` 不能作为豁免。
 - `DATA_CODE`：必须有 `source_data`、每个输入文件SHA-256、脚本、脚本SHA-256、实际执行回执和非空最终文件；执行回执记录实际命令、输入摘要、脚本摘要、输出摘要及原始日志，主张型统计图不能使用 `NOT_APPLICABLE`。
 - `DOMAIN_TOOL`：记录领域工具、输入文件与导出过程。
 - `EVIDENCE_FILE`：记录原始科研文件、采集或处理来源；不得生成证据区域。
@@ -127,7 +133,7 @@ figure_plan:
   "spec_sha256": "...",
   "report_file": "figures/fig-2-1-layout-report.json",
   "report_sha256": "...",
-  "renderer": "aiwritepaper-agentic-skill@0.8.2/render_svg_layout.mjs",
+  "renderer": "aiwritepaper-agentic-skill@0.9.0/render_svg_layout.mjs",
   "renderer_sha256": "..."
 }
 ```

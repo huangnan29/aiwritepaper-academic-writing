@@ -21,11 +21,16 @@ DATA_STATUSES = {"OBSERVED", "VERIFIED_EXTERNAL", "SIMULATED_RESEARCH", "NOT_APP
 VLM_STATUSES = {"PASS", "PASS_WITH_NOTES", "NEEDS_REVIEW", "SKIPPED"}
 RECEIPT_LEVELS = {"NATIVE_TOOL_RESULT", "CLIENT_TRANSCRIPT", "DECLARED_ONLY"}
 VLM_EVIDENCE_LEVELS = {"VISUAL_TOOL_RESULT", "CLIENT_TRANSCRIPT", "DECLARED_ONLY"}
+ROUTE_EXEMPTIONS = {
+    "USER_REQUESTED_VECTOR", "PUBLICATION_RESTRICTION", "IMAGE_TOOL_UNAVAILABLE",
+    "DOMAIN_EXACTNESS", "EVIDENCE_REQUIRED", None,
+}
 FINAL_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
 CJK_FONTS = ["Noto Sans CJK", "Source Han Sans", "PingFang SC", "Microsoft YaHei", "WenQuanYi", "SimHei"]
 WORD_NS = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
 REQUIRED_FIELDS = {
-    "figure_id", "title", "figure_type", "claim_bearing", "generation_route",
+    "figure_id", "display_number", "title", "figure_type", "imagegen_eligible", "route_exemption",
+    "claim_bearing", "generation_route",
     "data_status", "prompt_file", "generated_file", "fallback_file", "source_data",
     "transformation", "caption_claim", "supported_manuscript_claims", "limitations",
     "canvas_contains_figure_number_or_caption", "final_embed_file", "generation_receipt",
@@ -40,6 +45,8 @@ class FigureVerifier:
         self.warnings: List[str] = []
         self.final_files: Dict[str, Path] = {}
         self.figure_titles: Dict[str, str] = {}
+        self.figure_numbers: Dict[str, str] = {}
+        self.image_generation_available: Optional[bool] = None
 
     def error(self, code: str, detail: str) -> None:
         self.errors.append(f"{code}: {detail}")
@@ -74,6 +81,33 @@ class FigureVerifier:
                 digest.update(chunk)
         return digest.hexdigest()
 
+    def verify_capability_report(self, report_path: Path) -> Dict[str, Any]:
+        """读取机器能力报告，阻止父层可生图时被子执行器降级为SVG。"""
+        try:
+            report = json.loads(report_path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+            self.error("CAPABILITY_REPORT_INVALID", str(exc))
+            return {}
+        if not isinstance(report, dict) or report.get("schema_version") != "1.0":
+            self.error("CAPABILITY_SCHEMA_VERSION", "当前仅接受schema_version=1.0")
+            return report if isinstance(report, dict) else {}
+        adapter = report.get("agent_adapter")
+        if not isinstance(adapter, str) or not adapter.strip():
+            self.error("CAPABILITY_ADAPTER_MISSING", "agent_adapter")
+        image_generation = report.get("image_generation")
+        if not isinstance(image_generation, dict) or not isinstance(image_generation.get("available"), bool):
+            self.error("CAPABILITY_IMAGE_INVALID", "image_generation.available必须为布尔值")
+            return report
+        self.image_generation_available = image_generation["available"]
+        callers = image_generation.get("callers")
+        tools = image_generation.get("tools")
+        evidence = image_generation.get("evidence")
+        if not isinstance(callers, list) or not isinstance(tools, list) or not isinstance(evidence, str) or not evidence.strip():
+            self.error("CAPABILITY_IMAGE_EVIDENCE", "callers、tools或evidence无效")
+        if self.image_generation_available and (not callers or not tools):
+            self.error("CAPABILITY_IMAGE_TOOLS_MISSING", "图片能力可用时必须记录调用层和工具")
+        return report
+
     def verify_manifest(self, manifest_path: Path) -> Dict[str, Any]:
         try:
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -83,10 +117,11 @@ class FigureVerifier:
         if not isinstance(manifest, dict) or not isinstance(manifest.get("figures"), list):
             self.error("MANIFEST_SHAPE", "根对象必须包含figures数组")
             return manifest if isinstance(manifest, dict) else {}
-        if manifest.get("schema_version") != "1.2":
-            self.error("SCHEMA_VERSION", "当前仅接受schema_version=1.2")
+        if manifest.get("schema_version") != "1.3":
+            self.error("SCHEMA_VERSION", "当前仅接受schema_version=1.3")
 
         seen_ids: Set[str] = set()
+        seen_numbers: Set[str] = set()
         seen_final: Set[str] = set()
         for index, figure in enumerate(manifest["figures"]):
             if not isinstance(figure, dict):
@@ -100,11 +135,31 @@ class FigureVerifier:
                 self.error("DUPLICATE_ID", figure_id)
             seen_ids.add(figure_id)
 
+            display_number = figure.get("display_number")
+            if not isinstance(display_number, str) or not re.fullmatch(r"[0-9]+(?:-[0-9]+)*", display_number):
+                self.error("DISPLAY_NUMBER_INVALID", figure_id)
+            else:
+                if display_number in seen_numbers:
+                    self.error("DUPLICATE_DISPLAY_NUMBER", display_number)
+                seen_numbers.add(display_number)
+                self.figure_numbers[figure_id] = display_number
+
             route = figure.get("generation_route")
             if route not in ROUTES:
                 self.error("ROUTE_INVALID", f"{figure_id}: {route}")
             if figure.get("figure_type") not in FIGURE_TYPES:
                 self.error("FIGURE_TYPE_INVALID", f"{figure_id}: {figure.get('figure_type')}")
+            imagegen_eligible = figure.get("imagegen_eligible")
+            if not isinstance(imagegen_eligible, bool):
+                self.error("IMAGEGEN_ELIGIBLE_INVALID", figure_id)
+            exemption = figure.get("route_exemption")
+            if exemption not in ROUTE_EXEMPTIONS:
+                self.error("ROUTE_EXEMPTION_INVALID", f"{figure_id}: {exemption}")
+            if imagegen_eligible is True and self.image_generation_available is True and route != "IMAGE_GENERATION":
+                if exemption not in {"USER_REQUESTED_VECTOR", "PUBLICATION_RESTRICTION"}:
+                    self.error("IMAGEGEN_BYPASSED", f"{figure_id}: 图片工具可用但路线为{route}")
+            if exemption == "IMAGE_TOOL_UNAVAILABLE" and self.image_generation_available is True:
+                self.error("FALSE_IMAGE_TOOL_GAP", figure_id)
             if not isinstance(figure.get("title"), str) or not figure.get("title").strip():
                 self.error("TITLE_MISSING", figure_id)
             else:
@@ -527,7 +582,7 @@ class FigureVerifier:
                     number = re.sub(r"\s+", "", match.group(1)).replace("－", "-").replace("—", "-").replace(".", "-")
                     caption_counts[number] = caption_counts.get(number, 0) + 1
             for figure_id in self.final_files:
-                number = figure_id[4:] if figure_id.startswith("fig-") else figure_id
+                number = self.figure_numbers.get(figure_id, "")
                 count = caption_counts.get(number, 0)
                 if count == 0:
                     self.error("DOCX_FIGURE_CAPTION_MISSING", figure_id)
@@ -582,10 +637,13 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="校验AIWritePaper图表包的机械一致性")
     parser.add_argument("--root", type=Path, default=Path.cwd())
     parser.add_argument("--manifest", type=Path, default=Path("figures/figure-manifest.json"))
+    parser.add_argument("--capability-report", type=Path, default=Path("00-capability-report.json"))
     parser.add_argument("--markdown", type=Path, default=Path("07-paper-full.md"))
     parser.add_argument("--manifest-summary", type=Path, default=Path("figures/figure-manifest.md"))
+    parser.add_argument("--run-manifest", type=Path, default=Path("run-manifest.json"))
     parser.add_argument("--docx", type=Path, default=None)
     parser.add_argument("--pdf", type=Path, default=None)
+    parser.add_argument("--skip-documents", action="store_true", help="FIGURES_ONLY且没有文档交付时使用")
     parser.add_argument("--report", type=Path, default=None)
     return parser.parse_args()
 
@@ -594,16 +652,35 @@ def main() -> int:
     args = parse_args()
     root = args.root.resolve()
     verifier = FigureVerifier(root)
+    capability_report = args.capability_report if args.capability_report.is_absolute() else root / args.capability_report
+    verifier.verify_capability_report(capability_report)
     manifest = args.manifest if args.manifest.is_absolute() else root / args.manifest
     verifier.verify_manifest(manifest)
     summary = args.manifest_summary if args.manifest_summary.is_absolute() else root / args.manifest_summary
     verifier.verify_manifest_summary(summary)
     markdown = args.markdown if args.markdown.is_absolute() else root / args.markdown
     verifier.verify_markdown(markdown)
-    if args.docx:
-        verifier.verify_docx(args.docx if args.docx.is_absolute() else root / args.docx)
-    if args.pdf:
-        verifier.verify_pdf(args.pdf if args.pdf.is_absolute() else root / args.pdf)
+    docx_value = args.docx
+    pdf_value = args.pdf
+    if not args.skip_documents and (docx_value is None or pdf_value is None):
+        run_manifest = args.run_manifest if args.run_manifest.is_absolute() else root / args.run_manifest
+        try:
+            run_payload = json.loads(run_manifest.read_text(encoding="utf-8"))
+            if docx_value is None and isinstance(run_payload.get("docx"), str):
+                docx_value = Path(run_payload["docx"])
+            if pdf_value is None and isinstance(run_payload.get("pdf"), str):
+                pdf_value = Path(run_payload["pdf"])
+        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+            verifier.error("RUN_MANIFEST_INVALID", str(exc))
+    if not args.skip_documents:
+        if docx_value is None:
+            verifier.error("DOCX_PATH_MISSING", "run-manifest.json未记录docx")
+        else:
+            verifier.verify_docx(docx_value if docx_value.is_absolute() else root / docx_value)
+        if pdf_value is None:
+            verifier.error("PDF_PATH_MISSING", "run-manifest.json未记录pdf")
+        else:
+            verifier.verify_pdf(pdf_value if pdf_value.is_absolute() else root / pdf_value)
 
     payload = {
         "status": "STRUCTURE_OK" if not verifier.errors else "STRUCTURE_FAIL",

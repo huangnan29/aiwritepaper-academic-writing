@@ -41,9 +41,11 @@
 
 用户已给出完整题目、输出目录或明确要求“开始执行”时，默认 `AUTO_BENCHMARK`：不重复询问题目、不等待大纲批准、不要求用户确认模式，除非遇到权限、伦理、凭证、付费或无法继续的硬阻塞。用户明确要求交互时才使用 `INTERACTIVE`。
 
-直接给出完整题目并触发 `FULL_BUILD`，但没有指定正文长度时，默认 `TARGET_LENGTH=25000`，允许误差±10%，可接受区间为22,500—27,500。正文统计第一章至结论的主体论述，不含摘要、目录、参考文献、致谢、附录、代码和图表题注。用户明确指定的目标优先于默认值。
+直接给出完整题目并触发 `FULL_BUILD`，但没有指定正文长度时，默认 `TARGET_LENGTH=25000`，允许误差±10%，可接受区间为22,500—27,500。正文统计第一章至结论的主体论述，不含摘要、目录、参考文献、致谢、附录、代码、Markdown表格行和图表题注；一个汉字计一个单位，一个连续英文词计一个单位。用户明确指定的目标优先于默认值。
 
-开始前直接检查当前环境是否具有网络与页面访问、学术文献检索、文件读写、代码执行、图片生成、图形渲染、DOCX、PDF、文档解析和视觉检查能力，并把观察结果写入 `00-capability-report.md`。能力判断来自当前实际工具和真实调用，不需要运行Skill自带探测脚本。缺少能力时记录 `CAPABILITY_GAP`、影响和替代方案；能继续的部分继续完成，不能虚报文件或调用。
+开始前直接检查当前环境是否具有网络与页面访问、学术文献检索、文件读写、代码执行、图片生成、图形渲染、DOCX、PDF、文档解析和视觉检查能力，并把人类可读说明写入 `00-capability-report.md`，把机器可读结果写入 `00-capability-report.json`。JSON遵循 `references/schemas/capability-report.schema.json`，至少记录 `agent_adapter`、观察时间以及图片生成、视觉检查、DOCX和PDF能力的 `available`、`callers`、`tools` 与 `evidence`。
+
+能力检查覆盖当前执行器、父代理、客户端和MCP/插件。任一调用层真实暴露图片生成工具时，图片生成能力即为可用；不得把“当前子执行器无工具”误写为整个任务无工具。反之，模型品牌或产品宣传支持图片不等于当前客户端已经暴露工具。能力判断来自当前实际工具、可见接口或真实调用，不需要运行Skill探测脚本。缺少能力时记录 `CAPABILITY_GAP`、影响和替代方案；能继续的部分继续完成，不能虚报文件或调用。
 
 在 `01-research-contract.md` 冻结题目、论文类型、学科、研究对象、核心问题、方法或技术栈、证据边界、已有材料、目标正文长度、最低文献数、图表数、表格数、引用格式、个人信息和停止条件。字数按上述25,000字默认值处理；其他数量未指定时按论文层次和学科惯例制定明确目标。技术栈或研究方法变更必须记录原因。
 
@@ -124,7 +126,7 @@ arXiv、bioRxiv、ChemRxiv、SSRN、NBER工作论文可以收录，但必须在�
 
 运行开始时保留 `run-params.md`，并通过文件级确定性拼接生成 `final-execution-prompt.md`；不得由模型重新生成完整方向提示词。
 
-`FULL_BUILD` 输出：`run-params.md`、`final-execution-prompt.md`、`00-capability-report.md`、`01-research-contract.md`、`02-search-log.md`、`03-evidence-matrix.csv`、`04-reference-audit.md`、`references.bib`、`05-outline.md`、`06-argument-map.md`、`chapters/`、`figures/figure-manifest.json`、`figures/figure-manifest.md`、`tables/table-data-and-sources.md`、`07-paper-full.md`、`08-claim-citation-audit.md`、`09-peer-review.md`、`10-revision-log.md`、按下述规则命名的DOCX与PDF、可选同名TEX、`11-format-validation.md`、`12-final-qa-report.md` 和 `run-manifest.json`。没有真实生成的文件不得列入完成清单。
+`FULL_BUILD` 输出：`run-params.md`、`final-execution-prompt.md`、`00-capability-report.md`、`00-capability-report.json`、`01-research-contract.md`、`02-search-log.md`、`03-evidence-matrix.csv`、`04-reference-audit.md`、`references.bib`、`05-outline.md`、`06-argument-map.md`、`chapters/`、`figures/figure-plan.json`、`figures/figure-manifest.json`、`figures/figure-manifest.md`、`figures/figure-verification.json`、`tables/table-data-and-sources.md`、`07-paper-full.md`、`08-claim-citation-audit.md`、`09-peer-review.md`、`10-revision-log.md`、按下述规则命名的DOCX与PDF、可选同名TEX、`11-format-validation.md`、`12-final-qa-report.md`、`13-delivery-verification.json` 和 `run-manifest.json`。没有真实生成的文件不得列入完成清单。
 
 ## 最终文档文件名
 
@@ -135,7 +137,7 @@ arXiv、bioRxiv、ChemRxiv、SSRN、NBER工作论文可以收录，但必须在�
 <安全论文题目>_<GENERATED_AT_LOCAL>.pdf
 ```
 
-DOCX与PDF必须使用同一文件名主体和同一时间戳。`final-paper.docx`、`final-paper.pdf`只能作为本次运行内部临时文件名，不能进入最终完成清单、最终回复或 `run-manifest.json`；成功导出后将本次创建的临时文件原子重命名为正式文件。不得覆盖同名既有文件，发生冲突时重新冻结更晚的时间戳。`run-manifest.json`必须记录ISO 8601本地时间、时区、正式DOCX/PDF相对路径与SHA-256。
+DOCX与PDF必须使用同一文件名主体和同一时间戳。`final-paper.docx`、`final-paper.pdf`只能作为本次运行内部临时文件名，不能进入最终完成清单、最终回复或 `run-manifest.json`；成功导出后将本次创建的临时文件原子重命名为正式文件。不得覆盖同名既有文件，发生冲突时重新冻结更晚的时间戳。`run-manifest.json`必须记录ISO 8601本地时间、时区、正式DOCX/PDF相对路径与SHA-256。任何打包、上传或展示层都不得再次重命名正式文件；打包完成后重新验证Manifest路径和摘要。
 
 `PROPOSAL_ONLY` 输出 `run-params.md`、`final-execution-prompt.md`、研究契约、检索与文献核验文件、`proposal-report.md` 及可用工具允许的DOCX/PDF。`DEFENSE_ONLY` 输出 `run-params.md`、`final-execution-prompt.md`、答辩大纲、逐页内容及可用工具允许的PPTX/PDF。两种模式都不得虚构结果。
 
@@ -147,7 +149,7 @@ DOCX与PDF必须使用同一文件名主体和同一时间戳。`final-paper.doc
 
 全文整合时，`07-paper-full.md`中的每个图片链接必须逐项等于权威 `figures/figure-manifest.json` 对应图号的 `final_embed_file`。`figure-manifest.md` 只供人阅读。禁止使用目录通配、同名文件优先级或“优先SVG”逻辑自动选图。图片工具已成功生成位图时，Markdown不得继续引用其旧SVG版本。
 
-提供学校模板时模板优先。没有模板时只能标记为通用草稿格式。DOCX与PDF从同一份定稿生成，图片实际嵌入，标题使用真实样式，目录、页码、题注和交叉引用可更新。根据当前环境自主选择文档工具；只有确实需要时才在本次输出目录创建项目专用脚本。Skill内 `compose_prompt.py` 只允许用于确定性合成最终提示词；`verify_figure_package.py` 只允许验证Manifest、文件、哈希、Markdown和DOCX嵌入一致性；维护脚本与其他Skill脚本不得参与论文内容、证据或最终状态判断。
+提供学校模板时模板优先。没有模板时只能标记为通用草稿格式。DOCX与PDF必须来自同一份 `07-paper-full.md` 和同一结构映射；优先先生成并验证DOCX，再由该定稿转换PDF。图片实际嵌入，标题使用真实样式，目录、页码、题注和交叉引用可更新。不得分别从互不一致的Markdown和HTML版本生成Word与PDF。根据当前环境自主选择文档工具；只有确实需要时才在本次输出目录创建项目专用脚本。Skill内 `compose_prompt.py` 只允许用于确定性合成最终提示词；两个验收脚本只做机械检查；维护脚本与其他Skill脚本不得参与论文内容和证据决策。
 
 ## 默认学术论文排版
 
@@ -163,7 +165,7 @@ DOCX与PDF必须使用同一文件名主体和同一时间戳。`final-paper.doc
 
 ## Word图题唯一性
 
-图号与图题只有一个可见来源。生成图片画布内部不得再写外部题注形式的“图X-X 标题”；Word中每张图片下方只保留一个题注段落。不得同时保留Markdown图片替代文字形成的可见题注、普通文本题注和Word `Caption`题注，也不得在插图后再次复制相同图号。无论使用自动 `SEQ` 域还是普通文本，每个图号在Word可见段落中必须恰好出现一次。
+图号与图题只有一个可见来源。每张图在Manifest中显式记录 `display_number`，例如 `2-1`；导出程序只读取该字段生成“图2-1”，不得从 `figure_id`、文件名或章节顺序猜测。生成图片画布内部不得再写外部题注形式的“图X-X 标题”；Word中每张图片下方只保留一个题注段落。不得同时保留Markdown图片替代文字形成的可见题注、普通文本题注和Word `Caption`题注，也不得在插图后再次复制相同图号。无论使用自动 `SEQ` 域还是普通文本，每个图号在Word可见段落中必须恰好出现一次。
 
 图片的替代文本用于无障碍说明，不应作为可见图题重复输出。导出后按图表清单逐个检查Word可见段落：相同图号出现0次或超过1次均需修复。表号同样只能保留一个可见题注。
 
@@ -225,9 +227,15 @@ SVG降级图必须先布局节点，再规划连接线。连接线优先使用�
 
 精确流程图和关系图的生图Prompt必须列出：用途、画布比例、阅读方向、节点总数、每个节点的逐字标签与形状、分组和层级、每条箭头的起点终点、分支条件、主次路径、配色、字体、禁止新增或遗漏内容以及逐项验收清单。先要求图片模型直接生成；文字或箭头局部错误时优先使用图片编辑工具修正，必要时增加确定性标签覆盖层，但不得用纯SVG替代真实图片调用。
 
+## 父子代理图片任务交接
+
+详细大纲完成后，先建立完整 `figures/figure-plan.json`。每张图至少包含 `figure_id`、`display_number`、用途、类型、逐字标题、事实与结构清单、`imagegen_eligible`、计划路线、正文位置和Prompt文件。适合生图的结构图必须先全部进入任务单，再由实际拥有图片工具的调用层逐张执行；不能先让子执行器批量生成SVG，最后由父代理只补第一张概念图。
+
+父代理代调时，论文执行器负责语义和Prompt，父代理负责真实工具调用与原始回执，结果必须回到同一输出目录。全部图片任务完成并核对后才能整合正文。只完成部分图片任务时保持配图阶段未完成，不进入DOCX/PDF。
+
 ## 通用质量门
 
-每张图在权威 `figures/figure-manifest.json` 记录机器可读路由，在 `figures/figure-manifest.md` 提供供人阅读的摘要。图片能力Agent的每张适合生图的图都必须有独立Prompt与真实PNG/JPEG/WebP；不能用SVG、HTML截图、占位PNG或图片理解能力冒充。只有用户明确退出、期刊禁止或工具真实不可用时才记录豁免。
+每张图在权威 `figures/figure-manifest.json` 记录机器可读路由，在 `figures/figure-manifest.md` 提供供人阅读的摘要。图片能力Agent的每张适合生图的图必须设置 `imagegen_eligible=true`，并有独立Prompt与真实PNG/JPEG/WebP；不能用SVG、HTML截图、占位PNG或图片理解能力冒充。只有用户明确要求可编辑矢量、出版规则禁止或整个调用链真实无图片工具时才记录 `route_exemption`。
 
 ## 最终嵌入文件优先级
 
@@ -242,6 +250,8 @@ SVG降级图必须先布局节点，再规划连接线。连接线优先使用�
 JSON清单字段和条件规则以 `statistical-figures-and-trace.md` 为准，其中只有 `final_embed_file` 是最终论文插图入口。Markdown摘要不得覆盖JSON值。
 
 PNG记录最终物理宽度、像素宽高和有效DPI。正文先引用、再展示、后解释。结构、事实、节点、箭头、中文、缩放可读性、裁切、远程资源和最终文档中的显示结果未经核对时，不得将该图标记为通过。
+
+SVG降级图还必须按论文最终栏宽检查物理尺寸。默认正文单栏图建议宽度约140—160mm；缩放后正文标签不得小于约9pt，横向流程图优先1.4:1—1.8:1，非必要的细长竖图、过大留白和低内容占用率不得通过。复杂结构优先拆成主图与子图，不能靠持续缩小字号塞进单页。
 
 <!-- 公共来源：references/common/statistical-figures-and-trace.md -->
 
@@ -309,13 +319,16 @@ figure_plan:
 
 ## 权威Figure Manifest
 
-`figures/figure-manifest.json` 是机器可读的唯一插图路由真源；`figures/figure-manifest.md` 是供人阅读的摘要，不能被导出程序用于重新选图。JSON根对象包含 `schema_version` 与 `figures[]`，当前版本为 `1.2`。每张图至少记录：
+`figures/figure-manifest.json` 是机器可读的唯一插图路由真源；`figures/figure-manifest.md` 是供人阅读的摘要，不能被导出程序用于重新选图。JSON根对象包含 `schema_version` 与 `figures[]`，当前版本为 `1.3`。每张图至少记录：
 
 ```json
 {
   "figure_id": "fig-4-1",
+  "display_number": "4-1",
   "title": "图题文字",
   "figure_type": "STATISTICAL",
+  "imagegen_eligible": false,
+  "route_exemption": null,
   "claim_bearing": true,
   "generation_route": "DATA_CODE",
   "data_status": "OBSERVED",
@@ -360,6 +373,9 @@ figure_plan:
 条件字段规则：
 
 - `IMAGE_GENERATION`：必须有独立 `prompt_file` 与真实 `generated_file`；最终文件若不同，必须记录文字、箭头或格式合成过程，不能改用纯SVG重画。
+- `display_number` 是Word/PDF唯一图号来源，必须在全文唯一；不得从 `figure_id` 或文件名猜测图号。
+- 流程、架构、ER/UML、组织、机制、研究框架、时间线和概念场景通常设置 `imagegen_eligible=true`。当能力报告显示图片生成可用时，这些图只能使用 `IMAGE_GENERATION`，否则机械校验返回 `IMAGEGEN_BYPASSED`。
+- `route_exemption` 只能为 `USER_REQUESTED_VECTOR`、`PUBLICATION_RESTRICTION`、`IMAGE_TOOL_UNAVAILABLE`、`DOMAIN_EXACTNESS`、`EVIDENCE_REQUIRED` 或 `null`。图片能力可用时，`IMAGE_TOOL_UNAVAILABLE` 不能作为豁免。
 - `DATA_CODE`：必须有 `source_data`、每个输入文件SHA-256、脚本、脚本SHA-256、实际执行回执和非空最终文件；执行回执记录实际命令、输入摘要、脚本摘要、输出摘要及原始日志，主张型统计图不能使用 `NOT_APPLICABLE`。
 - `DOMAIN_TOOL`：记录领域工具、输入文件与导出过程。
 - `EVIDENCE_FILE`：记录原始科研文件、采集或处理来源；不得生成证据区域。
@@ -374,7 +390,7 @@ figure_plan:
   "spec_sha256": "...",
   "report_file": "figures/fig-2-1-layout-report.json",
   "report_sha256": "...",
-  "renderer": "aiwritepaper-agentic-skill@0.8.2/render_svg_layout.mjs",
+  "renderer": "aiwritepaper-agentic-skill@0.9.0/render_svg_layout.mjs",
   "renderer_sha256": "..."
 }
 ```
@@ -447,6 +463,7 @@ SVG降级图的机械校验额外检查可解析的直线、折线与矩形节�
 - 摘要只报告问题、方法、材料范围、主要发现与边界，不堆叠全部章节分类，不使用“全面落地、完美达标、核心成果、重大突破”等项目汇报语言。
 - 正文章节以连续论述为主。列表只用于确有并列关系的变量、步骤、标准或建议；不能用大量加粗小标题和项目符号代替论证。
 - 全文只保留一份连续参考文献。各章不得重复插入局部参考文献清单，章节小结不得复述摘要和总论中的整套框架。
+- 真实性边界集中写在摘要、方法边界、局限和结论中。正文各节仍遵守不编造要求，但不要反复使用“在无……条件下”“本文不报告”“不得把……写成结果”等同构免责声明替代论证；研究契约已经冻结的共同限制不必每节重述。段落优先呈现材料、比较、推理和具体判断，再在真正影响该判断的位置说明边界。
 
 ## 句子与段落节奏
 
@@ -485,7 +502,7 @@ SVG降级图的机械校验额外检查可解析的直线、折线与矩形节�
 - 摘要、结论、附录、致谢和参考文献不能承担补正文长度的任务；
 - 参考文献、图片和表格数量未达到合同目标时继续完成，不提前排版。
 
-统一使用同一计数口径：第一章至结论的主体论述，不含摘要、目录、参考文献、致谢、附录、代码和图表题注。不得在大纲、分章、全文和QA之间切换计数口径。25,000字默认目标低于22,500时，必须继续补充原计划章节，不能进入最终排版或标记 `PASS`。
+统一使用同一计数口径：第一章至结论的主体论述，不含摘要、目录、参考文献、致谢、附录、代码、Markdown表格行和图表题注；一个汉字计一个单位，一个连续英文词计一个单位。不得在大纲、分章、全文和QA之间切换计数口径。最终字数必须由 `scripts/verify_manuscript_delivery.py` 从 `07-paper-full.md` 重新计算，模型自报、章节预算或历史计数不能覆盖验收结果。25,000字默认目标低于22,500时，必须继续补充原计划章节，不能进入最终排版或标记 `PASS`。
 
 ## 内容连续性
 
@@ -493,7 +510,7 @@ SVG降级图的机械校验额外检查可解析的直线、折线与矩形节�
 
 ## 状态原则
 
-最终状态由模型对照研究契约和真实产物逐项判断。任何一项硬目标未满足都不能标记 `PASS`。不得因为文件存在、JSON可解析、DOCX可解包或PDF页数大于零，就忽略正文长度、文献、图表、表格、结构和内容质量缺口。
+最终状态拆成两层：`RESEARCH_STATUS` 表示数据、实验、源码、病例、伦理和全文证据是否足以支撑题目主张；`DELIVERY_STATUS` 表示正文、文献、图表、DOCX/PDF和Manifest是否通过确定性验收。缺少真实实验或实施材料可以是 `RESEARCH_STATUS=PARTIAL`、`DELIVERY_STATUS=PASS`；目录、图题、表格、字数、文件路径或图表路由错误必须是 `DELIVERY_STATUS=FAIL`。最终 `PASS` 仅在两层均满足用户硬目标时成立。
 
 <!-- 公共来源：references/common/final-quality-gates.md -->
 
@@ -512,10 +529,12 @@ SVG降级图的机械校验额外检查可解析的直线、折线与矩形节�
 - 全文只有一份连续参考文献，各章没有重复插入局部书目；摘要、章节首尾与结论没有机械复述同一套多层分类；
 - 主体段落由具体材料、推理和边界推动，不以大量加粗列表、空泛框架词或无证据的“显著、全面、有效”代替论证；
 - 实际字数、图、表和文献达到合同要求；
+- `00-capability-report.json` 可解析，且图片生成能力覆盖当前执行器、父代理、客户端与MCP/插件；
 - 图表不裁切、不越界，表格宽度合理；
 - 详细大纲包含 `figure_plan[]`，每张实际图片均能回到计划中的目的、来源、路线和位置；
 - 权威 `figures/figure-manifest.json` 可解析、图号唯一、条件字段完整，Markdown摘要没有覆盖JSON路由；
 - 图片能力Agent应生图的每张图均有独立Prompt和真实位图；数据统计图有数据与代码；SVG降级图在PNG、DOCX、PDF中没有字体替换、方框、乱码、缺字、溢出或裁切；
+- 图片生成能力可用时，任何 `imagegen_eligible=true` 的图都没有进入SVG降级；父代理代调时完整图片任务单已逐张执行，不是只补第一张概念图；
 - `IMAGE_GENERATION` 每次调用均保存原生工具结果或客户端调用片段，Manifest记录Prompt、回执和原始生成文件SHA-256；只有模型自述、回执缺失或摘要不匹配时不得标记通过；
 - 主张型统计图的 `data_status` 不是 `PROPOSED` 或 `HARDCODED_EXAMPLE`，真实数据、脚本与脚本SHA-256均存在；研究仿真只有在方法本身为仿真且保留参数、种子和输出数据时才允许；
 - `DATA_CODE` 的每个源数据文件均有SHA-256，实际执行回执绑定命令、运行日志、输入、脚本和最终输出摘要；只有脚本文件而没有执行证据时不得通过；
@@ -536,9 +555,24 @@ SVG降级图的机械校验额外检查可解析的直线、折线与矩形节�
 - 所有最终文件计算 SHA-256。
 - 最终DOCX与PDF文件名均为“安全论文题目_YYYYMMDD-HHMMSS”，共用同一时间戳；`run-manifest.json`记录生成时间、时区、正式路径和SHA-256，不能把 `final-paper.docx/.pdf` 列为最终交付。
 
-存在Python能力时运行 `scripts/verify_figure_package.py` 做机械校验。该脚本同时解析DOCX的标题样式、TOC字段、图题重复和媒体摘要，并使用可用PDF解析器检查页数、疑似空白页与图像对象；缺少深度PDF解析依赖时必须保留警告。脚本通过只证明结构、回执、文件摘要和嵌入路由一致，不证明图表的学术结论正确；脚本失败时不得标记 `PASS`，脚本通过也不能替代视觉与学术判断。
+存在Python能力时依次运行 `scripts/verify_figure_package.py` 与 `scripts/verify_manuscript_delivery.py`，分别把结果写入 `figures/figure-verification.json` 和 `13-delivery-verification.json`。前者检查能力与路由、DOCX图片/图题和PDF基础状态；后者统一统计正文、检查证据矩阵、正式文件名、路径、哈希、Word表格/目录和PDF。任一脚本失败时 `DELIVERY_STATUS=FAIL`，返回对应阶段修复后重新运行；脚本通过不证明学术结论正确，也不能替代视觉与学术判断。
 
-把实际值和目标值写入 `12-final-qa-report.md` 与 `run-manifest.json`：正文长度及目标区间、文献数、图片数、表格数、DOCX/PDF状态、Critical/Important数量和能力缺口。状态只能为：
+```bash
+python3 "<SKILL_DIR>/scripts/verify_figure_package.py" \
+  --root "<OUTPUT_DIR>" \
+  --report "figures/figure-verification.json"
+
+python3 "<SKILL_DIR>/scripts/verify_manuscript_delivery.py" \
+  --root "<OUTPUT_DIR>" \
+  --target "<TARGET_LENGTH>" \
+  --minimum "<MIN_LENGTH>" \
+  --maximum "<MAX_LENGTH>" \
+  --report "13-delivery-verification.json"
+```
+
+`FIGURES_ONLY` 且用户没有要求重新导出文档时，第一个命令增加 `--skip-documents`；`FULL_BUILD` 不得跳过文档检查。检查器默认从 `run-manifest.json` 读取正式DOCX/PDF路径，避免模型传入另一个临时文件规避验收。
+
+把实际值和目标值写入 `12-final-qa-report.md` 与 `run-manifest.json`：正文长度及目标区间、文献数、图片数、表格数、DOCX/PDF状态、Critical/Important数量、能力缺口、`RESEARCH_STATUS`、`DELIVERY_STATUS`和两份验收报告路径。总状态只能为：
 
 - `PASS`：所有用户硬目标和真实性边界均满足；
 - `PARTIAL`：核心初稿可用，但存在明确能力、材料、模板、数量或格式缺口；

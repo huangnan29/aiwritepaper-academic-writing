@@ -1,5 +1,17 @@
 # 更新记录
 
+## 0.9.0 - 2026-08-24
+
+- 新增六组Agent适配文件，覆盖Codex、Grok、Gemini/Antigravity、Claude/Cursor、Kimi/WorkBuddy与通用终端Agent；适配规则与唯一方向提示词确定性合并，继续保持MD-first单提示词执行。
+- 新增机器可读 `00-capability-report.json` 与Schema，能力检查覆盖当前执行器、父代理、客户端和MCP/插件，阻止把“子执行器无工具”误报为整个任务无图片能力。
+- Figure Manifest升级到Schema 1.3，新增 `display_number`、`imagegen_eligible` 和 `route_exemption`；图片工具可用却让结构图走SVG时返回 `IMAGEGEN_BYPASSED`。
+- 新增父子代理完整图片任务交接：论文执行器先提交全部 `figure-plan.json` 与逐图Prompt，拥有Imagine、Nano Banana或imagegen的调用层必须逐张执行，不能只补第一张概念图。
+- 新增 `verify_manuscript_delivery.py`，统一统计正文有效单位，检查证据矩阵列数与状态、BibTeX/最终书目数量、时间戳文件名、Manifest路径与SHA-256、Word目录/Heading/表格和PDF基础状态。
+- 最终状态拆分为 `RESEARCH_STATUS` 与 `DELIVERY_STATUS`，区分诚实降级的研究材料缺口与损坏的文档交付；任一机械验收失败时交付状态必须为FAIL。
+- DOCX与PDF要求来自同一份定稿和结构映射；Manifest显式图号成为Word题注唯一来源，打包与上传层不得再次移除正式文件时间戳。
+- SVG降级增加论文实际栏宽、最小打印字号、宽高比与留白约束；正文规则减少重复免责声明，在不降低真实性边界的前提下改善合规说明书式表达。
+- README新增0.9.0闭环架构、Agent映射及2026-08-24 Grok Bot十二题回归审计摘要。
+
 ## 0.8.2 - 2026-08-23
 
 - README补充同题实测的文献信源执行审计，区分发现、证据和核验层，公开四组结果的状态错用、全文证据、访问诚实性和案例页码缺口。

@@ -4,7 +4,7 @@
 
 运行开始时保留 `run-params.md`，并通过文件级确定性拼接生成 `final-execution-prompt.md`；不得由模型重新生成完整方向提示词。
 
-`FULL_BUILD` 输出：`run-params.md`、`final-execution-prompt.md`、`00-capability-report.md`、`01-research-contract.md`、`02-search-log.md`、`03-evidence-matrix.csv`、`04-reference-audit.md`、`references.bib`、`05-outline.md`、`06-argument-map.md`、`chapters/`、`figures/figure-manifest.json`、`figures/figure-manifest.md`、`tables/table-data-and-sources.md`、`07-paper-full.md`、`08-claim-citation-audit.md`、`09-peer-review.md`、`10-revision-log.md`、按下述规则命名的DOCX与PDF、可选同名TEX、`11-format-validation.md`、`12-final-qa-report.md` 和 `run-manifest.json`。没有真实生成的文件不得列入完成清单。
+`FULL_BUILD` 输出：`run-params.md`、`final-execution-prompt.md`、`00-capability-report.md`、`00-capability-report.json`、`01-research-contract.md`、`02-search-log.md`、`03-evidence-matrix.csv`、`04-reference-audit.md`、`references.bib`、`05-outline.md`、`06-argument-map.md`、`chapters/`、`figures/figure-plan.json`、`figures/figure-manifest.json`、`figures/figure-manifest.md`、`figures/figure-verification.json`、`tables/table-data-and-sources.md`、`07-paper-full.md`、`08-claim-citation-audit.md`、`09-peer-review.md`、`10-revision-log.md`、按下述规则命名的DOCX与PDF、可选同名TEX、`11-format-validation.md`、`12-final-qa-report.md`、`13-delivery-verification.json` 和 `run-manifest.json`。没有真实生成的文件不得列入完成清单。
 
 ## 最终文档文件名
 
@@ -15,7 +15,7 @@
 <安全论文题目>_<GENERATED_AT_LOCAL>.pdf
 ```
 
-DOCX与PDF必须使用同一文件名主体和同一时间戳。`final-paper.docx`、`final-paper.pdf`只能作为本次运行内部临时文件名，不能进入最终完成清单、最终回复或 `run-manifest.json`；成功导出后将本次创建的临时文件原子重命名为正式文件。不得覆盖同名既有文件，发生冲突时重新冻结更晚的时间戳。`run-manifest.json`必须记录ISO 8601本地时间、时区、正式DOCX/PDF相对路径与SHA-256。
+DOCX与PDF必须使用同一文件名主体和同一时间戳。`final-paper.docx`、`final-paper.pdf`只能作为本次运行内部临时文件名，不能进入最终完成清单、最终回复或 `run-manifest.json`；成功导出后将本次创建的临时文件原子重命名为正式文件。不得覆盖同名既有文件，发生冲突时重新冻结更晚的时间戳。`run-manifest.json`必须记录ISO 8601本地时间、时区、正式DOCX/PDF相对路径与SHA-256。任何打包、上传或展示层都不得再次重命名正式文件；打包完成后重新验证Manifest路径和摘要。
 
 `PROPOSAL_ONLY` 输出 `run-params.md`、`final-execution-prompt.md`、研究契约、检索与文献核验文件、`proposal-report.md` 及可用工具允许的DOCX/PDF。`DEFENSE_ONLY` 输出 `run-params.md`、`final-execution-prompt.md`、答辩大纲、逐页内容及可用工具允许的PPTX/PDF。两种模式都不得虚构结果。
 
@@ -27,7 +27,7 @@ DOCX与PDF必须使用同一文件名主体和同一时间戳。`final-paper.doc
 
 全文整合时，`07-paper-full.md`中的每个图片链接必须逐项等于权威 `figures/figure-manifest.json` 对应图号的 `final_embed_file`。`figure-manifest.md` 只供人阅读。禁止使用目录通配、同名文件优先级或“优先SVG”逻辑自动选图。图片工具已成功生成位图时，Markdown不得继续引用其旧SVG版本。
 
-提供学校模板时模板优先。没有模板时只能标记为通用草稿格式。DOCX与PDF从同一份定稿生成，图片实际嵌入，标题使用真实样式，目录、页码、题注和交叉引用可更新。根据当前环境自主选择文档工具；只有确实需要时才在本次输出目录创建项目专用脚本。Skill内 `compose_prompt.py` 只允许用于确定性合成最终提示词；`verify_figure_package.py` 只允许验证Manifest、文件、哈希、Markdown和DOCX嵌入一致性；维护脚本与其他Skill脚本不得参与论文内容、证据或最终状态判断。
+提供学校模板时模板优先。没有模板时只能标记为通用草稿格式。DOCX与PDF必须来自同一份 `07-paper-full.md` 和同一结构映射；优先先生成并验证DOCX，再由该定稿转换PDF。图片实际嵌入，标题使用真实样式，目录、页码、题注和交叉引用可更新。不得分别从互不一致的Markdown和HTML版本生成Word与PDF。根据当前环境自主选择文档工具；只有确实需要时才在本次输出目录创建项目专用脚本。Skill内 `compose_prompt.py` 只允许用于确定性合成最终提示词；两个验收脚本只做机械检查；维护脚本与其他Skill脚本不得参与论文内容和证据决策。
 
 ## 默认学术论文排版
 
@@ -43,7 +43,7 @@ DOCX与PDF必须使用同一文件名主体和同一时间戳。`final-paper.doc
 
 ## Word图题唯一性
 
-图号与图题只有一个可见来源。生成图片画布内部不得再写外部题注形式的“图X-X 标题”；Word中每张图片下方只保留一个题注段落。不得同时保留Markdown图片替代文字形成的可见题注、普通文本题注和Word `Caption`题注，也不得在插图后再次复制相同图号。无论使用自动 `SEQ` 域还是普通文本，每个图号在Word可见段落中必须恰好出现一次。
+图号与图题只有一个可见来源。每张图在Manifest中显式记录 `display_number`，例如 `2-1`；导出程序只读取该字段生成“图2-1”，不得从 `figure_id`、文件名或章节顺序猜测。生成图片画布内部不得再写外部题注形式的“图X-X 标题”；Word中每张图片下方只保留一个题注段落。不得同时保留Markdown图片替代文字形成的可见题注、普通文本题注和Word `Caption`题注，也不得在插图后再次复制相同图号。无论使用自动 `SEQ` 域还是普通文本，每个图号在Word可见段落中必须恰好出现一次。
 
 图片的替代文本用于无障碍说明，不应作为可见图题重复输出。导出后按图表清单逐个检查Word可见段落：相同图号出现0次或超过1次均需修复。表号同样只能保留一个可见题注。
 
