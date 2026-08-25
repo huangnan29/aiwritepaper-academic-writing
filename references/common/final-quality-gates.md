@@ -14,6 +14,7 @@
 - 主体段落由具体材料、推理和边界推动，不以大量加粗列表、空泛框架词或无证据的“显著、全面、有效”代替论证；
 - 实际字数、图、表和文献达到合同要求；
 - `00-capability-report.json` 可解析，且图片生成能力覆盖当前执行器、父代理、客户端与MCP/插件；
+- 证据矩阵包含完整题录、主张与章节映射字段；只有元数据的文献没有被用于全文级实验、参数、结果或引语主张；
 - 图表不裁切、不越界，表格宽度合理；
 - 详细大纲包含 `figure_plan[]`，每张实际图片均能回到计划中的目的、来源、路线和位置；
 - 权威 `figures/figure-manifest.json` 可解析、图号唯一、条件字段完整，Markdown摘要没有覆盖JSON路由；
@@ -28,6 +29,7 @@
 - SVG中可解析的直线和折线不存在非共享端点交叉或横穿矩形节点；复杂贝塞尔路径保留VLM或人工核验，不以静态检查冒充完整几何证明；
 - SVG只执行单向降级：图片生成成功时未被SVG覆盖；原生SVG通过时未被模板重绘；`COMPILED`模式的语义Spec不含坐标，布局报告、输入、输出和渲染器SHA-256一致且状态为 `PASS`；
 - 当前Agent具备视觉能力时，主张型统计图和复杂结构图已完成VLM渲染核验；两轮修复后仍有问题则为 `NEEDS_REVIEW`，不得标记通过；
+- `IMAGE_GENERATION` 产物没有独立视觉或人工核验时，机械状态可以通过但视觉状态为 `PARTIAL`，最终交付不得写成完全 `PASS`；
 - VLM的 `PASS` 或 `PASS_WITH_NOTES` 绑定实际视觉工具回执、检查时间和被检查文件SHA-256；只有模型自述的VLM状态无效；
 - 图表的 `caption_claim`、正文实质性用图主张、源数据/上下文、转换过程和limitations双向可追溯；空limitations只表示未声明，不等于确认没有限制；
 - Word中每个图号和表号只有一个可见题注，不存在图片内题注与Word题注重复；
@@ -38,6 +40,8 @@
 - 文献、数字、图表、伦理和个人信息审计通过；
 - 所有最终文件计算 SHA-256。
 - 最终DOCX与PDF文件名均为“安全论文题目_YYYYMMDD-HHMMSS”，共用同一时间戳；`run-manifest.json`记录生成时间、时区、正式路径和SHA-256，不能把 `final-paper.docx/.pdf` 列为最终交付。
+- `THESIS`文档的DOCX正文样式满足默认或学校模板的字号与行距，PDF中存在实际可见目录；`JOURNAL`、`REPORT`和`CUSTOM`按各自格式契约验收，不套用毕业论文目录门。
+- `figures/figure-verification.json` 与 `13-delivery-verification.json` 已真实写入交付包；只在终端显示通过但未保存报告不算闭环。
 
 存在Python能力时依次运行 `scripts/verify_figure_package.py` 与 `scripts/verify_manuscript_delivery.py`，分别把结果写入 `figures/figure-verification.json` 和 `13-delivery-verification.json`。前者检查能力与路由、DOCX图片/图题和PDF基础状态；后者统一统计正文、检查证据矩阵、正式文件名、路径、哈希、Word表格/目录和PDF。任一脚本失败时 `DELIVERY_STATUS=FAIL`，返回对应阶段修复后重新运行；脚本通过不证明学术结论正确，也不能替代视觉与学术判断。
 
@@ -56,7 +60,7 @@ python3 "<SKILL_DIR>/scripts/verify_manuscript_delivery.py" \
 
 `FIGURES_ONLY` 且用户没有要求重新导出文档时，第一个命令增加 `--skip-documents`；`FULL_BUILD` 不得跳过文档检查。检查器默认从 `run-manifest.json` 读取正式DOCX/PDF路径，避免模型传入另一个临时文件规避验收。
 
-把实际值和目标值写入 `12-final-qa-report.md` 与 `run-manifest.json`：正文长度及目标区间、文献数、图片数、表格数、DOCX/PDF状态、Critical/Important数量、能力缺口、`RESEARCH_STATUS`、`DELIVERY_STATUS`和两份验收报告路径。总状态只能为：
+把实际值和目标值写入 `12-final-qa-report.md` 与 `run-manifest.json`：正文长度及目标区间、文献数、图片数、表格数、DOCX/PDF状态、Critical/Important数量、能力缺口、`RESEARCH_STATUS`、`DELIVERY_STATUS`、`FINAL_STATUS`和两份验收报告路径。总状态只能为：
 
 - `PASS`：所有用户硬目标和真实性边界均满足；
 - `PARTIAL`：核心初稿可用，但存在明确能力、材料、模板、数量或格式缺口；

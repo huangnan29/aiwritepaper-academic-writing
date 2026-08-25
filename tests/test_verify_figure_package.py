@@ -80,13 +80,13 @@ class FigurePackageTests(unittest.TestCase):
         source_hash = hashlib.sha256((self.root / "data/results.csv").read_bytes()).hexdigest()
         execution_hash = hashlib.sha256((self.root / "figures/data-execution.log").read_bytes()).hexdigest()
         self.manifest = {
-            "schema_version": "1.3",
+            "schema_version": "1.4",
             "figures": [{
                 "figure_id": "fig-1", "display_number": "1", "title": "趋势图", "figure_type": "STATISTICAL",
-                "imagegen_eligible": False, "route_exemption": "DOMAIN_EXACTNESS",
+                "exactness_class": "DATA_GRAPH", "imagegen_eligible": False, "route_exemption": None,
                 "claim_bearing": True, "generation_route": "DATA_CODE", "data_status": "OBSERVED",
                 "prompt_file": None, "generated_file": None, "fallback_file": None,
-                "source_data": [{"dataset_id": "results-v1", "file": "data/results.csv", "sha256": source_hash}],
+                "source_data": [{"dataset_id": "results-v1", "file": "data/results.csv", "sha256": source_hash, "origin": "USER_PROVIDED", "acquisition_receipt": None}],
                 "transformation": {
                     "script": "figures/plot.py", "sha256": script_hash,
                     "execution_receipt": {
@@ -162,6 +162,11 @@ class FigurePackageTests(unittest.TestCase):
         self.write_manifest()
         self.assertTrue(any("SOURCE_DATA_HASH_MISMATCH" in item for item in self.verify().errors))
 
+    def test_model_synthetic_data_cannot_support_result(self) -> None:
+        self.manifest["figures"][0]["source_data"][0]["origin"] = "MODEL_SYNTHETIC"
+        self.write_manifest()
+        self.assertTrue(any("MODEL_SYNTHETIC_RESULT_FORBIDDEN" in item for item in self.verify().errors))
+
     def test_markdown_wrong_image_fails(self) -> None:
         (self.root / "figures/other.png").write_bytes(b"other")
         (self.root / "07-paper-full.md").write_text("![错误](figures/other.png)\n", encoding="utf-8")
@@ -189,6 +194,7 @@ class FigurePackageTests(unittest.TestCase):
         (self.root / "figures/generated.png").write_bytes(b"generated")
         (self.root / "figures/fallback.svg").write_text("<svg/>", encoding="utf-8")
         figure.update({
+            "exactness_class": "SEMANTIC_STRUCTURE", "imagegen_eligible": True, "route_exemption": None,
             "generation_route": "IMAGE_GENERATION", "data_status": "NOT_APPLICABLE",
             "prompt_file": "figures/prompt.md", "generated_file": "figures/generated.png",
             "fallback_file": "figures/fallback.svg", "source_data": [],
@@ -205,7 +211,7 @@ class FigurePackageTests(unittest.TestCase):
             encoding="utf-8",
         )
         figure.update({
-            "figure_type": "PROCESS", "imagegen_eligible": True,
+            "figure_type": "PROCESS", "exactness_class": "SEMANTIC_STRUCTURE", "imagegen_eligible": True,
             "route_exemption": "IMAGE_TOOL_UNAVAILABLE", "generation_route": "SVG_FALLBACK",
             "data_status": "NOT_APPLICABLE", "claim_bearing": False,
             "fallback_file": "figures/fallback.svg", "source_data": [],
@@ -227,6 +233,7 @@ class FigurePackageTests(unittest.TestCase):
         generated_hash = hashlib.sha256((self.root / "figures/fig-1-final.png").read_bytes()).hexdigest()
         receipt_hash = hashlib.sha256((self.root / "figures/tool-receipt.json").read_bytes()).hexdigest()
         figure.update({
+            "exactness_class": "SEMANTIC_STRUCTURE", "imagegen_eligible": True, "route_exemption": None,
             "generation_route": "IMAGE_GENERATION", "data_status": "NOT_APPLICABLE",
             "claim_bearing": False,
             "prompt_file": "figures/prompt.md", "generated_file": "figures/fig-1-final.png",
@@ -242,10 +249,32 @@ class FigurePackageTests(unittest.TestCase):
         self.write_manifest()
         self.assertEqual(self.verify().errors, [])
 
+    def test_domain_exact_cannot_use_image_generation(self) -> None:
+        figure = self.manifest["figures"][0]
+        figure.update({
+            "title": "精确传感器接线电路", "figure_type": "DOMAIN",
+            "exactness_class": "DOMAIN_EXACT", "imagegen_eligible": True,
+            "generation_route": "IMAGE_GENERATION", "route_exemption": None,
+            "claim_bearing": False, "data_status": "NOT_APPLICABLE",
+            "source_data": [], "transformation": {},
+        })
+        self.write_manifest()
+        self.assertTrue(any("DOMAIN_EXACT_IMAGEGEN_FORBIDDEN" in item for item in self.verify().errors))
+
+    def test_skipped_visual_check_marks_partial(self) -> None:
+        self.manifest["figures"][0]["vlm_verification"] = {
+            "status": "SKIPPED", "remaining_issues": [], "reason": "无视觉工具",
+        }
+        self.write_manifest()
+        verifier = self.verify()
+        self.assertEqual(verifier.errors, [])
+        self.assertEqual(verifier.visual_status, "PARTIAL")
+
     def test_image_generation_without_receipt_fails(self) -> None:
         figure = self.manifest["figures"][0]
         (self.root / "figures/prompt.md").write_text("prompt", encoding="utf-8")
         figure.update({
+            "exactness_class": "SEMANTIC_STRUCTURE", "imagegen_eligible": True, "route_exemption": None,
             "generation_route": "IMAGE_GENERATION", "data_status": "NOT_APPLICABLE",
             "claim_bearing": False, "prompt_file": "figures/prompt.md",
             "generated_file": "figures/fig-1-final.png", "source_data": [],
@@ -259,6 +288,7 @@ class FigurePackageTests(unittest.TestCase):
         (self.root / "figures/prompt.md").write_text("prompt", encoding="utf-8")
         (self.root / "figures/tool-receipt.txt").write_text("模型自述", encoding="utf-8")
         figure.update({
+            "exactness_class": "SEMANTIC_STRUCTURE", "imagegen_eligible": True, "route_exemption": None,
             "generation_route": "IMAGE_GENERATION", "data_status": "NOT_APPLICABLE",
             "claim_bearing": False, "prompt_file": "figures/prompt.md",
             "generated_file": "figures/fig-1-final.png", "source_data": [],
@@ -332,6 +362,7 @@ class FigurePackageTests(unittest.TestCase):
             '<svg xmlns="http://www.w3.org/2000/svg"><text>中文节点</text></svg>', encoding="utf-8"
         )
         figure.update({
+            "exactness_class": "DOMAIN_EXACT", "imagegen_eligible": False, "route_exemption": "DOMAIN_EXACTNESS",
             "generation_route": "SVG_FALLBACK", "data_status": "NOT_APPLICABLE",
             "claim_bearing": False,
             "fallback_file": "figures/fallback.svg", "source_data": [],
@@ -348,6 +379,7 @@ class FigurePackageTests(unittest.TestCase):
             '<line x1="0" y1="100" x2="100" y2="0"/></svg>', encoding="utf-8"
         )
         figure.update({
+            "exactness_class": "DOMAIN_EXACT", "imagegen_eligible": False, "route_exemption": "DOMAIN_EXACTNESS",
             "generation_route": "SVG_FALLBACK", "data_status": "NOT_APPLICABLE",
             "claim_bearing": False, "fallback_file": "figures/fallback.svg", "source_data": [],
             "transformation": {"method": "svg-render"}, "capability_gap": "IMAGE_GENERATOR unavailable",
@@ -377,6 +409,7 @@ class FigurePackageTests(unittest.TestCase):
         }), encoding="utf-8")
         renderer = SCRIPT.with_name("render_svg_layout.mjs")
         figure.update({
+            "exactness_class": "DOMAIN_EXACT", "imagegen_eligible": False, "route_exemption": "DOMAIN_EXACTNESS",
             "generation_route": "SVG_FALLBACK", "data_status": "NOT_APPLICABLE",
             "claim_bearing": False, "fallback_file": "figures/fallback.svg", "source_data": [],
             "transformation": {"method": "svg-layout-compiled"},
@@ -387,7 +420,7 @@ class FigurePackageTests(unittest.TestCase):
                 "spec_sha256": hashlib.sha256(spec.read_bytes()).hexdigest(),
                 "report_file": "figures/fig-1-layout-report.json",
                 "report_sha256": hashlib.sha256(report.read_bytes()).hexdigest(),
-                "renderer": "aiwritepaper-agentic-skill@0.9.0/render_svg_layout.mjs",
+                "renderer": "aiwritepaper-agentic-skill@0.9.1/render_svg_layout.mjs",
                 "renderer_sha256": hashlib.sha256(renderer.read_bytes()).hexdigest(),
             },
         })

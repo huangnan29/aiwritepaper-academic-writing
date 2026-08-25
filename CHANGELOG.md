@@ -1,5 +1,17 @@
 # 更新记录
 
+## 0.9.1 - 2026-08-25
+
+- 新增条件化四级验收：真实性和机械损坏继续阻断；缺少视觉核验降为PARTIAL；字数贴线与重复免责声明只作警告。
+- Figure Manifest升级到Schema 1.4，新增 `exactness_class` 与数据 `origin/data_origin`；精确领域图禁止直接使用纯ImageGen，模型合成CSV禁止支撑正式结果。
+- 图表验收报告新增 `mechanical_status` 与 `visual_status`；ImageGen图片全部跳过视觉检查时不能声明完整交付PASS。
+- 交付验收强制读取并留存 `figures/figure-verification.json`，修复38篇回归中33篇未保存图表验收回执仍通过的问题。
+- 新增 `document_profile`：THESIS检查DOCX正文实际字号与PDF可见目录，JOURNAL/REPORT不套用毕业论文目录，CUSTOM读取用户格式契约。
+- 证据矩阵验收扩展为完整题录、主张、章节、访问和发表状态字段，阻止极简 `source_id,DOI,status` 空壳矩阵。
+- 新增 `FINAL_STATUS` 一致性门，允许 `DELIVERY_STATUS=PARTIAL`；研究或交付FAIL时最终FAIL，只有两者均PASS才最终PASS。
+- 正文低于目标95%产生贴线交付警告；重复真实性免责声明产生自然表达修订提示，两者均不覆盖用户明确字数容差。
+- Antigravity适配新增429图片配额回执、模型合成数据标记与外部验收报告留存要求。
+
 ## 0.9.0 - 2026-08-24
 
 - 新增六组Agent适配文件，覆盖Codex、Grok、Gemini/Antigravity、Claude/Cursor、Kimi/WorkBuddy与通用终端Agent；适配规则与唯一方向提示词确定性合并，继续保持MD-first单提示词执行。

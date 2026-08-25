@@ -46,13 +46,15 @@ SVG降级图必须先布局节点，再规划连接线。连接线优先使用�
 
 ## 父子代理图片任务交接
 
-详细大纲完成后，先建立完整 `figures/figure-plan.json`。每张图至少包含 `figure_id`、`display_number`、用途、类型、逐字标题、事实与结构清单、`imagegen_eligible`、计划路线、正文位置和Prompt文件。适合生图的结构图必须先全部进入任务单，再由实际拥有图片工具的调用层逐张执行；不能先让子执行器批量生成SVG，最后由父代理只补第一张概念图。
+详细大纲完成后，先建立完整 `figures/figure-plan.json`。每张图至少包含 `figure_id`、`display_number`、用途、类型、逐字标题、事实与结构清单、`exactness_class`、`imagegen_eligible`、计划路线、正文位置和Prompt文件。适合生图的普通语义结构图必须先全部进入任务单，再由实际拥有图片工具的调用层逐张执行；不能先让子执行器批量生成SVG，最后由父代理只补第一张概念图。
 
 父代理代调时，论文执行器负责语义和Prompt，父代理负责真实工具调用与原始回执，结果必须回到同一输出目录。全部图片任务完成并核对后才能整合正文。只完成部分图片任务时保持配图阶段未完成，不进入DOCX/PDF。
 
 ## 通用质量门
 
 每张图在权威 `figures/figure-manifest.json` 记录机器可读路由，在 `figures/figure-manifest.md` 提供供人阅读的摘要。图片能力Agent的每张适合生图的图必须设置 `imagegen_eligible=true`，并有独立Prompt与真实PNG/JPEG/WebP；不能用SVG、HTML截图、占位PNG或图片理解能力冒充。只有用户明确要求可编辑矢量、出版规则禁止或整个调用链真实无图片工具时才记录 `route_exemption`。
+
+`imagegen_eligible` 不能只由“图是否好看”决定。电路接线、引脚、化学键、晶体连接、公式、尺度、载荷位置、焊接接头、电极体系和精确生物通路统一标记为 `DOMAIN_EXACT`，使用领域工具、确定性矢量或证据底图；ImageGen只能在不改变精确核心的前提下做配色、材质、图标和版式合成。普通研究框架、组织关系、责任分工和不承载精确连接的流程才标记为 `SEMANTIC_STRUCTURE`。
 
 ## 最终嵌入文件优先级
 

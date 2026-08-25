@@ -8,6 +8,7 @@ import csv
 import hashlib
 import json
 import re
+import statistics
 import sys
 import zipfile
 import xml.etree.ElementTree as ET
@@ -17,6 +18,21 @@ from typing import Any, Dict, List, Optional, Tuple
 
 WORD_NS = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
 VALID_REFERENCE_STATUSES = {"VERIFIED_FULLTEXT", "VERIFIED_METADATA", "UNVERIFIED", "REJECTED"}
+DOCUMENT_PROFILES = {"THESIS", "JOURNAL", "REPORT", "CUSTOM"}
+EVIDENCE_FIELD_GROUPS = {
+    "title": {"title", "题名"},
+    "authors": {"authors", "author", "作者"},
+    "year": {"year", "年份"},
+    "identifier": {"doi", "url", "DOI", "URL"},
+    "verification_source": {"verification_source", "核验来源"},
+    "supported_claim": {"supported_claim", "supported_claims", "supports_claim", "支持主张"},
+    "chapter": {"chapter", "chapters", "章节"},
+    "evidence_role": {"evidence_role"},
+    "access_mode": {"access_mode"},
+    "publication_status": {"publication_status"},
+    "notes": {"notes", "备注"},
+}
+BOUNDARY_TERMS = ["本文", "不得", "不能", "没有", "推断", "方案性", "未实施", "未测", "不报告", "不编造"]
 TIMESTAMPED_NAME = re.compile(r"^.+_\d{8}-\d{6}\.(docx|pdf)$", re.IGNORECASE)
 CHAPTER_HEADING = re.compile(
     r"^#{1,6}\s*(?:第?\s*[一二三四五六七八九十百0-9]+\s*章|[一二三四五六七八九十百0-9]+\s*[.、]\s*\S+)",
@@ -104,6 +120,18 @@ class DeliveryVerifier:
             "english_words": english_words,
             "effective_units": units,
         }
+        preferred_min = round(self.target * 0.95)
+        preferred_max = round(self.target * 1.05)
+        if units < preferred_min:
+            self.warning("BODY_TARGET_UNDERSHOOT", f"实际{units}，建议目标区间{preferred_min}-{preferred_max}")
+        boundary_count = sum(body.count(term) for term in BOUNDARY_TERMS)
+        boundary_density = boundary_count / max(units, 1) * 10000
+        self.metrics["prose_advisory"] = {
+            "boundary_term_count": boundary_count,
+            "per_10000_units": round(boundary_density, 2),
+        }
+        if boundary_density > 55:
+            self.warning("PROSE_BOUNDARY_REPETITION", f"边界词密度{boundary_density:.1f}/万单位，仅作修订提示")
         if units < self.minimum:
             self.error("BODY_LENGTH_LOW", f"实际{units}，最低{self.minimum}")
         elif units > self.maximum:
@@ -120,6 +148,12 @@ class DeliveryVerifier:
                 if not reader.fieldnames or "source_id" not in reader.fieldnames or "status" not in reader.fieldnames:
                     self.error("EVIDENCE_MATRIX_HEADER", "缺少source_id或status")
                     return
+                field_lookup: Dict[str, List[str]] = {}
+                for group, aliases in EVIDENCE_FIELD_GROUPS.items():
+                    matched = [field for field in reader.fieldnames if field in aliases or field.lower() in {a.lower() for a in aliases}]
+                    field_lookup[group] = matched
+                    if not matched:
+                        self.error("EVIDENCE_MATRIX_REQUIRED_FIELD", group)
                 for line_number, row in enumerate(reader, start=2):
                     rows.append(row)
                     if row.get("__extra__") or "__missing__" in row.values():
@@ -127,6 +161,14 @@ class DeliveryVerifier:
                     status = str(row.get("status") or "").strip()
                     if status not in VALID_REFERENCE_STATUSES:
                         self.error("EVIDENCE_STATUS_INVALID", f"第{line_number}行: {status}")
+                    if status != "REJECTED":
+                        for group in ["title", "authors", "year", "verification_source", "supported_claim", "chapter", "evidence_role", "access_mode", "publication_status", "notes"]:
+                            fields = field_lookup.get(group) or []
+                            if fields and not any(str(row.get(field) or "").strip() for field in fields):
+                                self.error("EVIDENCE_FIELD_EMPTY", f"第{line_number}行: {group}")
+                        id_fields = field_lookup.get("identifier") or []
+                        if id_fields and not any(str(row.get(field) or "").strip() for field in id_fields):
+                            self.error("EVIDENCE_IDENTIFIER_EMPTY", f"第{line_number}行")
         except (OSError, UnicodeError, csv.Error) as exc:
             self.error("EVIDENCE_MATRIX_INVALID", str(exc))
             return
@@ -166,7 +208,10 @@ class DeliveryVerifier:
         if len(rows) < final_references:
             self.error("EVIDENCE_FINAL_COUNT_MISMATCH", f"证据矩阵={len(rows)}，最终参考文献={final_references}")
 
-    def verify_docx(self, path: Path, declared_tables: Optional[int], markdown: Path) -> None:
+    def verify_docx(
+        self, path: Path, declared_tables: Optional[int], markdown: Path,
+        require_toc: bool, enforce_body_font: bool, minimum_body_font_pt: float,
+    ) -> None:
         if not zipfile.is_zipfile(path):
             self.error("DOCX_INVALID", str(path))
             return
@@ -179,19 +224,53 @@ class DeliveryVerifier:
             except ET.ParseError as exc:
                 self.error("DOCX_DOCUMENT_XML_INVALID", str(exc))
                 return
+            styles_root = None
+            if "word/styles.xml" in archive.namelist():
+                try:
+                    styles_root = ET.fromstring(archive.read("word/styles.xml"))
+                except ET.ParseError:
+                    self.warning("DOCX_STYLES_PARSE_FAILED", str(path))
             table_count = len(root.findall(".//w:tbl", WORD_NS))
             style_counts = {level: 0 for level in (1, 2, 3)}
+            normal_size: Optional[float] = None
+            if styles_root is not None:
+                for style in styles_root.findall(".//w:style", WORD_NS):
+                    style_id = style.get(f"{{{WORD_NS['w']}}}styleId", "")
+                    if style_id.lower() == "normal":
+                        size_node = style.find("./w:rPr/w:sz", WORD_NS)
+                        if size_node is not None:
+                            try:
+                                normal_size = float(size_node.get(f"{{{WORD_NS['w']}}}val", "")) / 2
+                            except ValueError:
+                                pass
+            weighted_body_sizes: List[float] = []
             for paragraph in root.findall(".//w:p", WORD_NS):
                 style_node = paragraph.find("./w:pPr/w:pStyle", WORD_NS)
                 style = style_node.get(f"{{{WORD_NS['w']}}}val", "") if style_node is not None else ""
                 for level in (1, 2, 3):
                     if style.lower() == f"heading{level}":
                         style_counts[level] += 1
+                paragraph_text = "".join(node.text or "" for node in paragraph.findall(".//w:t", WORD_NS)).strip()
+                if len(paragraph_text) < 20 or style.lower() in {"title", "subtitle", "caption", "toc1", "toc2", "toc3"} or style.lower().startswith("heading"):
+                    continue
+                for run in paragraph.findall("./w:r", WORD_NS):
+                    run_text = "".join(node.text or "" for node in run.findall(".//w:t", WORD_NS))
+                    if not run_text.strip():
+                        continue
+                    size_node = run.find("./w:rPr/w:sz", WORD_NS)
+                    run_size = normal_size
+                    if size_node is not None:
+                        try:
+                            run_size = float(size_node.get(f"{{{WORD_NS['w']}}}val", "")) / 2
+                        except ValueError:
+                            pass
+                    if run_size is not None:
+                        weighted_body_sizes.extend([run_size] * max(1, len(run_text)))
             field_text = " ".join(node.text or "" for node in root.findall(".//w:instrText", WORD_NS))
             field_text += " " + " ".join(
                 node.get(f"{{{WORD_NS['w']}}}instr", "") for node in root.findall(".//w:fldSimple", WORD_NS)
             )
-            if not re.search(r"\bTOC\b", field_text, re.IGNORECASE):
+            if require_toc and not re.search(r"\bTOC\b", field_text, re.IGNORECASE):
                 self.error("DOCX_TOC_FIELD_MISSING", str(path))
             if style_counts[1] == 0 or style_counts[2] == 0:
                 self.error("DOCX_HEADING_HIERARCHY", str(style_counts))
@@ -200,18 +279,32 @@ class DeliveryVerifier:
                 self.error("DOCX_HEADING3_MISSING", "Markdown包含三级标题但Word没有Heading 3")
             if isinstance(declared_tables, int) and table_count < declared_tables:
                 self.error("DOCX_TABLE_COUNT_LOW", f"Word={table_count}，Manifest={declared_tables}")
-            self.metrics["docx"] = {"tables": table_count, "heading_counts": style_counts, "toc": "TOC" in field_text.upper()}
+            body_font_pt = statistics.median(weighted_body_sizes) if weighted_body_sizes else normal_size
+            if enforce_body_font:
+                if body_font_pt is None:
+                    self.error("DOCX_BODY_FONT_UNKNOWN", str(path))
+                elif body_font_pt < minimum_body_font_pt:
+                    self.error("DOCX_BODY_FONT_TOO_SMALL", f"中位字号{body_font_pt:g}pt，最低{minimum_body_font_pt:g}pt")
+            self.metrics["docx"] = {
+                "tables": table_count, "heading_counts": style_counts,
+                "toc_field": "TOC" in field_text.upper(), "body_font_pt": body_font_pt,
+            }
 
-    def verify_pdf(self, path: Path) -> None:
+    def verify_pdf(self, path: Path, require_toc: bool) -> None:
         if path.stat().st_size < 8 or path.read_bytes()[:5] != b"%PDF-":
             self.error("PDF_INVALID", str(path))
             return
         try:
             from pypdf import PdfReader
-            pages = len(PdfReader(str(path)).pages)
-            self.metrics["pdf"] = {"pages": pages}
+            reader = PdfReader(str(path))
+            pages = len(reader.pages)
+            visible_text = "\n".join((page.extract_text() or "") for page in reader.pages)
+            visible_toc = bool(re.search(r"(^|\n)目\s*录\s*(\n|$)", visible_text))
+            self.metrics["pdf"] = {"pages": pages, "visible_toc": visible_toc}
             if pages == 0:
                 self.error("PDF_NO_PAGES", str(path))
+            if require_toc and not visible_toc:
+                self.error("PDF_VISIBLE_TOC_MISSING", str(path))
         except ImportError:
             self.warning("PDF_DEEP_CHECK_SKIPPED", "当前Python缺少pypdf")
         except Exception as exc:
@@ -226,6 +319,35 @@ class DeliveryVerifier:
         if not isinstance(manifest, dict):
             self.error("RUN_MANIFEST_SHAPE", "根对象必须是对象")
             return
+        document_profile = manifest.get("document_profile")
+        if document_profile not in DOCUMENT_PROFILES:
+            self.error("DOCUMENT_PROFILE_INVALID", str(document_profile))
+            document_profile = "THESIS"
+        format_contract = manifest.get("format_contract")
+        minimum_body_font_pt = 11.5
+        requires_pdf_toc = document_profile == "THESIS"
+        if document_profile == "CUSTOM":
+            if not isinstance(format_contract, dict):
+                self.error("FORMAT_CONTRACT_MISSING", "CUSTOM需要format_contract")
+            else:
+                value = format_contract.get("minimum_body_font_pt")
+                if isinstance(value, (int, float)) and value > 0:
+                    minimum_body_font_pt = float(value)
+                requires_pdf_toc = bool(format_contract.get("requires_pdf_toc", False))
+
+        figure_report_value = manifest.get("figure_verification_report", "figures/figure-verification.json")
+        figure_report = self.resolve_relative_file(figure_report_value, "figure_verification_report")
+        figure_visual_status: Optional[str] = None
+        if figure_report:
+            try:
+                figure_payload = json.loads(figure_report.read_text(encoding="utf-8"))
+                if figure_payload.get("mechanical_status") != "PASS" or figure_payload.get("status") != "STRUCTURE_OK":
+                    self.error("FIGURE_VERIFICATION_NOT_PASS", str(figure_report_value))
+                figure_visual_status = figure_payload.get("visual_status")
+                if figure_visual_status not in {"PASS", "PARTIAL"}:
+                    self.error("FIGURE_VISUAL_STATUS_INVALID", str(figure_visual_status))
+            except (UnicodeError, json.JSONDecodeError) as exc:
+                self.error("FIGURE_VERIFICATION_INVALID", str(exc))
         docx_value = manifest.get("docx")
         pdf_value = manifest.get("pdf")
         docx = self.resolve_relative_file(docx_value, "docx")
@@ -242,19 +364,43 @@ class DeliveryVerifier:
             declared = manifest.get("docx_sha256")
             if not isinstance(declared, str) or declared.lower() != self.sha256(docx):
                 self.error("DOCX_HASH_MISMATCH", str(docx_value))
-            self.verify_docx(docx, declared_tables, markdown)
+            enforce_body_font = document_profile == "THESIS" or (
+                document_profile == "CUSTOM" and isinstance(format_contract, dict) and "minimum_body_font_pt" in format_contract
+            )
+            self.verify_docx(
+                docx, declared_tables, markdown, requires_pdf_toc, enforce_body_font, minimum_body_font_pt
+            )
         if pdf:
             declared = manifest.get("pdf_sha256")
             if not isinstance(declared, str) or declared.lower() != self.sha256(pdf):
                 self.error("PDF_HASH_MISMATCH", str(pdf_value))
-            self.verify_pdf(pdf)
+            self.verify_pdf(pdf, requires_pdf_toc)
 
         research_status = manifest.get("research_status")
         delivery_status = manifest.get("delivery_status")
+        final_status = manifest.get("final_status")
         if research_status not in {"PASS", "PARTIAL", "FAIL"}:
             self.error("RESEARCH_STATUS_INVALID", str(research_status))
-        if delivery_status not in {"PASS", "FAIL"}:
+        if delivery_status not in {"PASS", "PARTIAL", "FAIL"}:
             self.error("DELIVERY_STATUS_INVALID", str(delivery_status))
+        if figure_visual_status == "PARTIAL" and delivery_status == "PASS":
+            self.error("DELIVERY_VISUAL_STATUS_CONFLICT", "视觉未核验时delivery_status不能为PASS")
+        if research_status in {"PASS", "PARTIAL", "FAIL"} and delivery_status in {"PASS", "PARTIAL", "FAIL"}:
+            if research_status == "FAIL" or delivery_status == "FAIL":
+                expected_final = "FAIL"
+            elif research_status == "PASS" and delivery_status == "PASS":
+                expected_final = "PASS"
+            else:
+                expected_final = "PARTIAL"
+            if final_status != expected_final:
+                self.error("FINAL_STATUS_MISMATCH", f"声明{final_status}，应为{expected_final}")
+        self.metrics["status"] = {
+            "research_status": research_status,
+            "delivery_status": delivery_status,
+            "final_status": final_status,
+            "figure_visual_status": figure_visual_status,
+            "document_profile": document_profile,
+        }
 
 
 def parse_args() -> argparse.Namespace:

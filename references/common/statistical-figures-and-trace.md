@@ -62,7 +62,7 @@ figure_plan:
 
 ## 权威Figure Manifest
 
-`figures/figure-manifest.json` 是机器可读的唯一插图路由真源；`figures/figure-manifest.md` 是供人阅读的摘要，不能被导出程序用于重新选图。JSON根对象包含 `schema_version` 与 `figures[]`，当前版本为 `1.3`。每张图至少记录：
+`figures/figure-manifest.json` 是机器可读的唯一插图路由真源；`figures/figure-manifest.md` 是供人阅读的摘要，不能被导出程序用于重新选图。JSON根对象包含 `schema_version` 与 `figures[]`，当前版本为 `1.4`。每张图至少记录：
 
 ```json
 {
@@ -70,6 +70,7 @@ figure_plan:
   "display_number": "4-1",
   "title": "图题文字",
   "figure_type": "STATISTICAL",
+  "exactness_class": "DATA_GRAPH",
   "imagegen_eligible": false,
   "route_exemption": null,
   "claim_bearing": true,
@@ -81,7 +82,7 @@ figure_plan:
   "svg_layout_mode": null,
   "svg_layout": null,
   "fallback_file": null,
-  "source_data": [{"dataset_id": "bench-v1", "file": "data/bench.csv", "sha256": "..."}],
+  "source_data": [{"dataset_id": "bench-v1", "file": "data/bench.csv", "sha256": "...", "origin": "USER_PROVIDED", "acquisition_receipt": null}],
   "transformation": {
     "script": "figures/plot_bench.py",
     "sha256": "...",
@@ -117,9 +118,11 @@ figure_plan:
 
 - `IMAGE_GENERATION`：必须有独立 `prompt_file` 与真实 `generated_file`；最终文件若不同，必须记录文字、箭头或格式合成过程，不能改用纯SVG重画。
 - `display_number` 是Word/PDF唯一图号来源，必须在全文唯一；不得从 `figure_id` 或文件名猜测图号。
+- `exactness_class` 只能为：`SEMANTIC_STRUCTURE`（普通流程、组织、框架，可ImageGen）、`DOMAIN_EXACT`（电路、引脚、化学/晶体结构、公式、尺度、载荷、焊接、精确生物通路，必须领域工具或确定性底图）、`DATA_GRAPH`（真实数据代码图）或 `EVIDENCE_IMAGE`（真实科研图像）。ImageGen只允许直接承担 `SEMANTIC_STRUCTURE`；精确图可在领域底图上做不改变事实核心的视觉合成。
 - 流程、架构、ER/UML、组织、机制、研究框架、时间线和概念场景通常设置 `imagegen_eligible=true`。当能力报告显示图片生成可用时，这些图只能使用 `IMAGE_GENERATION`，否则机械校验返回 `IMAGEGEN_BYPASSED`。
 - `route_exemption` 只能为 `USER_REQUESTED_VECTOR`、`PUBLICATION_RESTRICTION`、`IMAGE_TOOL_UNAVAILABLE`、`DOMAIN_EXACTNESS`、`EVIDENCE_REQUIRED` 或 `null`。图片能力可用时，`IMAGE_TOOL_UNAVAILABLE` 不能作为豁免。
 - `DATA_CODE`：必须有 `source_data`、每个输入文件SHA-256、脚本、脚本SHA-256、实际执行回执和非空最终文件；执行回执记录实际命令、输入摘要、脚本摘要、输出摘要及原始日志，主张型统计图不能使用 `NOT_APPLICABLE`。
+- 每个 `source_data` 记录数据来源字段 `origin`（即 `data_origin`）：`USER_PROVIDED`、`OFFICIAL_DOWNLOAD`、`AUTHOR_OBSERVED`、`FORMAL_SIMULATION`、`MODEL_SYNTHETIC` 或 `MANUSCRIPT_CONTEXT`。`MODEL_SYNTHETIC` 不能进入正式主张图；官方数据必须保存含源URL、下载时间与响应/文件摘要的采集回执。模型生成CSV、脚本和哈希不能把合成数字升级成观察数据。
 - `DOMAIN_TOOL`：记录领域工具、输入文件与导出过程。
 - `EVIDENCE_FILE`：记录原始科研文件、采集或处理来源；不得生成证据区域。
 - `SVG_FALLBACK`：只在图片工具不可用、用户退出或格式禁止时使用，记录 `CAPABILITY_GAP`；`svg_layout_mode` 为 `NATIVE` 或 `COMPILED`。`COMPILED` 必须记录语义Spec、布局报告、渲染器标识及各自SHA-256；SVG保留为fallback，最终文档默认嵌入经过核对的PNG。
@@ -133,7 +136,7 @@ figure_plan:
   "spec_sha256": "...",
   "report_file": "figures/fig-2-1-layout-report.json",
   "report_sha256": "...",
-  "renderer": "aiwritepaper-agentic-skill@0.9.0/render_svg_layout.mjs",
+  "renderer": "aiwritepaper-agentic-skill@0.9.1/render_svg_layout.mjs",
   "renderer_sha256": "..."
 }
 ```

@@ -33,7 +33,9 @@ class DeliveryTests(unittest.TestCase):
             encoding="utf-8",
         )
         (self.root / "03-evidence-matrix.csv").write_text(
-            "source_id,title,status\nS1,测试文献,VERIFIED_FULLTEXT\n", encoding="utf-8"
+            "source_id,title,authors,year,DOI,URL,verification_source,supported_claims,chapters,status,evidence_role,access_mode,publication_status,notes\n"
+            "S1,测试文献,测试作者,2026,10.1/test,,出版社全文,支持正文测试,第1章,VERIFIED_FULLTEXT,EVIDENCE,OPEN_WEB,PUBLISHED,全文已核验\n",
+            encoding="utf-8"
         )
         (self.root / "references.bib").write_text("@article{s1, title={测试文献}}\n", encoding="utf-8")
         docx_name = "测试论文_20260824-120000.docx"
@@ -55,11 +57,18 @@ class DeliveryTests(unittest.TestCase):
                 writer.write(handle)
         except ImportError:
             (self.root / pdf_name).write_bytes(b"%PDF-1.4\n%%EOF")
+        (self.root / "figures").mkdir()
+        (self.root / "figures/figure-verification.json").write_text(json.dumps({
+            "status": "STRUCTURE_OK", "mechanical_status": "PASS", "visual_status": "PASS",
+            "errors": [], "warnings": [],
+        }), encoding="utf-8")
         manifest = {
             "docx": docx_name, "pdf": pdf_name,
             "docx_sha256": hashlib.sha256((self.root / docx_name).read_bytes()).hexdigest(),
             "pdf_sha256": hashlib.sha256((self.root / pdf_name).read_bytes()).hexdigest(),
-            "tables": 1, "research_status": "PARTIAL", "delivery_status": "PASS",
+            "tables": 1, "document_profile": "REPORT",
+            "figure_verification_report": "figures/figure-verification.json",
+            "research_status": "PARTIAL", "delivery_status": "PASS", "final_status": "PARTIAL",
         }
         (self.root / "run-manifest.json").write_text(json.dumps(manifest, ensure_ascii=False), encoding="utf-8")
 
@@ -98,12 +107,63 @@ class DeliveryTests(unittest.TestCase):
         )
         self.assertTrue(any("EVIDENCE_MATRIX_ROW" in item for item in self.verifier().errors))
 
+    def test_minimal_evidence_matrix_fails(self) -> None:
+        (self.root / "03-evidence-matrix.csv").write_text(
+            "source_id,DOI,status\nS1,10.1/test,VERIFIED_METADATA\n", encoding="utf-8"
+        )
+        self.assertTrue(any("EVIDENCE_MATRIX_REQUIRED_FIELD" in item for item in self.verifier().errors))
+
     def test_docx_table_loss_fails(self) -> None:
         manifest_path = self.root / "run-manifest.json"
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         manifest["tables"] = 2
         manifest_path.write_text(json.dumps(manifest, ensure_ascii=False), encoding="utf-8")
         self.assertTrue(any("DOCX_TABLE_COUNT_LOW" in item for item in self.verifier().errors))
+
+    def test_missing_figure_verification_report_fails(self) -> None:
+        (self.root / "figures/figure-verification.json").unlink()
+        self.assertTrue(any("FINAL_FILE_MISSING" in item for item in self.verifier().errors))
+
+    def test_visual_partial_requires_delivery_partial(self) -> None:
+        report_path = self.root / "figures/figure-verification.json"
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+        report["visual_status"] = "PARTIAL"
+        report_path.write_text(json.dumps(report), encoding="utf-8")
+        self.assertTrue(any("DELIVERY_VISUAL_STATUS_CONFLICT" in item for item in self.verifier().errors))
+
+    def test_final_status_mismatch_fails(self) -> None:
+        manifest_path = self.root / "run-manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["final_status"] = "PASS"
+        manifest_path.write_text(json.dumps(manifest, ensure_ascii=False), encoding="utf-8")
+        self.assertTrue(any("FINAL_STATUS_MISMATCH" in item for item in self.verifier().errors))
+
+    def test_thesis_requires_visible_pdf_toc(self) -> None:
+        manifest_path = self.root / "run-manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["document_profile"] = "THESIS"
+        manifest_path.write_text(json.dumps(manifest, ensure_ascii=False), encoding="utf-8")
+        errors = self.verifier().errors
+        self.assertTrue(any("PDF_VISIBLE_TOC_MISSING" in item for item in errors))
+
+    def test_thesis_rejects_small_body_font(self) -> None:
+        manifest_path = self.root / "run-manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["document_profile"] = "THESIS"
+        manifest_path.write_text(json.dumps(manifest, ensure_ascii=False), encoding="utf-8")
+        docx = self.root / manifest["docx"]
+        document_xml = '''<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>
+<w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>第1章</w:t></w:r></w:p>
+<w:p><w:pPr><w:pStyle w:val="Heading2"/></w:pPr><w:r><w:t>1.1</w:t></w:r></w:p>
+<w:p><w:r><w:instrText>TOC \\o "1-3"</w:instrText></w:r></w:p>
+<w:p><w:r><w:rPr><w:sz w:val="20"/></w:rPr><w:t>这是一段超过二十个字符并被直接设置成十磅字号的论文正文。</w:t></w:r></w:p>
+<w:tbl><w:tr><w:tc><w:p/></w:tc></w:tr></w:tbl>
+</w:body></w:document>'''
+        with zipfile.ZipFile(docx, "w") as archive:
+            archive.writestr("word/document.xml", document_xml)
+        manifest["docx_sha256"] = hashlib.sha256(docx.read_bytes()).hexdigest()
+        manifest_path.write_text(json.dumps(manifest, ensure_ascii=False), encoding="utf-8")
+        self.assertTrue(any("DOCX_BODY_FONT_TOO_SMALL" in item for item in self.verifier().errors))
 
 
 if __name__ == "__main__":

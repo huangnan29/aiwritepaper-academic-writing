@@ -6,7 +6,7 @@
   "additionalProperties": true,
   "required": ["schema_version", "figures"],
   "properties": {
-    "schema_version": {"const": "1.3"},
+    "schema_version": {"const": "1.4"},
     "figures": {
       "type": "array",
       "items": {"$ref": "#/$defs/figure"}
@@ -18,7 +18,7 @@
       "type": "object",
       "additionalProperties": true,
       "required": [
-        "figure_id", "display_number", "title", "figure_type", "imagegen_eligible", "route_exemption", "claim_bearing", "generation_route",
+        "figure_id", "display_number", "title", "figure_type", "exactness_class", "imagegen_eligible", "route_exemption", "claim_bearing", "generation_route",
         "data_status", "prompt_file", "generated_file", "fallback_file", "source_data",
         "transformation", "caption_claim", "supported_manuscript_claims", "limitations",
         "canvas_contains_figure_number_or_caption", "final_embed_file", "generation_receipt",
@@ -29,6 +29,7 @@
         "display_number": {"type": "string", "pattern": "^[0-9]+(?:-[0-9]+)*$"},
         "title": {"type": "string", "minLength": 1},
         "figure_type": {"enum": ["ARCHITECTURE", "PROCESS", "ER_UML", "STATISTICAL", "NETWORK_DATA", "DOMAIN", "EVIDENCE_IMAGE"]},
+        "exactness_class": {"enum": ["SEMANTIC_STRUCTURE", "DOMAIN_EXACT", "DATA_GRAPH", "EVIDENCE_IMAGE"]},
         "imagegen_eligible": {"type": "boolean"},
         "route_exemption": {"type": ["string", "null"], "enum": ["USER_REQUESTED_VECTOR", "PUBLICATION_RESTRICTION", "IMAGE_TOOL_UNAVAILABLE", "DOMAIN_EXACTNESS", "EVIDENCE_REQUIRED", null]},
         "claim_bearing": {"type": "boolean"},
@@ -41,10 +42,12 @@
           "type": "array",
           "items": {
             "type": "object",
-            "required": ["file", "sha256"],
+            "required": ["file", "sha256", "origin"],
             "properties": {
               "file": {"type": "string", "minLength": 1},
-              "sha256": {"type": "string", "pattern": "^[0-9a-fA-F]{64}$"}
+              "sha256": {"type": "string", "pattern": "^[0-9a-fA-F]{64}$"},
+              "origin": {"enum": ["USER_PROVIDED", "OFFICIAL_DOWNLOAD", "AUTHOR_OBSERVED", "FORMAL_SIMULATION", "MODEL_SYNTHETIC", "MANUSCRIPT_CONTEXT"]},
+              "acquisition_receipt": {"type": ["object", "null"]}
             }
           }
         },
@@ -60,6 +63,18 @@
         "vlm_verification": {"type": "object"}
       },
       "allOf": [
+        {
+          "if": {"properties": {"exactness_class": {"const": "DATA_GRAPH"}}},
+          "then": {"properties": {"generation_route": {"const": "DATA_CODE"}, "imagegen_eligible": {"const": false}}}
+        },
+        {
+          "if": {"properties": {"exactness_class": {"const": "EVIDENCE_IMAGE"}}},
+          "then": {"properties": {"generation_route": {"const": "EVIDENCE_FILE"}, "imagegen_eligible": {"const": false}}}
+        },
+        {
+          "if": {"properties": {"exactness_class": {"const": "DOMAIN_EXACT"}}},
+          "then": {"properties": {"imagegen_eligible": {"const": false}, "generation_route": {"not": {"const": "IMAGE_GENERATION"}}}}
+        },
         {
           "if": {"properties": {"generation_route": {"const": "IMAGE_GENERATION"}}},
           "then": {

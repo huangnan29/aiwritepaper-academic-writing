@@ -59,6 +59,9 @@ def main() -> int:
     for term in ["GENERATED_AT_LOCAL", "YYYYMMDD-HHMMSS", "安全论文题目", "final-paper.docx", "run-manifest.json"]:
         if term not in output_contract:
             errors.append(f"输出契约缺少最终文件命名规则: {term}")
+    for term in ["document_profile", "THESIS", "FINAL_STATUS", "figure-verification.json"]:
+        if term not in output_contract and term not in read_source(COMMON_DIR / "autonomous-completion.md"):
+            errors.append(f"输出契约缺少0.9.1闭环字段: {term}")
 
     if len(directions) != 19:
         errors.append(f"方向源文件应为19个，实际为{len(directions)}个")
@@ -171,6 +174,7 @@ def main() -> int:
         "execution_receipt", "output_sha256", "SVG降级图的机械校验",
         "svg_layout_mode", "COMPILED", "figure-spec.json",
         "display_number", "imagegen_eligible", "route_exemption", "IMAGEGEN_BYPASSED",
+        "exactness_class", "DOMAIN_EXACT", "data_origin", "MODEL_SYNTHETIC",
     ]:
         if required_term not in figure_rules:
             errors.append(f"图表公共规则缺少关键契约: {required_term}")
@@ -183,8 +187,8 @@ def main() -> int:
     schema_path = SKILL_ROOT / "references" / "schemas" / "figure-manifest.schema.json"
     try:
         schema = json.loads(schema_path.read_text(encoding="utf-8"))
-        if schema.get("properties", {}).get("schema_version", {}).get("const") != "1.3":
-            errors.append("Figure Manifest Schema版本不是1.3")
+        if schema.get("properties", {}).get("schema_version", {}).get("const") != "1.4":
+            errors.append("Figure Manifest Schema版本不是1.4")
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:
         errors.append(f"Figure Manifest Schema不可用: {exc}")
 

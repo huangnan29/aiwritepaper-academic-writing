@@ -4,7 +4,7 @@
 
 **从论文题目到一份完整执行提示词，再持续交付正文、配图、DOCX 与 PDF。**
 
-![Version](https://img.shields.io/badge/version-0.9.0-2563EB?style=flat-square)
+![Version](https://img.shields.io/badge/version-0.9.1-2563EB?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-16A34A?style=flat-square)
 ![Architecture](https://img.shields.io/badge/architecture-MD--first-7C3AED?style=flat-square)
 ![Directions](https://img.shields.io/badge/paper%20directions-19-EA580C?style=flat-square)
@@ -37,6 +37,19 @@
 - **统一字数**：最终正文由确定性检查器按同一口径重新统计，模型自报和章节预算不能覆盖结果。
 - **文档闭环**：正式DOCX/PDF必须带相同时间戳，Manifest路径和哈希真实存在；Word目录、Heading层级、表格和图片题注缺失会阻止交付。
 - **双状态**：`RESEARCH_STATUS` 描述研究材料是否完整，`DELIVERY_STATUS` 描述文件是否合格；诚实降级的研究方案不再与损坏的Word交付混为一谈。
+
+## v0.9.1条件化验收
+
+v0.9.1根据Grok 38篇方向回归与Antigravity 0.8.2失败样本，增加不会一票否决正常功能的分级核验：
+
+- 虚构/模型合成数据、缺失文件、损坏矩阵、错误路由继续硬阻断；
+- 图片已机械通过但缺少VLM或人工视觉核验时，交付降为 `PARTIAL`，仍保留可用文件；
+- `THESIS`检查默认/学校模板字号和PDF可见目录，`JOURNAL`、`REPORT`不强制毕业论文目录，`CUSTOM`读取用户格式契约；
+- Figure Manifest 1.4新增 `exactness_class`，普通流程与框架可ImageGen，电路、晶体、化学结构、尺度、载荷和精确通路必须领域工具或确定性底图；
+- 数据源新增 `origin/data_origin`，模型自行生成的CSV不能冒充实验、问卷、临床、性能或统计结果；
+- 证据矩阵必须包含完整题录、支持主张、章节与访问/发表状态，不能只写 `source_id,DOI,status`；
+- 强制 `RESEARCH_STATUS`、`DELIVERY_STATUS`、`FINAL_STATUS` 三层一致；
+- 低于目标95%和重复免责声明只产生修订警告，不改变用户明确的±10%硬容差。
 
 ## 你会得到什么
 
@@ -249,7 +262,7 @@ v0.9.0据此不再继续堆叠提示语，而是新增机器能力报告、父�
 - `IMAGE_GENERATION` 必须保存图片工具实际返回结果或客户端调用片段，记录工具、模型、时间、调用ID以及Prompt、回执、生成文件SHA-256；
 - 只有模型文字声称“已调用Imagine/ImageGen/Nano Banana”属于 `DECLARED_ONLY`，机械校验失败；
 - VLM的 `PASS` 必须绑定视觉工具回执和被检查最终图片SHA-256，不能只填写状态；
-- `figure-manifest.json` 使用Schema 1.3，新增 `display_number`、`imagegen_eligible` 与 `route_exemption`；
+- `figure-manifest.json` 使用Schema 1.4，新增 `display_number`、`exactness_class`、`imagegen_eligible`、`route_exemption` 与数据来源类型；
 - 人类摘要中的每个图号和最终插图路径必须与权威JSON恰好对应一次。
 
 ### SVG降级质量
@@ -511,7 +524,7 @@ aiwritepaper-agentic-skill/
 
 ## 维护与版本
 
-- 当前版本：`0.9.0`
+- 当前版本：`0.9.1`
 - 更新记录：[CHANGELOG.md](CHANGELOG.md)
 - Skill入口：[SKILL.md](SKILL.md)
 - 历史复杂流水线版可通过Git标签`v0.3.1-runtime-gates`恢复

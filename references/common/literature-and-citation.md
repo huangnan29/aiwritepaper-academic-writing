@@ -28,6 +28,8 @@ arXiv、bioRxiv、ChemRxiv、SSRN、NBER工作论文可以收录，但必须在�
 
 在 `02-search-log.md` 记录数据库、实际访问路径、检索式、日期、筛选步骤和访问限制。在 `03-evidence-matrix.csv` 记录 source_id、题名、作者、年份、类型、来源、卷期页、DOI、URL、访问日期、核验来源、支持主张、章节、状态、evidence_role、access_mode、publication_status 和备注。
 
+上述字段是最低证据契约，不是可选示例。只包含 `source_id,DOI,status` 或缺少题名、作者、年份、支持主张、章节和访问/发表状态的极简表不属于完整证据矩阵，不能通过最终交付验收。
+
 新增字段使用受控值：`evidence_role` 只能为 `DISCOVERY`、`EVIDENCE`、`VERIFICATION`，兼具多种角色时用 `|` 连接；`access_mode` 只能使用上述五种访问标记，实际路径与典型条件不一致时以本次观察为准；`publication_status` 使用 `PUBLISHED`、`PREPRINT`、`WORKING_PAPER`、`STANDARD`、`OFFICIAL_DOCUMENT`、`DATASET` 或 `OTHER`。空值必须解释，不能自行创造近义状态。
 
 状态只能为：
@@ -38,5 +40,7 @@ arXiv、bioRxiv、ChemRxiv、SSRN、NBER工作论文可以收录，但必须在�
 - `REJECTED`：重复、低质量或不匹配。
 
 核心论点只能由已阅读且匹配的来源支持。每条文内引用必须匹配参考文献，每条参考文献必须在正文出现。无法访问全文时降低表述强度，不得假装读过。输出 `references.bib` 与 `04-reference-audit.md`。
+
+`VERIFIED_METADATA` 不得用于转述全文实验参数、样本、定量结果、详细方法或原文引语；正式摘要能够直接确认的研究范围须明确写成摘要层。支撑全文级主张时使用 `VERIFIED_FULLTEXT` 并保留定位。法条、标准、案例数字和技术手册参数分别记录法源版本/条款、标准号/范围页、来源文件/页码/期间/计算和手册版本/页码。
 
 最低参考文献数量是生产目标，不是最后才检查的备注。检索和核验应持续到达到 `MIN_REFERENCES`，或已经穷尽当前可用来源与工具。未达到最低数量时不得标记 `PASS`；但应先扩大同义词、英文关键词、相关方法、标准和官方文档检索，不得只用少量来源反复支撑全文。

@@ -4,7 +4,7 @@ description: 根据题目和材料完成毕业论文、学位论文、期刊论�
 license: MIT
 metadata:
   author: huangnan29
-  version: "0.9.0"
+  version: "0.9.1"
   repository: https://github.com/huangnan29/aiwritepaper-agentic-skill
 ---
 
@@ -84,8 +84,8 @@ python3 "<SKILL_DIR>/scripts/compose_prompt.py" \
 
 `scripts/verify_figure_package.py` 只允许检查能力报告与配图路由、图表Manifest、图片/VLM回执、文件摘要、Markdown路由、DOCX嵌图与标题/目录/题注结构以及基础PDF解析；`scripts/verify_manuscript_delivery.py` 只允许统一统计正文、检查证据矩阵结构、正式文件名、路径、哈希、Word表格/目录和PDF基础状态。两者都不决定论文观点、证据取舍或研究完成度。
 
-最终交付前必须运行两个检查器。图表检查失败时回到配图阶段；正文、文献或文档检查失败时回到对应阶段。任何检查失败都不得写 `DELIVERY_STATUS: PASS`。脚本通过只表示机械交付一致，不证明学术结论正确。
+最终交付前必须运行两个检查器并把报告保存到约定路径。图表检查失败时回到配图阶段；正文、文献或文档检查失败时回到对应阶段。任何检查失败都不得写 `DELIVERY_STATUS: PASS`。图片机械通过但视觉核验缺失时使用 `DELIVERY_STATUS: PARTIAL`，不是整体失败；脚本通过只表示机械交付一致，不证明学术结论正确。
 
 图片工具已经成功生成某图时，正文、DOCX和PDF必须插入该生成图或由它合成的最终PNG；同名SVG只能作为备用或修正源。最终嵌入路径以图表清单中的 `final_embed_file` 为唯一依据，不能按文件名或扩展名自行改选SVG。
 
-最终答复只报告真实完成内容、论文题目、实际正文长度、文献/图片/表格数量、按“安全论文题目_YYYYMMDD-HHMMSS”生成且共用同一时间戳的DOCX/PDF路径、QA路径、能力缺口和最终状态。任何硬目标未满足时不得标记 `PASS`。
+最终答复只报告真实完成内容、论文题目、实际正文长度、文献/图片/表格数量、按“安全论文题目_YYYYMMDD-HHMMSS”生成且共用同一时间戳的DOCX/PDF路径、QA路径、能力缺口以及 `RESEARCH_STATUS`、`DELIVERY_STATUS`、`FINAL_STATUS`。任何硬目标未满足时不得标记 `PASS`。

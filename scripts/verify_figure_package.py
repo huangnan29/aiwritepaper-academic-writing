@@ -25,11 +25,21 @@ ROUTE_EXEMPTIONS = {
     "USER_REQUESTED_VECTOR", "PUBLICATION_RESTRICTION", "IMAGE_TOOL_UNAVAILABLE",
     "DOMAIN_EXACTNESS", "EVIDENCE_REQUIRED", None,
 }
+EXACTNESS_CLASSES = {"SEMANTIC_STRUCTURE", "DOMAIN_EXACT", "DATA_GRAPH", "EVIDENCE_IMAGE"}
+DATA_ORIGINS = {
+    "USER_PROVIDED", "OFFICIAL_DOWNLOAD", "AUTHOR_OBSERVED", "FORMAL_SIMULATION",
+    "MODEL_SYNTHETIC", "MANUSCRIPT_CONTEXT",
+}
+EXACTNESS_TITLE_TERMS = [
+    "电路", "接线", "引脚", "原理图", "化学结构", "晶体结构", "能带",
+    "分子结构", "反应式", "电极体系", "载荷位置", "尺寸标注", "疲劳校核",
+    "焊接接头", "信号链", "精确通路",
+]
 FINAL_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
 CJK_FONTS = ["Noto Sans CJK", "Source Han Sans", "PingFang SC", "Microsoft YaHei", "WenQuanYi", "SimHei"]
 WORD_NS = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
 REQUIRED_FIELDS = {
-    "figure_id", "display_number", "title", "figure_type", "imagegen_eligible", "route_exemption",
+    "figure_id", "display_number", "title", "figure_type", "exactness_class", "imagegen_eligible", "route_exemption",
     "claim_bearing", "generation_route",
     "data_status", "prompt_file", "generated_file", "fallback_file", "source_data",
     "transformation", "caption_claim", "supported_manuscript_claims", "limitations",
@@ -47,6 +57,7 @@ class FigureVerifier:
         self.figure_titles: Dict[str, str] = {}
         self.figure_numbers: Dict[str, str] = {}
         self.image_generation_available: Optional[bool] = None
+        self.visual_status = "PASS"
 
     def error(self, code: str, detail: str) -> None:
         self.errors.append(f"{code}: {detail}")
@@ -117,8 +128,8 @@ class FigureVerifier:
         if not isinstance(manifest, dict) or not isinstance(manifest.get("figures"), list):
             self.error("MANIFEST_SHAPE", "根对象必须包含figures数组")
             return manifest if isinstance(manifest, dict) else {}
-        if manifest.get("schema_version") != "1.3":
-            self.error("SCHEMA_VERSION", "当前仅接受schema_version=1.3")
+        if manifest.get("schema_version") != "1.4":
+            self.error("SCHEMA_VERSION", "当前仅接受schema_version=1.4")
 
         seen_ids: Set[str] = set()
         seen_numbers: Set[str] = set()
@@ -149,6 +160,9 @@ class FigureVerifier:
                 self.error("ROUTE_INVALID", f"{figure_id}: {route}")
             if figure.get("figure_type") not in FIGURE_TYPES:
                 self.error("FIGURE_TYPE_INVALID", f"{figure_id}: {figure.get('figure_type')}")
+            exactness_class = figure.get("exactness_class")
+            if exactness_class not in EXACTNESS_CLASSES:
+                self.error("EXACTNESS_CLASS_INVALID", f"{figure_id}: {exactness_class}")
             imagegen_eligible = figure.get("imagegen_eligible")
             if not isinstance(imagegen_eligible, bool):
                 self.error("IMAGEGEN_ELIGIBLE_INVALID", figure_id)
@@ -160,6 +174,19 @@ class FigureVerifier:
                     self.error("IMAGEGEN_BYPASSED", f"{figure_id}: 图片工具可用但路线为{route}")
             if exemption == "IMAGE_TOOL_UNAVAILABLE" and self.image_generation_available is True:
                 self.error("FALSE_IMAGE_TOOL_GAP", figure_id)
+            if exactness_class == "DOMAIN_EXACT":
+                if route == "IMAGE_GENERATION" or imagegen_eligible is not False:
+                    self.error("DOMAIN_EXACT_IMAGEGEN_FORBIDDEN", figure_id)
+                if route == "SVG_FALLBACK" and exemption != "DOMAIN_EXACTNESS":
+                    self.error("DOMAIN_EXACT_EXEMPTION_MISSING", figure_id)
+            elif exactness_class == "DATA_GRAPH" and route != "DATA_CODE":
+                self.error("DATA_GRAPH_ROUTE_INVALID", figure_id)
+            elif exactness_class == "EVIDENCE_IMAGE" and route != "EVIDENCE_FILE":
+                self.error("EVIDENCE_IMAGE_ROUTE_INVALID", figure_id)
+            if exactness_class == "SEMANTIC_STRUCTURE" and isinstance(figure.get("title"), str):
+                if any(term in figure["title"] for term in EXACTNESS_TITLE_TERMS):
+                    self.warning("EXACTNESS_CLASS_REVIEW", f"{figure_id}: {figure['title']}")
+                    self.visual_status = "PARTIAL"
             if not isinstance(figure.get("title"), str) or not figure.get("title").strip():
                 self.error("TITLE_MISSING", figure_id)
             else:
@@ -200,6 +227,24 @@ class FigureVerifier:
                     self.error("SOURCE_DATA_ROW", f"{figure_id}[{pos}]")
                     continue
                 source_path = self.resolve_file(source.get("file"), f"source_data[{pos}].file", figure_id)
+                origin = source.get("origin") if isinstance(source, dict) else None
+                if origin not in DATA_ORIGINS:
+                    self.error("SOURCE_DATA_ORIGIN_INVALID", f"{figure_id}[{pos}]: {origin}")
+                if origin == "MODEL_SYNTHETIC" and (route == "DATA_CODE" or figure.get("claim_bearing")):
+                    self.error("MODEL_SYNTHETIC_RESULT_FORBIDDEN", f"{figure_id}[{pos}]")
+                if origin == "OFFICIAL_DOWNLOAD":
+                    receipt = source.get("acquisition_receipt")
+                    if not isinstance(receipt, dict):
+                        self.error("ACQUISITION_RECEIPT_MISSING", f"{figure_id}[{pos}]")
+                    else:
+                        receipt_path = self.resolve_file(
+                            receipt.get("receipt_file"), f"source_data[{pos}].acquisition_receipt.receipt_file", figure_id
+                        )
+                        if receipt_path and receipt.get("receipt_sha256", "").lower() != self.sha256(receipt_path):
+                            self.error("ACQUISITION_RECEIPT_HASH_MISMATCH", f"{figure_id}[{pos}]")
+                        for field in ["source_url", "downloaded_at"]:
+                            if not isinstance(receipt.get(field), str) or not receipt.get(field, "").strip():
+                                self.error("ACQUISITION_RECEIPT_FIELD", f"{figure_id}[{pos}].{field}")
                 if source_path:
                     source_paths.append(source_path)
                     declared_source_hash = source.get("sha256")
@@ -355,6 +400,7 @@ class FigureVerifier:
         if status == "PASS" and vlm.get("remaining_issues"):
             self.error("VLM_PASS_WITH_ISSUES", figure_id)
         if status == "SKIPPED":
+            self.visual_status = "PARTIAL"
             if not isinstance(vlm.get("reason"), str) or not vlm.get("reason", "").strip():
                 self.error("VLM_SKIP_REASON_MISSING", figure_id)
             return
@@ -684,6 +730,8 @@ def main() -> int:
 
     payload = {
         "status": "STRUCTURE_OK" if not verifier.errors else "STRUCTURE_FAIL",
+        "mechanical_status": "PASS" if not verifier.errors else "FAIL",
+        "visual_status": verifier.visual_status if not verifier.errors else "FAIL",
         "figures_checked": len(verifier.final_files),
         "errors": verifier.errors,
         "warnings": verifier.warnings,

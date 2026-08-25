@@ -6,6 +6,8 @@
 
 `FULL_BUILD` 输出：`run-params.md`、`final-execution-prompt.md`、`00-capability-report.md`、`00-capability-report.json`、`01-research-contract.md`、`02-search-log.md`、`03-evidence-matrix.csv`、`04-reference-audit.md`、`references.bib`、`05-outline.md`、`06-argument-map.md`、`chapters/`、`figures/figure-plan.json`、`figures/figure-manifest.json`、`figures/figure-manifest.md`、`figures/figure-verification.json`、`tables/table-data-and-sources.md`、`07-paper-full.md`、`08-claim-citation-audit.md`、`09-peer-review.md`、`10-revision-log.md`、按下述规则命名的DOCX与PDF、可选同名TEX、`11-format-validation.md`、`12-final-qa-report.md`、`13-delivery-verification.json` 和 `run-manifest.json`。没有真实生成的文件不得列入完成清单。
 
+`run-manifest.json` 必须记录 `document_profile`（`THESIS`、`JOURNAL`、`REPORT` 或 `CUSTOM`）、`research_status`、`delivery_status`、`final_status`、两份验收报告路径以及正式文档路径与摘要。`THESIS`使用默认论文格式并要求PDF可见目录；`JOURNAL`和`REPORT`按对应模板/体例，不强制毕业论文目录；`CUSTOM`必须记录用户或学校模板的关键格式契约。
+
 ## 最终文档文件名
 
 开始最终导出时冻结一次本地生成时间 `GENERATED_AT_LOCAL`，格式为 `YYYYMMDD-HHMMSS`。把论文题目转换为安全文件名：保留中文、字母、数字、空格、短横线和下划线；将 `/\\:*?"<>|`、控制字符和连续空白替换或折叠为单个下划线；去除首尾空格、点与下划线；题目过长时在不破坏字符的前提下截断，使文件名主体不超过120个字符。最终文件名固定为：
