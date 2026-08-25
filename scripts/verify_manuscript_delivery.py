@@ -306,7 +306,10 @@ class DeliveryVerifier:
             if require_toc and not visible_toc:
                 self.error("PDF_VISIBLE_TOC_MISSING", str(path))
         except ImportError:
-            self.warning("PDF_DEEP_CHECK_SKIPPED", "当前Python缺少pypdf")
+            if require_toc:
+                self.error("PDF_TOC_CHECK_UNAVAILABLE", "THESIS目录核验需要pypdf")
+            else:
+                self.warning("PDF_DEEP_CHECK_SKIPPED", "当前Python缺少pypdf")
         except Exception as exc:
             self.error("PDF_PARSE_FAILED", str(exc))
 

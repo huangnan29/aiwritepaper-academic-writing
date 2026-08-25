@@ -144,7 +144,10 @@ class DeliveryTests(unittest.TestCase):
         manifest["document_profile"] = "THESIS"
         manifest_path.write_text(json.dumps(manifest, ensure_ascii=False), encoding="utf-8")
         errors = self.verifier().errors
-        self.assertTrue(any("PDF_VISIBLE_TOC_MISSING" in item for item in errors))
+        self.assertTrue(any(
+            "PDF_VISIBLE_TOC_MISSING" in item or "PDF_TOC_CHECK_UNAVAILABLE" in item
+            for item in errors
+        ))
 
     def test_thesis_rejects_small_body_font(self) -> None:
         manifest_path = self.root / "run-manifest.json"
