@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/huangnan29/aiwritepaper-agentic-skill/figure-manifest.schema.json",
+  "$id": "https://github.com/huangnan29/aiwritepaper-academic-writing/figure-manifest.schema.json",
   "title": "AIWritePaper Figure Manifest",
   "type": "object",
   "additionalProperties": true,

@@ -420,7 +420,7 @@ class FigurePackageTests(unittest.TestCase):
                 "spec_sha256": hashlib.sha256(spec.read_bytes()).hexdigest(),
                 "report_file": "figures/fig-1-layout-report.json",
                 "report_sha256": hashlib.sha256(report.read_bytes()).hexdigest(),
-                "renderer": "aiwritepaper-agentic-skill@0.9.1/render_svg_layout.mjs",
+                "renderer": "aiwritepaper-academic-writing@1.0.0/render_svg_layout.mjs",
                 "renderer_sha256": hashlib.sha256(renderer.read_bytes()).hexdigest(),
             },
         })

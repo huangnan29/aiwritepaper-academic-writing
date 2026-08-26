@@ -1,25 +1,28 @@
 #!/bin/sh
 
-# AIWritePaper Agentic Skill POSIX 安装器。
+# AIWritePaper｜AI学术写作全流程 POSIX 安装器。
 # 只从固定仓库克隆并复制完整 skill 目录，不执行远程脚本。
 
 set -eu
 
-REPOSITORY_URL='https://github.com/huangnan29/aiwritepaper-agentic-skill.git'
-SKILL_NAME='aiwritepaper-agentic-skill'
+REPOSITORY_URL='https://github.com/huangnan29/aiwritepaper-academic-writing.git'
+SKILL_NAME='aiwritepaper-academic-writing'
+LEGACY_SKILL_NAME='aiwritepaper-agentic-skill'
 AGENT=''
 SCOPE=''
 FORCE=0
+MIGRATE_LEGACY=0
 TEMP_ROOT=''
 
 print_usage() {
     cat <<'EOF'
 用法：
-  ./install.sh --agent <agent> --scope <user|project> [--force]
+  ./install.sh --agent <agent> --scope <user|project> [--force] [--migrate-legacy]
 
 agent 可选值：codex、claude、cursor、kimi、gemini、antigravity、copilot、opencode、workbuddy、grok、zcode、zai、deepseek、deepseek-tui、universal
 scope 可选值：user、project
 --force：目标目录已存在时，确认后覆盖
+--migrate-legacy：新名称安装成功后删除同一安装根目录中的旧名称
 EOF
 }
 
@@ -50,6 +53,10 @@ while [ "$#" -gt 0 ]; do
             ;;
         --force)
             FORCE=1
+            shift
+            ;;
+        --migrate-legacy)
+            MIGRATE_LEGACY=1
             shift
             ;;
         -h|--help)
@@ -139,7 +146,7 @@ if ! mkdir -p "$INSTALL_ROOT"; then
     fail "无法创建安装目录：${INSTALL_ROOT}。"
 fi
 
-if ! TEMP_ROOT=$(mktemp -d "${TMPDIR:-/tmp}/aiwritepaper-agentic-skill.XXXXXX"); then
+if ! TEMP_ROOT=$(mktemp -d "${TMPDIR:-/tmp}/aiwritepaper-academic-writing.XXXXXX"); then
     fail '无法创建临时目录。'
 fi
 
@@ -168,3 +175,15 @@ if [ -d "$TARGET_DIR/.git" ]; then
 fi
 
 printf '%s\n' "安装完成：$TARGET_DIR"
+
+if [ "$MIGRATE_LEGACY" -eq 1 ]; then
+    LEGACY_DIR="$INSTALL_ROOT/$LEGACY_SKILL_NAME"
+    case "$LEGACY_DIR" in
+        */"$LEGACY_SKILL_NAME") ;;
+        *) fail '旧Skill目录不安全，已停止迁移清理。' ;;
+    esac
+    if [ -e "$LEGACY_DIR" ] || [ -L "$LEGACY_DIR" ]; then
+        rm -rf "$LEGACY_DIR"
+        printf '%s\n' "已删除旧名称：$LEGACY_DIR"
+    fi
+fi

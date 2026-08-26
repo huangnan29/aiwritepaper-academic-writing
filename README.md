@@ -1,10 +1,10 @@
 <div align="center">
 
-# AIWritePaper Agentic Skill
+# AIWritePaper｜AI学术写作全流程
 
 **从论文题目到一份完整执行提示词，再持续交付正文、配图、DOCX 与 PDF。**
 
-![Version](https://img.shields.io/badge/version-0.9.1-2563EB?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.0.0-2563EB?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-16A34A?style=flat-square)
 ![Architecture](https://img.shields.io/badge/architecture-MD--first-7C3AED?style=flat-square)
 ![Directions](https://img.shields.io/badge/paper%20directions-19-EA580C?style=flat-square)
@@ -15,6 +15,14 @@
 
 > [!NOTE]
 > 当前版本采用 **MD-first 单提示词执行 + Agent能力适配 + 确定性交付验收**。模型继续负责方向、检索、论证、写作和配图语义；脚本只统计字数、核对图片路由、文件、目录、表格与哈希，不生成论文内容。
+
+## v1.0.0一步到位更名
+
+- 中文展示名统一为 **AIWritePaper｜AI学术写作全流程**；
+- Skill注册名与安装目录统一为 `aiwritepaper-academic-writing`；
+- GitHub仓库统一为 `huangnan29/aiwritepaper-academic-writing`；
+- `install.sh`与`install.ps1`支持迁移旧安装，安装成功后再清理旧目录；
+- 论文生成规则、19个方向和0.9.1验收能力保持不变。
 
 ## v0.9.0解决什么
 
@@ -389,7 +397,7 @@ paper-output/
 ### 通用安装
 
 ```bash
-npx skills add huangnan29/aiwritepaper-agentic-skill
+npx skills add huangnan29/aiwritepaper-academic-writing
 ```
 
 ### macOS / Linux全局安装
@@ -423,7 +431,7 @@ npx skills add huangnan29/aiwritepaper-agentic-skill
 ./install.sh --agent deepseek-tui --scope user
 ```
 
-更新已有安装时追加`--force`。
+从旧名称迁移或更新已有安装时追加`--force --migrate-legacy`。
 
 ### Windows PowerShell
 
@@ -439,32 +447,32 @@ npx skills add huangnan29/aiwritepaper-agentic-skill
 .\install.ps1 -Agent deepseek-tui -Scope user
 ```
 
-更新已有安装时追加`-Force`。
+从旧名称迁移或更新已有安装时追加`-Force -MigrateLegacy`。
 
 ## 安装路径
 
 | Agent | 项目级 | 用户级 |
 |---|---|---|
-| Claude | `.claude/skills/aiwritepaper-agentic-skill` | `~/.claude/skills/aiwritepaper-agentic-skill` |
-| Codex | `.codex/skills/aiwritepaper-agentic-skill` | `~/.codex/skills/aiwritepaper-agentic-skill` |
-| Cursor | `.cursor/skills/aiwritepaper-agentic-skill` | `~/.cursor/skills/aiwritepaper-agentic-skill` |
-| Kimi Code | `.kimi-code/skills/aiwritepaper-agentic-skill` | `$KIMI_CODE_HOME/skills/aiwritepaper-agentic-skill`（默认`~/.kimi-code/skills`） |
-| Gemini CLI | `.gemini/skills/aiwritepaper-agentic-skill` | `~/.gemini/skills/aiwritepaper-agentic-skill` |
-| Antigravity | `.agents/skills/aiwritepaper-agentic-skill` | `~/.gemini/config/skills/aiwritepaper-agentic-skill` |
-| Grok Build | `.grok/skills/aiwritepaper-agentic-skill` | `~/.grok/skills/aiwritepaper-agentic-skill` |
-| GitHub Copilot | `.github/skills/aiwritepaper-agentic-skill` | `~/.copilot/skills/aiwritepaper-agentic-skill` |
-| OpenCode | `.opencode/skills/aiwritepaper-agentic-skill` | `~/.config/opencode/skills/aiwritepaper-agentic-skill` |
-| WorkBuddy | `.workbuddy/skills/aiwritepaper-agentic-skill` | `~/.workbuddy/skills/aiwritepaper-agentic-skill` |
-| ZCode（Z.ai） | `.zcode/skills/aiwritepaper-agentic-skill` | `~/.zcode/skills/aiwritepaper-agentic-skill` |
-| DeepSeek-tui（Codewhale） | `.codewhale/skills/aiwritepaper-agentic-skill` | `~/.codewhale/skills/aiwritepaper-agentic-skill` |
-| 通用Agent | `.agents/skills/aiwritepaper-agentic-skill` | `~/.agents/skills/aiwritepaper-agentic-skill` |
+| Claude | `.claude/skills/aiwritepaper-academic-writing` | `~/.claude/skills/aiwritepaper-academic-writing` |
+| Codex | `.codex/skills/aiwritepaper-academic-writing` | `~/.codex/skills/aiwritepaper-academic-writing` |
+| Cursor | `.cursor/skills/aiwritepaper-academic-writing` | `~/.cursor/skills/aiwritepaper-academic-writing` |
+| Kimi Code | `.kimi-code/skills/aiwritepaper-academic-writing` | `$KIMI_CODE_HOME/skills/aiwritepaper-academic-writing`（默认`~/.kimi-code/skills`） |
+| Gemini CLI | `.gemini/skills/aiwritepaper-academic-writing` | `~/.gemini/skills/aiwritepaper-academic-writing` |
+| Antigravity | `.agents/skills/aiwritepaper-academic-writing` | `~/.gemini/config/skills/aiwritepaper-academic-writing` |
+| Grok Build | `.grok/skills/aiwritepaper-academic-writing` | `~/.grok/skills/aiwritepaper-academic-writing` |
+| GitHub Copilot | `.github/skills/aiwritepaper-academic-writing` | `~/.copilot/skills/aiwritepaper-academic-writing` |
+| OpenCode | `.opencode/skills/aiwritepaper-academic-writing` | `~/.config/opencode/skills/aiwritepaper-academic-writing` |
+| WorkBuddy | `.workbuddy/skills/aiwritepaper-academic-writing` | `~/.workbuddy/skills/aiwritepaper-academic-writing` |
+| ZCode（Z.ai） | `.zcode/skills/aiwritepaper-academic-writing` | `~/.zcode/skills/aiwritepaper-academic-writing` |
+| DeepSeek-tui（Codewhale） | `.codewhale/skills/aiwritepaper-academic-writing` | `~/.codewhale/skills/aiwritepaper-academic-writing` |
+| 通用Agent | `.agents/skills/aiwritepaper-academic-writing` | `~/.agents/skills/aiwritepaper-academic-writing` |
 
 ## 使用示例
 
 ### 完整论文
 
 ```text
-使用 $aiwritepaper-agentic-skill 完成论文生产。
+使用 $aiwritepaper-academic-writing 完成论文生产。
 
 题目：基于SpringBoot的助农服务平台系统设计与实现
 运行模式：FULL_BUILD
@@ -478,7 +486,7 @@ npx skills add huangnan29/aiwritepaper-agentic-skill
 ### 单独优化图片
 
 ```text
-使用 $aiwritepaper-agentic-skill，运行FIGURES_ONLY。
+使用 $aiwritepaper-academic-writing，运行FIGURES_ONLY。
 
 读取当前论文和figures目录。有图片工具时逐张调用；统计图使用真实数据和代码。
 更新figure-manifest.json、figure-manifest.md和final_embed_file，不改写正文主张。
@@ -487,7 +495,7 @@ npx skills add huangnan29/aiwritepaper-agentic-skill
 ## 项目结构
 
 ```text
-aiwritepaper-agentic-skill/
+aiwritepaper-academic-writing/
 ├── SKILL.md
 ├── agents/openai.yaml
 ├── scripts/
@@ -524,7 +532,7 @@ aiwritepaper-agentic-skill/
 
 ## 维护与版本
 
-- 当前版本：`0.9.1`
+- 当前版本：`1.0.0`
 - 更新记录：[CHANGELOG.md](CHANGELOG.md)
 - Skill入口：[SKILL.md](SKILL.md)
 - 历史复杂流水线版可通过Git标签`v0.3.1-runtime-gates`恢复

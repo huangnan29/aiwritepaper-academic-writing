@@ -61,7 +61,7 @@ def main() -> int:
             errors.append(f"输出契约缺少最终文件命名规则: {term}")
     for term in ["document_profile", "THESIS", "FINAL_STATUS", "figure-verification.json"]:
         if term not in output_contract and term not in read_source(COMMON_DIR / "autonomous-completion.md"):
-            errors.append(f"输出契约缺少0.9.1闭环字段: {term}")
+            errors.append(f"输出契约缺少1.0.0闭环字段: {term}")
 
     if len(directions) != 19:
         errors.append(f"方向源文件应为19个，实际为{len(directions)}个")

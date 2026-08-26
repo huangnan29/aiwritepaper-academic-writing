@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/huangnan29/aiwritepaper-agentic-skill/svg-layout-spec.schema.json",
+  "$id": "https://github.com/huangnan29/aiwritepaper-academic-writing/svg-layout-spec.schema.json",
   "title": "AIWritePaper SVG Layout Spec",
   "type": "object",
   "additionalProperties": false,

@@ -1,6 +1,6 @@
 interface:
-  display_name: "AIWritePaper 单提示词论文生产"
-  short_description: "单一MD完成论文，并分级验收证据、配图与文档"
-  default_prompt: "使用 $aiwritepaper-agentic-skill 根据题目选择唯一方向和当前Agent适配层，确定性合成 final-execution-prompt.md，完成论文、分类配图、DOCX/PDF与RESEARCH/DELIVERY/FINAL三级验收。"
+  display_name: "AIWritePaper｜AI学术写作全流程"
+  short_description: "从选题、文献检索和正文到配图、文档导出与分级验收"
+  default_prompt: "使用 $aiwritepaper-academic-writing 根据题目选择唯一方向和当前Agent适配层，确定性合成 final-execution-prompt.md，完成论文、分类配图、DOCX/PDF与RESEARCH/DELIVERY/FINAL三级验收。"
 policy:
   allow_implicit_invocation: true

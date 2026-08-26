@@ -1,14 +1,14 @@
 ---
-name: aiwritepaper-agentic-skill
+name: aiwritepaper-academic-writing
 description: 根据题目和材料完成毕业论文、学位论文、期刊论文、开题报告、答辩材料、论文配图、DOCX/PDF导出或质量验收；选择唯一方向提示词并确定性合成为单一执行MD。不用于编造研究、数据、文献、实验结果或规避检测。
 license: MIT
 metadata:
   author: huangnan29
-  version: "0.9.1"
-  repository: https://github.com/huangnan29/aiwritepaper-agentic-skill
+  version: "1.0.0"
+  repository: https://github.com/huangnan29/aiwritepaper-academic-writing
 ---
 
-# AIWritePaper 单提示词执行入口
+# AIWritePaper｜AI学术写作全流程
 
 本Skill负责选择唯一论文方向，并把本次参数与一份自包含方向提示词确定性合成为 `final-execution-prompt.md`。论文生产阶段只执行这一个最终MD，不继续跳转公共规则、方向文件、配图子Skill或维护脚本。
 

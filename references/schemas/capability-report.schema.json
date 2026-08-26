@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/huangnan29/aiwritepaper-agentic-skill/capability-report.schema.json",
+  "$id": "https://github.com/huangnan29/aiwritepaper-academic-writing/capability-report.schema.json",
   "title": "AIWritePaper Capability Report",
   "type": "object",
   "additionalProperties": true,

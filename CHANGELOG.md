@@ -1,5 +1,13 @@
 # 更新记录
 
+## 1.0.0 - 2026-08-26
+
+- 项目中文展示名更改为“AIWritePaper｜AI学术写作全流程”。
+- Skill注册名、安装目录与GitHub仓库名统一更改为 `aiwritepaper-academic-writing`。
+- Codex、Claude、Cursor、Kimi Code、Gemini、Antigravity、Grok Build、WorkBuddy、OpenCode、Copilot、Z.ai、DeepSeek-tui与通用Agent安装文档同步新名称。
+- POSIX与PowerShell安装器新增旧名称迁移开关；新名称成功安装后才删除 `aiwritepaper-agentic-skill` 旧目录。
+- 19个论文方向、MD-first执行架构、文献信源、配图与三级验收规则保持兼容。
+
 ## 0.9.1 - 2026-08-25
 
 - 新增条件化四级验收：真实性和机械损坏继续阻断；缺少视觉核验降为PARTIAL；字数贴线与重复免责声明只作警告。

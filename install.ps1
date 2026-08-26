@@ -1,15 +1,17 @@
 param(
     [string]$Agent,
     [string]$Scope,
-    [switch]$Force
+    [switch]$Force,
+    [switch]$MigrateLegacy
 )
 
-# AIWritePaper Agentic Skill Windows PowerShell 5.1 安装器。
+# AIWritePaper｜AI学术写作全流程 Windows PowerShell 5.1 安装器。
 # 只从固定仓库克隆并复制完整 skill 目录，不执行远程脚本。
 
 $ErrorActionPreference = 'Stop'
-$RepositoryUrl = 'https://github.com/huangnan29/aiwritepaper-agentic-skill.git'
-$SkillName = 'aiwritepaper-agentic-skill'
+$RepositoryUrl = 'https://github.com/huangnan29/aiwritepaper-academic-writing.git'
+$SkillName = 'aiwritepaper-academic-writing'
+$LegacySkillName = 'aiwritepaper-agentic-skill'
 $TempRoot = $null
 
 function Stop-Install {
@@ -22,11 +24,12 @@ function Stop-Install {
 function Show-Usage {
     @'
 用法：
-  .\install.ps1 -Agent <agent> -Scope <user|project> [-Force]
+  .\install.ps1 -Agent <agent> -Scope <user|project> [-Force] [-MigrateLegacy]
 
 Agent 可选值：codex、claude、cursor、kimi、gemini、antigravity、copilot、opencode、workbuddy、grok、zcode、zai、deepseek、deepseek-tui、universal
 Scope 可选值：user、project
 -Force：目标目录已存在时，确认后覆盖
+-MigrateLegacy：新名称安装成功后删除同一安装根目录中的旧名称
 '@
 }
 
@@ -139,7 +142,7 @@ try {
 }
 
 try {
-    $TempRoot = Join-Path ([IO.Path]::GetTempPath()) ('aiwritepaper-agentic-skill-' + [Guid]::NewGuid().ToString('N'))
+    $TempRoot = Join-Path ([IO.Path]::GetTempPath()) ('aiwritepaper-academic-writing-' + [Guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Path $TempRoot -ErrorAction Stop | Out-Null
 } catch {
     Stop-Install '无法创建临时目录。'
@@ -178,6 +181,14 @@ try {
 }
 
 Write-Output ('安装完成：{0}' -f $TargetPath)
+
+if ($MigrateLegacy) {
+    $LegacyPath = Join-Path $InstallRoot $LegacySkillName
+    if (Test-Path -LiteralPath $LegacyPath) {
+        Remove-Item -LiteralPath $LegacyPath -Recurse -Force -ErrorAction Stop
+        Write-Output ('已删除旧名称：{0}' -f $LegacyPath)
+    }
+}
 
 if ($TempRoot -and (Test-Path -LiteralPath $TempRoot)) {
     Remove-Item -LiteralPath $TempRoot -Recurse -Force -ErrorAction SilentlyContinue
