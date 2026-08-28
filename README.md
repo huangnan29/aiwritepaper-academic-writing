@@ -4,7 +4,7 @@
 
 **从论文题目到一份完整执行提示词，再持续交付正文、配图、DOCX 与 PDF。**
 
-![Version](https://img.shields.io/badge/version-1.2.0-2563EB?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.3.0-2563EB?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-16A34A?style=flat-square)
 ![Architecture](https://img.shields.io/badge/architecture-MD--first-7C3AED?style=flat-square)
 ![Directions](https://img.shields.io/badge/paper%20directions-19-EA580C?style=flat-square)
@@ -14,7 +14,18 @@
 </div>
 
 > [!NOTE]
-> 当前版本采用 **MD-first 单提示词执行 + Agent能力适配 + 确定性交付验收**。模型继续负责方向、检索、论证、写作和配图语义；脚本只统计字数、核对图片路由、文件、目录、表格与哈希，不生成论文内容。
+> 当前版本采用 **MD-first 单提示词执行 + Agent能力适配 + 确定性交付验收**。模型继续负责方向、检索、论证、写作、公式含义和配图语义；脚本只统计字数并核对公式结构、图片路由、文件、目录、表格与哈希，不生成论文内容。
+
+## v1.3.0公式渲染闭环
+
+- 最终Markdown统一使用 `$...$` 与 `$$...$$`；HY4常见的 `\(...\)`、`\[...\]` 必须在导出前等价归一化；
+- 检查程序写文件时的反斜杠转义，阻止 `\text`、`\frac`、`\nabla` 被错误转换成TAB、换页或换行控制字符；
+- DOCX公式必须转换为可编辑OMML对象，禁止把 `\frac`、`\sqrt`、`\text`、`\partial` 等TeX命令写进普通Word文本；
+- 优先使用支持Markdown/TeX数学到OMML的成熟导出链，后续排版不得以纯文本重建段落破坏公式；
+- PDF必须来自同一份已验证定稿，页面中不得显示公式分隔符或TeX源码；
+- 新增 `equations/formula-audit.md`，记录重要公式的符号、单位、量纲、假设和视觉抽查；
+- 新增 `verify_formula_rendering.py`，同时检查四类源稿分隔符、花括号、Word公式对象、DOCX/PDF残留源码与最终文件摘要；
+- `formula-verification.json` 未达到 `FORMULA_OK`，或者未与最终DOCX/PDF摘要绑定时，总交付检查不能通过。
 
 ## v1.2.0中文论文配图语言一致性
 
@@ -92,6 +103,7 @@ v0.9.1根据Grok 38篇方向回归与Antigravity 0.8.2失败样本，增加不�
 | 学术配图 | 有图片工具时逐张生图；统计图由真实数据和代码生成 |
 | 图表证据链 | 大纲先建立figure plan；图表追溯数据、脚本、图题主张、正文使用和局限 |
 | 文档交付 | 生成并检查DOCX、PDF、目录、标题层级、题注和页码；最终文件按论文题目与时间戳命名 |
+| 公式交付 | 统一公式源稿、可编辑Word公式、PDF可见结果、符号/量纲审计与机械验收 |
 | 闭环验收 | 图表与正文/证据/文档分别机械验收，失败后返回对应阶段修复 |
 | 条件模式 | 支持单独配图、只导出文档、只审计、只做方向判断、开题报告和答辩材料 |
 
@@ -523,10 +535,12 @@ aiwritepaper-academic-writing/
 │   ├── build_compiled.py   # 维护时重建19份完整提示词
 │   ├── verify_compiled.py  # 只读校验源文件、路由和版本同步
 │   ├── verify_figure_package.py # 机械校验图表包、哈希与嵌图路由
+│   ├── verify_formula_rendering.py   # 校验公式源稿、Word OMML与PDF可见残留
 │   ├── verify_manuscript_delivery.py # 统一校验字数、证据矩阵和DOCX/PDF交付
 │   └── render_svg_layout.mjs # 无依赖的确定性SVG布局编译器
 ├── tests/
 │   ├── test_verify_figure_package.py
+│   ├── test_verify_formula_rendering.py
 │   ├── test_verify_manuscript_delivery.py
 │   └── test_render_svg_layout.mjs
 ├── references/
@@ -552,7 +566,7 @@ aiwritepaper-academic-writing/
 
 ## 维护与版本
 
-- 当前版本：`1.2.0`
+- 当前版本：`1.3.0`
 - 更新记录：[CHANGELOG.md](CHANGELOG.md)
 - Skill入口：[SKILL.md](SKILL.md)
 - 历史复杂流水线版可通过Git标签`v0.3.1-runtime-gates`恢复

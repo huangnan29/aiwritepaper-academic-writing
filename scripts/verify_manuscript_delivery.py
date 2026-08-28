@@ -351,6 +351,29 @@ class DeliveryVerifier:
                     self.error("FIGURE_VISUAL_STATUS_INVALID", str(figure_visual_status))
             except (UnicodeError, json.JSONDecodeError) as exc:
                 self.error("FIGURE_VERIFICATION_INVALID", str(exc))
+        formula_report_value = manifest.get("formula_verification_report", "equations/formula-verification.json")
+        formula_report = self.resolve_relative_file(formula_report_value, "formula_verification_report")
+        formula_status: Optional[str] = None
+        formula_payload: Optional[Dict[str, Any]] = None
+        if formula_report:
+            try:
+                loaded_formula_payload = json.loads(formula_report.read_text(encoding="utf-8"))
+                if not isinstance(loaded_formula_payload, dict):
+                    self.error("FORMULA_VERIFICATION_INVALID", "根对象必须是对象")
+                else:
+                    formula_payload = loaded_formula_payload
+                    formula_status = formula_payload.get("status")
+                    if formula_status != "FORMULA_OK":
+                        self.error("FORMULA_VERIFICATION_NOT_PASS", str(formula_report_value))
+                    hashes = formula_payload.get("hashes")
+                    if not isinstance(hashes, dict):
+                        self.error("FORMULA_VERIFICATION_HASHES_MISSING", str(formula_report_value))
+                    else:
+                        markdown_hash = hashes.get("markdown_sha256")
+                        if not isinstance(markdown_hash, str) or markdown_hash.lower() != self.sha256(markdown):
+                            self.error("FORMULA_MARKDOWN_HASH_MISMATCH", str(formula_report_value))
+            except (UnicodeError, json.JSONDecodeError) as exc:
+                self.error("FORMULA_VERIFICATION_INVALID", str(exc))
         docx_value = manifest.get("docx")
         pdf_value = manifest.get("pdf")
         docx = self.resolve_relative_file(docx_value, "docx")
@@ -367,6 +390,11 @@ class DeliveryVerifier:
             declared = manifest.get("docx_sha256")
             if not isinstance(declared, str) or declared.lower() != self.sha256(docx):
                 self.error("DOCX_HASH_MISMATCH", str(docx_value))
+            if formula_payload is not None:
+                hashes = formula_payload.get("hashes")
+                formula_docx_hash = hashes.get("docx_sha256") if isinstance(hashes, dict) else None
+                if not isinstance(formula_docx_hash, str) or formula_docx_hash.lower() != self.sha256(docx):
+                    self.error("FORMULA_DOCX_HASH_MISMATCH", str(formula_report_value))
             enforce_body_font = document_profile == "THESIS" or (
                 document_profile == "CUSTOM" and isinstance(format_contract, dict) and "minimum_body_font_pt" in format_contract
             )
@@ -377,6 +405,11 @@ class DeliveryVerifier:
             declared = manifest.get("pdf_sha256")
             if not isinstance(declared, str) or declared.lower() != self.sha256(pdf):
                 self.error("PDF_HASH_MISMATCH", str(pdf_value))
+            if formula_payload is not None:
+                hashes = formula_payload.get("hashes")
+                formula_pdf_hash = hashes.get("pdf_sha256") if isinstance(hashes, dict) else None
+                if not isinstance(formula_pdf_hash, str) or formula_pdf_hash.lower() != self.sha256(pdf):
+                    self.error("FORMULA_PDF_HASH_MISMATCH", str(formula_report_value))
             self.verify_pdf(pdf, requires_pdf_toc)
 
         research_status = manifest.get("research_status")
@@ -402,6 +435,7 @@ class DeliveryVerifier:
             "delivery_status": delivery_status,
             "final_status": final_status,
             "figure_visual_status": figure_visual_status,
+            "formula_status": formula_status,
             "document_profile": document_profile,
         }
 

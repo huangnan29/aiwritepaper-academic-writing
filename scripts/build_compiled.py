@@ -25,6 +25,7 @@ COMMON_FILES = [
     "academic-prose-quality.md",
     "autonomous-completion.md",
     "final-quality-gates.md",
+    "mathematical-formulas.md",
 ]
 
 

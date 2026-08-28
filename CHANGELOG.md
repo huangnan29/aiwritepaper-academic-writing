@@ -1,5 +1,15 @@
 # 更新记录
 
+## 1.3.0 - 2026-08-28
+
+- 新增数学公式公共规则，统一Markdown公式源稿、符号与量纲审计、Word可编辑公式和PDF可见结果要求。
+- 最终Markdown统一使用 `$...$` 与 `$$...$$`；兼容识别并阻止HY4常见的 `\(...\)`、`\[...\]` 未归一化后直接导出。
+- 新增公式控制字符检查，阻止程序写文件时把 `\text`、`\frac`、`\nabla` 误解释为制表、换页或换行并静默破坏公式。
+- DOCX公式必须为OMML `m:oMath`/`m:oMathPara`对象，普通正文残留TeX分隔符或命令时机械验收失败。
+- 新增 `verify_formula_rendering.py`，检查四类分隔符、花括号、环境配对、Word公式对象数、DOCX/PDF可见TeX残留和最终文件摘要。
+- `FULL_BUILD` 新增 `equations/formula-audit.md` 与 `equations/formula-verification.json`，总交付检查强制读取公式报告并核对Markdown、DOCX和PDF SHA-256。
+- 新增Antigravity `$$...$$` 与HY4 `\[...\]` 原样进入Word的回归测试，避免只修复单一模型或单一分隔符。
+
 ## 1.2.0 - 2026-08-28
 
 - 中文论文配图默认使用简体中文说明，芯片型号、协议、化学式、蛋白/基因名、单位和标准缩写按白名单保留。

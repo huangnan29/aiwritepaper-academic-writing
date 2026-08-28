@@ -35,20 +35,27 @@
 - Word中每个图号和表号只有一个可见题注，不存在图片内题注与Word题注重复；
 - Word图片和图题不侵入页脚，与页码保持清晰间距，不形成“图题后多出页码”的视觉假重复；
 - Word章、节、小节使用内置Heading 1/2/3及正确大纲级别，自动目录可更新且左侧导航窗格能够形成分层目录；
+- `07-paper-full.md` 的公式分隔符与花括号配对，重要公式的符号、单位、量纲、假设和视觉抽查已记录在 `equations/formula-audit.md`；
+- DOCX中的公式为可编辑OMML对象，普通正文没有残留 `$`、`$$`、`\(`、`\[`、`\frac`、`\text` 等TeX源码；PDF可见文本也没有这些残留；
+- `equations/formula-verification.json` 状态为 `FORMULA_OK`，其Markdown、DOCX和PDF摘要与最终文件一致；公式检查能力缺失时不得标记完整 `PASS`；
 - 未提供学校模板时，A4、页边距、字体字号、行距、缩进、标题、题注、表格、参考文献和页码符合默认学术格式；
 - 没有远程图片、临时路径、调试文字和模型自述；
 - 文献、数字、图表、伦理和个人信息审计通过；
 - 所有最终文件计算 SHA-256。
 - 最终DOCX与PDF文件名均为“安全论文题目_YYYYMMDD-HHMMSS”，共用同一时间戳；`run-manifest.json`记录生成时间、时区、正式路径和SHA-256，不能把 `final-paper.docx/.pdf` 列为最终交付。
 - `THESIS`文档的DOCX正文样式满足默认或学校模板的字号与行距，PDF中存在实际可见目录；`JOURNAL`、`REPORT`和`CUSTOM`按各自格式契约验收，不套用毕业论文目录门。
-- `figures/figure-verification.json` 与 `13-delivery-verification.json` 已真实写入交付包；只在终端显示通过但未保存报告不算闭环。
+- `figures/figure-verification.json`、`equations/formula-verification.json` 与 `13-delivery-verification.json` 已真实写入交付包；只在终端显示通过但未保存报告不算闭环。
 
-存在Python能力时依次运行 `scripts/verify_figure_package.py` 与 `scripts/verify_manuscript_delivery.py`，分别把结果写入 `figures/figure-verification.json` 和 `13-delivery-verification.json`。前者检查能力与路由、DOCX图片/图题和PDF基础状态；后者统一统计正文、检查证据矩阵、正式文件名、路径、哈希、Word表格/目录和PDF。任一脚本失败时 `DELIVERY_STATUS=FAIL`，返回对应阶段修复后重新运行；脚本通过不证明学术结论正确，也不能替代视觉与学术判断。
+存在Python能力时依次运行 `scripts/verify_figure_package.py`、`scripts/verify_formula_rendering.py` 与 `scripts/verify_manuscript_delivery.py`，分别把结果写入 `figures/figure-verification.json`、`equations/formula-verification.json` 和 `13-delivery-verification.json`。第一个检查能力与路由、DOCX图片/图题和PDF基础状态；第二个检查公式源稿、Word OMML、PDF可见残留与文件摘要；第三个统一统计正文、检查证据矩阵、正式文件名、三份报告、路径、哈希、Word表格/目录和PDF。任一脚本失败时 `DELIVERY_STATUS=FAIL`，返回对应阶段修复后重新运行；脚本通过不证明学术结论正确，也不能替代视觉与学术判断。
 
 ```bash
 python3 "<SKILL_DIR>/scripts/verify_figure_package.py" \
   --root "<OUTPUT_DIR>" \
   --report "figures/figure-verification.json"
+
+python3 "<SKILL_DIR>/scripts/verify_formula_rendering.py" \
+  --root "<OUTPUT_DIR>" \
+  --report "equations/formula-verification.json"
 
 python3 "<SKILL_DIR>/scripts/verify_manuscript_delivery.py" \
   --root "<OUTPUT_DIR>" \
@@ -60,7 +67,7 @@ python3 "<SKILL_DIR>/scripts/verify_manuscript_delivery.py" \
 
 `FIGURES_ONLY` 且用户没有要求重新导出文档时，第一个命令增加 `--skip-documents`；`FULL_BUILD` 不得跳过文档检查。检查器默认从 `run-manifest.json` 读取正式DOCX/PDF路径，避免模型传入另一个临时文件规避验收。
 
-把实际值和目标值写入 `12-final-qa-report.md` 与 `run-manifest.json`：正文长度及目标区间、文献数、图片数、表格数、DOCX/PDF状态、Critical/Important数量、能力缺口、`RESEARCH_STATUS`、`DELIVERY_STATUS`、`FINAL_STATUS`和两份验收报告路径。总状态只能为：
+把实际值和目标值写入 `12-final-qa-report.md` 与 `run-manifest.json`：正文长度及目标区间、文献数、图片数、表格数、公式数与公式渲染状态、DOCX/PDF状态、Critical/Important数量、能力缺口、`RESEARCH_STATUS`、`DELIVERY_STATUS`、`FINAL_STATUS`和三份验收报告路径。总状态只能为：
 
 - `PASS`：所有用户硬目标和真实性边界均满足；
 - `PARTIAL`：核心初稿可用，但存在明确能力、材料、模板、数量或格式缺口；

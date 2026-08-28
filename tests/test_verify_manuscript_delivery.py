@@ -62,12 +62,22 @@ class DeliveryTests(unittest.TestCase):
             "status": "STRUCTURE_OK", "mechanical_status": "PASS", "visual_status": "PASS",
             "errors": [], "warnings": [],
         }), encoding="utf-8")
+        (self.root / "equations").mkdir()
+        (self.root / "equations/formula-verification.json").write_text(json.dumps({
+            "schema_version": "1.0", "status": "FORMULA_OK", "errors": [], "warnings": [],
+            "hashes": {
+                "markdown_sha256": hashlib.sha256(self.markdown.read_bytes()).hexdigest(),
+                "docx_sha256": hashlib.sha256((self.root / docx_name).read_bytes()).hexdigest(),
+                "pdf_sha256": hashlib.sha256((self.root / pdf_name).read_bytes()).hexdigest(),
+            },
+        }), encoding="utf-8")
         manifest = {
             "docx": docx_name, "pdf": pdf_name,
             "docx_sha256": hashlib.sha256((self.root / docx_name).read_bytes()).hexdigest(),
             "pdf_sha256": hashlib.sha256((self.root / pdf_name).read_bytes()).hexdigest(),
             "tables": 1, "document_profile": "REPORT",
             "figure_verification_report": "figures/figure-verification.json",
+            "formula_verification_report": "equations/formula-verification.json",
             "research_status": "PARTIAL", "delivery_status": "PASS", "final_status": "PARTIAL",
         }
         (self.root / "run-manifest.json").write_text(json.dumps(manifest, ensure_ascii=False), encoding="utf-8")
@@ -123,6 +133,17 @@ class DeliveryTests(unittest.TestCase):
     def test_missing_figure_verification_report_fails(self) -> None:
         (self.root / "figures/figure-verification.json").unlink()
         self.assertTrue(any("FINAL_FILE_MISSING" in item for item in self.verifier().errors))
+
+    def test_missing_formula_verification_report_fails(self) -> None:
+        (self.root / "equations/formula-verification.json").unlink()
+        self.assertTrue(any("formula_verification_report" in item for item in self.verifier().errors))
+
+    def test_formula_report_hash_mismatch_fails(self) -> None:
+        report_path = self.root / "equations/formula-verification.json"
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+        report["hashes"]["docx_sha256"] = "0" * 64
+        report_path.write_text(json.dumps(report), encoding="utf-8")
+        self.assertTrue(any("FORMULA_DOCX_HASH_MISMATCH" in item for item in self.verifier().errors))
 
     def test_visual_partial_requires_delivery_partial(self) -> None:
         report_path = self.root / "figures/figure-verification.json"

@@ -43,6 +43,7 @@ def main() -> int:
         "academic-prose-quality.md": "# 公共规则七：",
         "autonomous-completion.md": "# 公共规则八：",
         "final-quality-gates.md": "# 公共规则九：",
+        "mathematical-formulas.md": "# 公共规则十：",
     }
     for common_name, expected_heading in expected_common_headings.items():
         if not read_source(COMMON_DIR / common_name).startswith(expected_heading):
@@ -59,7 +60,7 @@ def main() -> int:
     for term in ["GENERATED_AT_LOCAL", "YYYYMMDD-HHMMSS", "安全论文题目", "final-paper.docx", "run-manifest.json"]:
         if term not in output_contract:
             errors.append(f"输出契约缺少最终文件命名规则: {term}")
-    for term in ["document_profile", "THESIS", "FINAL_STATUS", "figure-verification.json"]:
+    for term in ["document_profile", "THESIS", "FINAL_STATUS", "figure-verification.json", "formula-verification.json"]:
         if term not in output_contract and term not in read_source(COMMON_DIR / "autonomous-completion.md"):
             errors.append(f"输出契约缺少当前闭环字段: {term}")
 
@@ -151,6 +152,7 @@ def main() -> int:
     for script_name in [
         "compose_prompt.py", "build_compiled.py", "verify_compiled.py",
         "verify_figure_package.py", "verify_manuscript_delivery.py",
+        "verify_formula_rendering.py",
     ]:
         if not (SKILL_ROOT / "scripts" / script_name).is_file():
             errors.append(f"缺少脚本: scripts/{script_name}")
@@ -187,6 +189,14 @@ def main() -> int:
     for required_term in ["材料推动段落", "控制框架和清单", "句子与段落节奏", "全文只保留一份连续参考文献", "不能输出“AI率”"]:
         if required_term not in prose_rules:
             errors.append(f"学术正文质量规则缺少关键约束: {required_term}")
+
+    formula_rules = read_source(COMMON_DIR / "mathematical-formulas.md")
+    for required_term in [
+        "formula-audit.md", "formula-verification.json", "m:oMath", "m:oMathPara",
+        "tex_math_dollars", "DOCX", "PDF", "SHA-256", "CAPABILITY_GAP",
+    ]:
+        if required_term not in formula_rules:
+            errors.append(f"数学公式公共规则缺少关键约束: {required_term}")
 
     schema_path = SKILL_ROOT / "references" / "schemas" / "figure-manifest.schema.json"
     try:

@@ -10,6 +10,7 @@
 - references/common/academic-prose-quality.md
 - references/common/autonomous-completion.md
 - references/common/final-quality-gates.md
+- references/common/mathematical-formulas.md
 方向来源：
 - references/directions/education-applied-research.md
 来源清单结束。
@@ -130,9 +131,9 @@ arXiv、bioRxiv、ChemRxiv、SSRN、NBER工作论文可以收录，但必须在�
 
 运行开始时保留 `run-params.md`，并通过文件级确定性拼接生成 `final-execution-prompt.md`；不得由模型重新生成完整方向提示词。
 
-`FULL_BUILD` 输出：`run-params.md`、`final-execution-prompt.md`、`00-capability-report.md`、`00-capability-report.json`、`01-research-contract.md`、`02-search-log.md`、`03-evidence-matrix.csv`、`04-reference-audit.md`、`references.bib`、`05-outline.md`、`06-argument-map.md`、`chapters/`、`figures/figure-plan.json`、`figures/figure-manifest.json`、`figures/figure-manifest.md`、`figures/figure-verification.json`、`tables/table-data-and-sources.md`、`07-paper-full.md`、`08-claim-citation-audit.md`、`09-peer-review.md`、`10-revision-log.md`、按下述规则命名的DOCX与PDF、可选同名TEX、`11-format-validation.md`、`12-final-qa-report.md`、`13-delivery-verification.json` 和 `run-manifest.json`。没有真实生成的文件不得列入完成清单。
+`FULL_BUILD` 输出：`run-params.md`、`final-execution-prompt.md`、`00-capability-report.md`、`00-capability-report.json`、`01-research-contract.md`、`02-search-log.md`、`03-evidence-matrix.csv`、`04-reference-audit.md`、`references.bib`、`05-outline.md`、`06-argument-map.md`、`chapters/`、`figures/figure-plan.json`、`figures/figure-manifest.json`、`figures/figure-manifest.md`、`figures/figure-verification.json`、`tables/table-data-and-sources.md`、`equations/formula-audit.md`、`equations/formula-verification.json`、`07-paper-full.md`、`08-claim-citation-audit.md`、`09-peer-review.md`、`10-revision-log.md`、按下述规则命名的DOCX与PDF、可选同名TEX、`11-format-validation.md`、`12-final-qa-report.md`、`13-delivery-verification.json` 和 `run-manifest.json`。没有真实生成的文件不得列入完成清单。
 
-`run-manifest.json` 必须记录 `document_profile`（`THESIS`、`JOURNAL`、`REPORT` 或 `CUSTOM`）、`research_status`、`delivery_status`、`final_status`、两份验收报告路径以及正式文档路径与摘要。`THESIS`使用默认论文格式并要求PDF可见目录；`JOURNAL`和`REPORT`按对应模板/体例，不强制毕业论文目录；`CUSTOM`必须记录用户或学校模板的关键格式契约。
+`run-manifest.json` 必须记录 `document_profile`（`THESIS`、`JOURNAL`、`REPORT` 或 `CUSTOM`）、`research_status`、`delivery_status`、`final_status`、图表、公式和交付三份验收报告路径以及正式文档路径与摘要。公式报告字段固定为 `formula_verification_report`，默认值为 `equations/formula-verification.json`。`THESIS`使用默认论文格式并要求PDF可见目录；`JOURNAL`和`REPORT`按对应模板/体例，不强制毕业论文目录；`CUSTOM`必须记录用户或学校模板的关键格式契约。
 
 ## 最终文档文件名
 
@@ -155,7 +156,7 @@ DOCX与PDF必须使用同一文件名主体和同一时间戳。`final-paper.doc
 
 全文整合时，`07-paper-full.md`中的每个图片链接必须逐项等于权威 `figures/figure-manifest.json` 对应图号的 `final_embed_file`。`figure-manifest.md` 只供人阅读。禁止使用目录通配、同名文件优先级或“优先SVG”逻辑自动选图。图片工具已成功生成位图时，Markdown不得继续引用其旧SVG版本。
 
-提供学校模板时模板优先。没有模板时只能标记为通用草稿格式。DOCX与PDF必须来自同一份 `07-paper-full.md` 和同一结构映射；优先先生成并验证DOCX，再由该定稿转换PDF。图片实际嵌入，标题使用真实样式，目录、页码、题注和交叉引用可更新。不得分别从互不一致的Markdown和HTML版本生成Word与PDF。根据当前环境自主选择文档工具；只有确实需要时才在本次输出目录创建项目专用脚本。Skill内 `compose_prompt.py` 只允许用于确定性合成最终提示词；两个验收脚本只做机械检查；维护脚本与其他Skill脚本不得参与论文内容和证据决策。
+提供学校模板时模板优先。没有模板时只能标记为通用草稿格式。DOCX与PDF必须来自同一份 `07-paper-full.md` 和同一结构映射；优先先生成并验证DOCX，再由该定稿转换PDF。图片实际嵌入，公式转换为可编辑OMML对象，标题使用真实样式，目录、页码、题注和交叉引用可更新。不得分别从互不一致的Markdown和HTML版本生成Word与PDF。自定义Word排版程序不得以读取整段纯文本再重建段落的方式破坏既有公式对象。根据当前环境自主选择文档工具；只有确实需要时才在本次输出目录创建项目专用脚本。Skill内 `compose_prompt.py` 只允许用于确定性合成最终提示词；三个验收脚本只做机械检查；维护脚本与其他Skill脚本不得参与论文内容和证据决策。
 
 ## 默认学术论文排版
 
@@ -166,6 +167,7 @@ DOCX与PDF必须使用同一文件名主体和同一时间戳。`final-paper.doc
 - 中文正文使用宋体、SimSun或Songti SC，12pt；英文与数字使用Times New Roman，12pt；两端对齐，首行缩进2字符，1.5倍行距，段前段后0；
 - 一级标题使用内置 `Heading 1`，16pt黑体；二级标题使用 `Heading 2`，14pt黑体；三级标题使用 `Heading 3`，12pt黑体；标题与下一段保持同页，不用普通加粗段落冒充标题；
 - 图题位于图下方、表题位于表上方，居中、10.5pt；表格使用可编辑原生表格，优先三线表，不使用图片表格；
+- 独立公式居中，公式编号右对齐并按章节连续；Word中使用可编辑公式对象，不显示 `$`、`\[` 或 TeX 命令；
 - 参考文献10.5pt，按引用格式设置悬挂缩进；页码置于页脚居中；目录由真实标题样式生成并设置为可更新字段；
 - 避免孤行、标题单独落在页尾、图题与图片分页分离、表格超出页边距和图片拉伸变形。图片与图题应作为连续整体保留在正文版心内，并与页脚页码保持明显距离；剩余空间不足时整体缩放或移到下一页，不能让图题与页码位于同一水平区域或发生视觉粘连。
 
@@ -497,7 +499,7 @@ figure_plan:
   "spec_sha256": "...",
   "report_file": "figures/fig-2-1-layout-report.json",
   "report_sha256": "...",
-  "renderer": "aiwritepaper-academic-writing@1.2.0/render_svg_layout.mjs",
+  "renderer": "aiwritepaper-academic-writing@1.3.0/render_svg_layout.mjs",
   "renderer_sha256": "..."
 }
 ```
@@ -591,7 +593,7 @@ SVG降级图的机械校验额外检查可解析的直线、折线与矩形节�
 
 # 公共规则八：弱模型友好的持续完成机制
 
-本流程由模型自主决策。Skill内 `compose_prompt.py` 仅做运行参数、唯一完整提示词与条件附加规则的确定性文件拼接；`verify_figure_package.py` 仅做图表包的机械一致性检查。不得调用任何Skill脚本控制方向、章节、证据、整合、学术判断或最终状态。工具和项目专用临时代码只在当前论文确有需要时使用，并写入本次输出目录。
+本流程由模型自主决策。Skill内 `compose_prompt.py` 仅做运行参数、唯一完整提示词与条件附加规则的确定性文件拼接；`verify_figure_package.py`、`verify_formula_rendering.py` 与 `verify_manuscript_delivery.py` 只做图表、公式渲染和文档交付的机械一致性检查。不得调用任何Skill脚本控制方向、章节、证据、公式含义、整合、学术判断或最终状态。工具和项目专用临时代码只在当前论文确有需要时使用，并写入本次输出目录。
 
 ## 执行顺序
 
@@ -658,20 +660,27 @@ SVG降级图的机械校验额外检查可解析的直线、折线与矩形节�
 - Word中每个图号和表号只有一个可见题注，不存在图片内题注与Word题注重复；
 - Word图片和图题不侵入页脚，与页码保持清晰间距，不形成“图题后多出页码”的视觉假重复；
 - Word章、节、小节使用内置Heading 1/2/3及正确大纲级别，自动目录可更新且左侧导航窗格能够形成分层目录；
+- `07-paper-full.md` 的公式分隔符与花括号配对，重要公式的符号、单位、量纲、假设和视觉抽查已记录在 `equations/formula-audit.md`；
+- DOCX中的公式为可编辑OMML对象，普通正文没有残留 `$`、`$$`、`\(`、`\[`、`\frac`、`\text` 等TeX源码；PDF可见文本也没有这些残留；
+- `equations/formula-verification.json` 状态为 `FORMULA_OK`，其Markdown、DOCX和PDF摘要与最终文件一致；公式检查能力缺失时不得标记完整 `PASS`；
 - 未提供学校模板时，A4、页边距、字体字号、行距、缩进、标题、题注、表格、参考文献和页码符合默认学术格式；
 - 没有远程图片、临时路径、调试文字和模型自述；
 - 文献、数字、图表、伦理和个人信息审计通过；
 - 所有最终文件计算 SHA-256。
 - 最终DOCX与PDF文件名均为“安全论文题目_YYYYMMDD-HHMMSS”，共用同一时间戳；`run-manifest.json`记录生成时间、时区、正式路径和SHA-256，不能把 `final-paper.docx/.pdf` 列为最终交付。
 - `THESIS`文档的DOCX正文样式满足默认或学校模板的字号与行距，PDF中存在实际可见目录；`JOURNAL`、`REPORT`和`CUSTOM`按各自格式契约验收，不套用毕业论文目录门。
-- `figures/figure-verification.json` 与 `13-delivery-verification.json` 已真实写入交付包；只在终端显示通过但未保存报告不算闭环。
+- `figures/figure-verification.json`、`equations/formula-verification.json` 与 `13-delivery-verification.json` 已真实写入交付包；只在终端显示通过但未保存报告不算闭环。
 
-存在Python能力时依次运行 `scripts/verify_figure_package.py` 与 `scripts/verify_manuscript_delivery.py`，分别把结果写入 `figures/figure-verification.json` 和 `13-delivery-verification.json`。前者检查能力与路由、DOCX图片/图题和PDF基础状态；后者统一统计正文、检查证据矩阵、正式文件名、路径、哈希、Word表格/目录和PDF。任一脚本失败时 `DELIVERY_STATUS=FAIL`，返回对应阶段修复后重新运行；脚本通过不证明学术结论正确，也不能替代视觉与学术判断。
+存在Python能力时依次运行 `scripts/verify_figure_package.py`、`scripts/verify_formula_rendering.py` 与 `scripts/verify_manuscript_delivery.py`，分别把结果写入 `figures/figure-verification.json`、`equations/formula-verification.json` 和 `13-delivery-verification.json`。第一个检查能力与路由、DOCX图片/图题和PDF基础状态；第二个检查公式源稿、Word OMML、PDF可见残留与文件摘要；第三个统一统计正文、检查证据矩阵、正式文件名、三份报告、路径、哈希、Word表格/目录和PDF。任一脚本失败时 `DELIVERY_STATUS=FAIL`，返回对应阶段修复后重新运行；脚本通过不证明学术结论正确，也不能替代视觉与学术判断。
 
 ```bash
 python3 "<SKILL_DIR>/scripts/verify_figure_package.py" \
   --root "<OUTPUT_DIR>" \
   --report "figures/figure-verification.json"
+
+python3 "<SKILL_DIR>/scripts/verify_formula_rendering.py" \
+  --root "<OUTPUT_DIR>" \
+  --report "equations/formula-verification.json"
 
 python3 "<SKILL_DIR>/scripts/verify_manuscript_delivery.py" \
   --root "<OUTPUT_DIR>" \
@@ -683,13 +692,62 @@ python3 "<SKILL_DIR>/scripts/verify_manuscript_delivery.py" \
 
 `FIGURES_ONLY` 且用户没有要求重新导出文档时，第一个命令增加 `--skip-documents`；`FULL_BUILD` 不得跳过文档检查。检查器默认从 `run-manifest.json` 读取正式DOCX/PDF路径，避免模型传入另一个临时文件规避验收。
 
-把实际值和目标值写入 `12-final-qa-report.md` 与 `run-manifest.json`：正文长度及目标区间、文献数、图片数、表格数、DOCX/PDF状态、Critical/Important数量、能力缺口、`RESEARCH_STATUS`、`DELIVERY_STATUS`、`FINAL_STATUS`和两份验收报告路径。总状态只能为：
+把实际值和目标值写入 `12-final-qa-report.md` 与 `run-manifest.json`：正文长度及目标区间、文献数、图片数、表格数、公式数与公式渲染状态、DOCX/PDF状态、Critical/Important数量、能力缺口、`RESEARCH_STATUS`、`DELIVERY_STATUS`、`FINAL_STATUS`和三份验收报告路径。总状态只能为：
 
 - `PASS`：所有用户硬目标和真实性边界均满足；
 - `PARTIAL`：核心初稿可用，但存在明确能力、材料、模板、数量或格式缺口；
 - `FAIL`：缺核心正文或必需终稿、正文不足目标下限、伪造文献/数据/结果、文件损坏、结构错乱或仍有Critical/Important问题。
 
 用户明确字数目标时按用户目标及允许误差验收。直接题目自动完成且用户未指定字数时，默认目标25,000，可接受区间22,500—27,500；低于22,500不得标记 `PASS`。同理，文献、图片和表格低于用户明确下限时不得标记 `PASS`。不得承诺“保证通过”“绝对原创”或虚报检测结果。
+
+<!-- 公共来源：references/common/mathematical-formulas.md -->
+
+# 公共规则十：数学公式与跨格式渲染
+
+公式既是学术论证的一部分，也是最终文档中的结构化对象。不得把 LaTeX 源码直接复制进 Word 或 PDF，也不得只看 Markdown 正常就宣称公式交付完成。
+
+## 公式内容与符号审计
+
+- 每个公式先确认其用途、来源或推导依据、适用条件和所在论证位置；不能为了显得“学术”而堆放与上下文无关的公式。
+- 同一符号在全文保持唯一含义。首次出现时定义符号、上下标和单位；向量、矩阵、随机变量、估计量、集合与标量的字体约定保持一致。
+- 等号两侧量纲必须一致；代入计算记录单位换算、数量级和有效数字。没有真实测量值时，不得把示例参数写成实测结果。
+- 重要独立公式按章节连续编号并在正文中真实引用；行内短式不强制编号。编号、公式与解释不得相互脱节。
+- `FULL_BUILD` 输出 `equations/formula-audit.md`。逐项记录重要独立公式的编号、章节、语义用途、符号与单位、假设、量纲/数量级检查和修订结果；全文没有公式时明确写“未使用数学公式”，不要虚构条目。
+
+## Markdown 唯一源稿
+
+`07-paper-full.md` 是公式内容的唯一源稿。最终整合时采用 Pandoc 兼容的 TeX 数学语法：行内公式统一为 `$...$`，独立公式统一为 `$$...$$`。模型草稿中的 `\(...\)` 与 `\[...\]` 必须在导出前等价归一化，不得把分隔符显示在正文中。
+
+- 数学命令必须位于公式分隔符内部；分隔符、花括号和 `\begin`/`\end` 必须成对。
+- 使用Python、JavaScript或其他程序写入Markdown时，必须保留TeX反斜杠本身，避免 `\text`、`\frac`、`\nabla` 被字符串转义解释成制表、换页或换行控制字符。写入后检查公式中不存在TAB、FORM FEED、NUL等异常控制字符；发现后从公式语义源修复，不能只删除不可见字符。
+- 公式内部使用 TeX 命令表达数学结构，例如 `\frac`、`\sqrt`、`\mathbf`、`\mathrm`；中文解释放在公式外。必须在公式内写短文本时使用目标转换器支持的 `\text{}`，并在DOCX/PDF中实际验证。
+- 标题、图片画布和 Markdown 表格单元格中尽量不放复杂公式。确有必要时改为正文独立公式或使用可被当前导出链正确转换的简式。
+- 不以普通Unicode字符、空格拼接或截图公式替代结构化公式；不能用 `C_f = ...` 普通文本冒充可编辑数学对象。
+
+## DOCX 与 PDF 导出
+
+正式 DOCX 中的公式必须转换为 Word 可编辑公式对象，即 OOXML Math（OMML，`m:oMath`/`m:oMathPara`）。`w:t` 普通文本中不得残留 `$`、`$$`、`\(`、`\[`、`\frac`、`\sqrt`、`\text`、`\mathbf`、`\partial`、`\nabla` 等 TeX 源码。
+
+优先使用能把 Markdown/TeX 数学转换为 OMML 的导出链，例如 Pandoc 读取启用 `tex_math_dollars` 的 Markdown 后生成 DOCX。后续设置页面、字体、标题、题注和目录时必须保留已有 OMML 节点；禁止用 `python-docx` 或自定义 XML 程序读取整段纯文本后重建段落，因为这会把公式扁平化为普通字符。若必须使用自定义Word生成器，应先完成 TeX→OMML 转换并验证节点数量，不能直接写入 LaTeX 字符串。
+
+PDF必须由同一份已通过公式检查的定稿生成，优先由已验证 DOCX 转换或由同一 Markdown 经成熟数学排版链导出。PDF可见文本中不得出现公式分隔符和 TeX 命令。公式截图或栅格化仅可作为明确记录的无障碍受损降级，不能用于 `THESIS` 或 `JOURNAL` 的 `PASS`；转换能力缺失时记录 `CAPABILITY_GAP`，交付不得虚报完成。
+
+## 公式机械验收与视觉复核
+
+导出后必须运行公式检查器，并把报告保存为 `equations/formula-verification.json`：
+
+```bash
+python3 "<SKILL_DIR>/scripts/verify_formula_rendering.py" \
+  --root "<OUTPUT_DIR>" \
+  --markdown "07-paper-full.md" \
+  --run-manifest "run-manifest.json" \
+  --audit "equations/formula-audit.md" \
+  --report "equations/formula-verification.json"
+```
+
+检查器只检查分隔符/花括号、DOCX中的OMML与残留源码、PDF中的可见残留、文件摘要和审计文件，不判断公式的学术含义。存在公式时，DOCX的OMML数量不得少于源稿识别出的公式数量；DOCX或PDF出现任何可见TeX残留即失败。PDF文本无法解析时标记 `CAPABILITY_GAP` 并失败，不能以“肉眼可能正常”代替核验。
+
+机械检查通过后仍需抽查最终DOCX与PDF的公式页面，确认分式、根号、上下标、希腊字母、矩阵、换行、编号和中文说明没有裁切、错位、缺字或乱码。至少抽查首个公式、最复杂公式、含中文/单位的公式和最后一个公式，并把结果写入 `equations/formula-audit.md`。公式报告的 `status` 必须为 `FORMULA_OK`，且其中绑定的Markdown、DOCX和PDF SHA-256与最终文件一致，完整交付才可标记 `PASS`。
 
 <!-- 方向来源：references/directions/education-applied-research.md -->
 
