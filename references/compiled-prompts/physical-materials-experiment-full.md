@@ -263,6 +263,32 @@ SVG降级图必须先布局节点，再规划连接线。流程、架构、ER、
 - 中文字体栈至少包含 `PingFang SC, Songti SC, Noto Sans CJK SC, Source Han Sans SC, Microsoft YaHei, SimHei, sans-serif`，渲染后再确认实际命中字形。
 - `×`、`µ`、Unicode上下标、特殊箭头及数学符号属于高风险字形，不做跨环境可用的假设。缺字时优先嵌入/更换支持字体；确实无法保证时在图内使用可审计的ASCII写法，如 `x`、`uA`、`I2C`、`10^n`，正文仍可保留规范数学写法。
 
+### 论文与配图语言一致性
+
+图片语言默认跟随论文主语言。中文论文的普通说明、节点名称、流程动作、分组标题和风险提示使用简体中文；芯片型号、协议缩写、化学式、蛋白/基因名、单位和通行标准名可以保留原文。不能因为图片模型更擅长英文，就把整张中文论文配图改成英文。
+
+每张图在 `figure-plan.json` 与 Figure Manifest 中记录：
+
+```yaml
+language_contract:
+  manuscript_language: zh-CN
+  label_language: zh-CN
+  exact_labels: ["室内暴露", "卫生指南", "可测参数", "电路任务"]
+  allowed_foreign_tokens: ["ESP32-WROOM-32E", "I2C", "UART", "PM2.5", "CO2", "WHO AQG", "3.3 V"]
+text_render_strategy: DIRECT_IMAGE_TEXT | DETERMINISTIC_OVERLAY | DOMAIN_VECTOR_TEXT | NO_CANVAS_TEXT
+```
+
+- `exact_labels` 是应出现在画布上的逐字标签，必须写进图片Prompt；样式指令可用模型更易理解的语言，但标签区块必须使用目标语言。
+- `allowed_foreign_tokens` 只列确需保留的术语，不能把完整英文句子或说明段落伪装成技术词白名单。
+- `DIRECT_IMAGE_TEXT`：图片模型直接正确生成目标语言短标签；视觉核验逐字通过后可直接嵌入。
+- `DETERMINISTIC_OVERLAY`：图片模型生成构图、图标、材质和颜色底图，最终中文由SVG/HTML/canvas等确定性覆盖层写入，再合成为PNG。该路线必须保留原始生成图、覆盖源、执行回执与合成后文件摘要。
+- `DOMAIN_VECTOR_TEXT`：统计图、精确电路、ER/UML或其他领域矢量图直接由确定性工具写入目标语言。
+- `NO_CANVAS_TEXT`：图内没有文字，解释全部放在文档题注；不能在实际含有英文文字时冒用。
+
+中文标签优先使用短语，长定义、完整句子和证据边界移到Word/PDF图题或图注。图片模型中文出现错字、伪字、方框或英文替代时，先尝试图片编辑；仍不稳定则切换 `DETERMINISTIC_OVERLAY`，不能把整张生成图静默替换成纯SVG。
+
+语言视觉回执至少记录目标语言、观察到的主要语言、非白名单外文、技术词保留是否正确，以及逐字标签检查结果。中文论文中出现非白名单英文长句、英文节点标题或模型伪文字时不得标记 `PASS`。
+
 ### 预检与视觉闭环
 
 原生SVG完成后先运行与终验同口径的几何预检。内置预检检查可解析线段的严格交叉、穿越非端点矩形和共线重叠；模型再结合事实清单与最终PNG检查节点重叠、端点悬空、画布越界和连接侧是否合理。不能只验证XML可解析。预检不自动改拓扑，只报告模型需要修复的位置。
@@ -378,7 +404,7 @@ figure_plan:
 
 ## 权威Figure Manifest
 
-`figures/figure-manifest.json` 是机器可读的唯一插图路由真源；`figures/figure-manifest.md` 是供人阅读的摘要，不能被导出程序用于重新选图。JSON根对象包含 `schema_version` 与 `figures[]`，当前版本为 `1.4`。每张图至少记录：
+`figures/figure-manifest.json` 是机器可读的唯一插图路由真源；`figures/figure-manifest.md` 是供人阅读的摘要，不能被导出程序用于重新选图。JSON根对象包含 `schema_version` 与 `figures[]`，当前版本为 `1.5`。每张图至少记录：
 
 ```json
 {
@@ -397,6 +423,14 @@ figure_plan:
   "generation_receipt": null,
   "svg_layout_mode": null,
   "svg_layout": null,
+  "language_contract": {
+    "manuscript_language": "zh-CN",
+    "label_language": "zh-CN",
+    "exact_labels": ["实验组", "对照组", "均值与置信区间"],
+    "allowed_foreign_tokens": ["95% CI", "n"]
+  },
+  "text_render_strategy": "DOMAIN_VECTOR_TEXT",
+  "text_overlay": null,
   "fallback_file": null,
   "source_data": [{"dataset_id": "bench-v1", "file": "data/bench.csv", "sha256": "...", "origin": "USER_PROVIDED", "acquisition_receipt": null}],
   "transformation": {
@@ -425,7 +459,15 @@ figure_plan:
     "checked_at": "2026-08-23T09:05:00-07:00",
     "checked_file_sha256": "...",
     "receipt_file": "figures/receipts/fig-4-1-vlm.txt",
-    "receipt_sha256": "..."
+    "receipt_sha256": "...",
+    "language_check": {
+      "status": "PASS",
+      "target_language": "zh-CN",
+      "observed_language": "zh-CN+technical-tokens",
+      "unintended_foreign_text": [],
+      "allowed_foreign_tokens_verified": true,
+      "exact_labels_verified": true
+    }
   }
 }
 ```
@@ -433,6 +475,9 @@ figure_plan:
 条件字段规则：
 
 - `IMAGE_GENERATION`：必须有独立 `prompt_file` 与真实 `generated_file`；最终文件若不同，必须记录文字、箭头或格式合成过程，不能改用纯SVG重画。
+- 每张图必须有 `language_contract`、`text_render_strategy` 与VLM `language_check`。中文论文默认 `label_language=zh-CN`；型号、协议、化学式和单位只能按 `allowed_foreign_tokens` 保留。
+- `DIRECT_IMAGE_TEXT`要求图片模型逐字生成目标语言标签；`DETERMINISTIC_OVERLAY`要求保存原始生成图、文字覆盖源、执行回执以及底图和最终PNG摘要；`DOMAIN_VECTOR_TEXT`用于统计图与精确矢量图；`NO_CANVAS_TEXT`仅用于画布确实无文字。
+- `exact_labels` 必须逐项出现在IMAGE_GENERATION的Prompt中。语言检查发现非白名单英文长句、错字、伪字或英文替代时不得标记 `PASS`。
 - `display_number` 是Word/PDF唯一图号来源，必须在全文唯一；不得从 `figure_id` 或文件名猜测图号。
 - `exactness_class` 只能为：`SEMANTIC_STRUCTURE`（普通流程、组织、框架，可ImageGen）、`DOMAIN_EXACT`（电路、引脚、化学/晶体结构、公式、尺度、载荷、焊接、精确生物通路，必须领域工具或确定性底图）、`DATA_GRAPH`（真实数据代码图）或 `EVIDENCE_IMAGE`（真实科研图像）。ImageGen只允许直接承担 `SEMANTIC_STRUCTURE`；精确图可在领域底图上做不改变事实核心的视觉合成。
 - 流程、架构、ER/UML、组织、机制、研究框架、时间线和概念场景通常设置 `imagegen_eligible=true`。当能力报告显示图片生成可用时，这些图只能使用 `IMAGE_GENERATION`，否则机械校验返回 `IMAGEGEN_BYPASSED`。
@@ -452,7 +497,7 @@ figure_plan:
   "spec_sha256": "...",
   "report_file": "figures/fig-2-1-layout-report.json",
   "report_sha256": "...",
-  "renderer": "aiwritepaper-academic-writing@1.1.0/render_svg_layout.mjs",
+  "renderer": "aiwritepaper-academic-writing@1.2.0/render_svg_layout.mjs",
   "renderer_sha256": "..."
 }
 ```

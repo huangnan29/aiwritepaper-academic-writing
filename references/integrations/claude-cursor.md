@@ -8,3 +8,6 @@
 - 没有实际图片工具时才使用SVG降级；不得因为Claude或Cursor常见配置差异而预设可用或不可用。
 - 文档导出后必须运行统一验收；客户端能打开Word或PDF不等于文件路径、目录、图题和哈希已经通过。
 
+## Cursor GenerateImage语言一致性
+
+Cursor内置 `GenerateImage` 可能更稳定地渲染英文。中文论文不能因此把结构图整体改成英文：Prompt的样式说明可以使用英文，但 `language_contract.exact_labels` 必须为简体中文，技术缩写仅按白名单保留。若Cursor生成图的中文不稳定，保留其构图与图标作为底图，使用 `DETERMINISTIC_OVERLAY` 写入中文并导出最终PNG；不能改插纯SVG冒充GenerateImage结果。

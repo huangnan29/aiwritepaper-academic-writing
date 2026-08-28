@@ -6,7 +6,7 @@
   "additionalProperties": true,
   "required": ["schema_version", "figures"],
   "properties": {
-    "schema_version": {"const": "1.4"},
+    "schema_version": {"const": "1.5"},
     "figures": {
       "type": "array",
       "items": {"$ref": "#/$defs/figure"}
@@ -22,7 +22,7 @@
         "data_status", "prompt_file", "generated_file", "fallback_file", "source_data",
         "transformation", "caption_claim", "supported_manuscript_claims", "limitations",
         "canvas_contains_figure_number_or_caption", "final_embed_file", "generation_receipt",
-        "svg_layout_mode", "svg_layout", "vlm_verification"
+        "svg_layout_mode", "svg_layout", "language_contract", "text_render_strategy", "text_overlay", "vlm_verification"
       ],
       "properties": {
         "figure_id": {"type": "string", "minLength": 1},
@@ -60,9 +60,26 @@
         "generation_receipt": {"type": ["object", "null"]},
         "svg_layout_mode": {"type": ["string", "null"], "enum": ["NATIVE", "COMPILED", null]},
         "svg_layout": {"type": ["object", "null"]},
+        "language_contract": {
+          "type": "object",
+          "required": ["manuscript_language", "label_language", "exact_labels", "allowed_foreign_tokens"],
+          "properties": {
+            "manuscript_language": {"type": "string", "minLength": 2},
+            "label_language": {"type": "string", "minLength": 2},
+            "exact_labels": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+            "allowed_foreign_tokens": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true}
+          }
+        },
+        "text_render_strategy": {"enum": ["DIRECT_IMAGE_TEXT", "DETERMINISTIC_OVERLAY", "DOMAIN_VECTOR_TEXT", "NO_CANVAS_TEXT"]},
+        "text_overlay": {"type": ["object", "null"]},
         "vlm_verification": {"type": "object"}
       },
       "allOf": [
+        {
+          "if": {"properties": {"text_render_strategy": {"const": "NO_CANVAS_TEXT"}}},
+          "then": {"properties": {"language_contract": {"properties": {"exact_labels": {"maxItems": 0}}}}},
+          "else": {"properties": {"language_contract": {"properties": {"exact_labels": {"minItems": 1}}}}}
+        },
         {
           "if": {"properties": {"exactness_class": {"const": "DATA_GRAPH"}}},
           "then": {"properties": {"generation_route": {"const": "DATA_CODE"}, "imagegen_eligible": {"const": false}}}
@@ -84,6 +101,17 @@
               "generation_receipt": {
                 "type": "object",
                 "required": ["evidence_level", "tool", "provider", "model", "invoked_at", "call_id", "receipt_file", "receipt_sha256", "prompt_sha256", "generated_sha256"]
+              }
+            }
+          }
+        },
+        {
+          "if": {"properties": {"text_render_strategy": {"const": "DETERMINISTIC_OVERLAY"}}},
+          "then": {
+            "properties": {
+              "text_overlay": {
+                "type": "object",
+                "required": ["source_file", "source_sha256", "receipt_file", "receipt_sha256", "base_generated_sha256", "final_sha256", "method"]
               }
             }
           }

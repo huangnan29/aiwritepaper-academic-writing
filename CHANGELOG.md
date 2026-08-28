@@ -1,5 +1,14 @@
 # 更新记录
 
+## 1.2.0 - 2026-08-28
+
+- 中文论文配图默认使用简体中文说明，芯片型号、协议、化学式、蛋白/基因名、单位和标准缩写按白名单保留。
+- Figure Manifest升级到Schema 1.5，新增 `language_contract`、`text_render_strategy`、`text_overlay` 与VLM `language_check`。
+- 图片Prompt强制包含逐字目标语言标签；中文论文整体改用英文标签时机械验收失败。
+- 新增 `DIRECT_IMAGE_TEXT`、`DETERMINISTIC_OVERLAY`、`DOMAIN_VECTOR_TEXT` 和 `NO_CANVAS_TEXT` 四种文字渲染策略。
+- 确定性覆盖路线保留原始GenerateImage底图，绑定覆盖源、执行回执以及底图/最终PNG摘要，避免中文修正退化成纯SVG替图。
+- Cursor适配明确GenerateImage中文失败时使用确定性中文覆盖，不以英文渲染稳定性覆盖论文语言要求。
+
 ## 1.1.0 - 2026-08-27
 
 - 从GLM-5.3 Flash高质量电路SVG实践中提炼跨方向方法，新增逐图事实清单、禁止项、路线切换和失败证据保留规则。

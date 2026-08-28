@@ -26,6 +26,8 @@ ROUTE_EXEMPTIONS = {
     "DOMAIN_EXACTNESS", "EVIDENCE_REQUIRED", None,
 }
 EXACTNESS_CLASSES = {"SEMANTIC_STRUCTURE", "DOMAIN_EXACT", "DATA_GRAPH", "EVIDENCE_IMAGE"}
+TEXT_RENDER_STRATEGIES = {"DIRECT_IMAGE_TEXT", "DETERMINISTIC_OVERLAY", "DOMAIN_VECTOR_TEXT", "NO_CANVAS_TEXT"}
+LANGUAGE_CHECK_STATUSES = {"PASS", "PASS_WITH_NOTES", "NEEDS_REVIEW", "SKIPPED"}
 DATA_ORIGINS = {
     "USER_PROVIDED", "OFFICIAL_DOWNLOAD", "AUTHOR_OBSERVED", "FORMAL_SIMULATION",
     "MODEL_SYNTHETIC", "MANUSCRIPT_CONTEXT",
@@ -44,7 +46,7 @@ REQUIRED_FIELDS = {
     "data_status", "prompt_file", "generated_file", "fallback_file", "source_data",
     "transformation", "caption_claim", "supported_manuscript_claims", "limitations",
     "canvas_contains_figure_number_or_caption", "final_embed_file", "generation_receipt",
-    "svg_layout_mode", "svg_layout", "vlm_verification",
+    "svg_layout_mode", "svg_layout", "language_contract", "text_render_strategy", "text_overlay", "vlm_verification",
 }
 
 
@@ -128,8 +130,8 @@ class FigureVerifier:
         if not isinstance(manifest, dict) or not isinstance(manifest.get("figures"), list):
             self.error("MANIFEST_SHAPE", "根对象必须包含figures数组")
             return manifest if isinstance(manifest, dict) else {}
-        if manifest.get("schema_version") != "1.4":
-            self.error("SCHEMA_VERSION", "当前仅接受schema_version=1.4")
+        if manifest.get("schema_version") != "1.5":
+            self.error("SCHEMA_VERSION", "当前仅接受schema_version=1.5")
 
         seen_ids: Set[str] = set()
         seen_numbers: Set[str] = set()
@@ -163,6 +165,44 @@ class FigureVerifier:
             exactness_class = figure.get("exactness_class")
             if exactness_class not in EXACTNESS_CLASSES:
                 self.error("EXACTNESS_CLASS_INVALID", f"{figure_id}: {exactness_class}")
+            language_contract = figure.get("language_contract")
+            if not isinstance(language_contract, dict):
+                self.error("LANGUAGE_CONTRACT_INVALID", figure_id)
+                language_contract = {}
+            manuscript_language = language_contract.get("manuscript_language")
+            label_language = language_contract.get("label_language")
+            exact_labels = language_contract.get("exact_labels")
+            allowed_foreign_tokens = language_contract.get("allowed_foreign_tokens")
+            for field, value in [
+                ("manuscript_language", manuscript_language), ("label_language", label_language),
+            ]:
+                if not isinstance(value, str) or not value.strip():
+                    self.error("LANGUAGE_CONTRACT_FIELD", f"{figure_id}.{field}")
+            for field, value in [
+                ("exact_labels", exact_labels), ("allowed_foreign_tokens", allowed_foreign_tokens),
+            ]:
+                if not isinstance(value, list) or any(not isinstance(item, str) or not item.strip() for item in value):
+                    self.error("LANGUAGE_CONTRACT_FIELD", f"{figure_id}.{field}")
+            text_render_strategy = figure.get("text_render_strategy")
+            if text_render_strategy not in TEXT_RENDER_STRATEGIES:
+                self.error("TEXT_RENDER_STRATEGY_INVALID", f"{figure_id}: {text_render_strategy}")
+            if isinstance(exact_labels, list):
+                if text_render_strategy == "NO_CANVAS_TEXT" and exact_labels:
+                    self.error("NO_CANVAS_TEXT_HAS_LABELS", figure_id)
+                elif text_render_strategy != "NO_CANVAS_TEXT" and not exact_labels:
+                    self.error("EXACT_LABELS_MISSING", figure_id)
+            if (
+                isinstance(manuscript_language, str) and manuscript_language.lower().startswith("zh")
+                and text_render_strategy != "NO_CANVAS_TEXT"
+                and (not isinstance(label_language, str) or not label_language.lower().startswith("zh"))
+            ):
+                self.error("FIGURE_LANGUAGE_MISMATCH", f"{figure_id}: {manuscript_language}->{label_language}")
+            if text_render_strategy == "DETERMINISTIC_OVERLAY" and route != "IMAGE_GENERATION":
+                self.error("TEXT_OVERLAY_ROUTE_INVALID", figure_id)
+            if route == "IMAGE_GENERATION" and text_render_strategy == "DOMAIN_VECTOR_TEXT":
+                self.error("IMAGEGEN_TEXT_STRATEGY_INVALID", figure_id)
+            if route != "IMAGE_GENERATION" and text_render_strategy == "DIRECT_IMAGE_TEXT":
+                self.error("DIRECT_IMAGE_TEXT_ROUTE_INVALID", figure_id)
             imagegen_eligible = figure.get("imagegen_eligible")
             if not isinstance(imagegen_eligible, bool):
                 self.error("IMAGEGEN_ELIGIBLE_INVALID", figure_id)
@@ -215,7 +255,7 @@ class FigureVerifier:
                 self.final_files[figure_id] = final_path
 
             vlm = figure.get("vlm_verification")
-            self.verify_vlm_receipt(vlm, final_path, figure_id)
+            self.verify_vlm_receipt(vlm, final_path, figure_id, language_contract, text_render_strategy)
 
             source_data = figure.get("source_data")
             if not isinstance(source_data, list):
@@ -267,6 +307,15 @@ class FigureVerifier:
                 prompt = self.resolve_file(figure.get("prompt_file"), "prompt_file", figure_id)
                 generated = self.resolve_file(figure.get("generated_file"), "generated_file", figure_id)
                 self.verify_generation_receipt(figure.get("generation_receipt"), prompt, generated, figure_id)
+                if prompt and isinstance(exact_labels, list) and text_render_strategy != "NO_CANVAS_TEXT":
+                    prompt_text = prompt.read_text(encoding="utf-8", errors="replace")
+                    for label in exact_labels:
+                        if isinstance(label, str) and label not in prompt_text:
+                            self.error("PROMPT_EXACT_LABEL_MISSING", f"{figure_id}: {label}")
+                if text_render_strategy == "DETERMINISTIC_OVERLAY":
+                    self.verify_text_overlay(figure.get("text_overlay"), generated, final_path, figure_id)
+                elif figure.get("text_overlay") not in (None, {}):
+                    self.error("TEXT_OVERLAY_UNEXPECTED", figure_id)
                 if generated and final_path and generated != final_path and not transformation.get("method"):
                     self.error("COMPOSITE_UNDECLARED", figure_id)
                 if isinstance(final_value, str) and final_value.lower().endswith(".svg"):
@@ -388,7 +437,10 @@ class FigureVerifier:
             if not isinstance(declared, str) or declared.lower() != self.sha256(generated):
                 self.error("GENERATION_FILE_HASH_MISMATCH", figure_id)
 
-    def verify_vlm_receipt(self, vlm: Any, final_path: Optional[Path], figure_id: str) -> None:
+    def verify_vlm_receipt(
+        self, vlm: Any, final_path: Optional[Path], figure_id: str,
+        language_contract: Dict[str, Any], text_render_strategy: Any,
+    ) -> None:
         if not isinstance(vlm, dict) or vlm.get("status") not in VLM_STATUSES:
             self.error("VLM_STATUS_INVALID", figure_id)
             return
@@ -399,10 +451,53 @@ class FigureVerifier:
             self.error("VLM_NEEDS_REVIEW", figure_id)
         if status == "PASS" and vlm.get("remaining_issues"):
             self.error("VLM_PASS_WITH_ISSUES", figure_id)
-        if status == "SKIPPED":
+        vlm_skipped = status == "SKIPPED"
+        if vlm_skipped:
             self.visual_status = "PARTIAL"
             if not isinstance(vlm.get("reason"), str) or not vlm.get("reason", "").strip():
                 self.error("VLM_SKIP_REASON_MISSING", figure_id)
+
+        language_check = vlm.get("language_check")
+        if not isinstance(language_check, dict):
+            self.error("LANGUAGE_CHECK_MISSING", figure_id)
+        else:
+            language_status = language_check.get("status")
+            if language_status not in LANGUAGE_CHECK_STATUSES:
+                self.error("LANGUAGE_CHECK_STATUS", figure_id)
+            elif language_status == "NEEDS_REVIEW":
+                self.error("LANGUAGE_CHECK_NEEDS_REVIEW", figure_id)
+            elif language_status == "PASS_WITH_NOTES":
+                self.visual_status = "PARTIAL"
+            elif language_status == "SKIPPED":
+                self.visual_status = "PARTIAL"
+                if not isinstance(language_check.get("reason"), str) or not language_check.get("reason", "").strip():
+                    self.error("LANGUAGE_CHECK_SKIP_REASON", figure_id)
+            target_language = language_check.get("target_language")
+            if target_language != language_contract.get("label_language"):
+                self.error("LANGUAGE_CHECK_TARGET_MISMATCH", figure_id)
+            observed_language = language_check.get("observed_language")
+            if not isinstance(observed_language, str) or not observed_language.strip():
+                self.error("LANGUAGE_CHECK_OBSERVED_MISSING", figure_id)
+            elif (
+                language_status != "SKIPPED"
+                and
+                isinstance(target_language, str) and target_language.lower().startswith("zh")
+                and text_render_strategy != "NO_CANVAS_TEXT"
+                and not observed_language.lower().startswith("zh")
+            ):
+                self.error("LANGUAGE_CHECK_OBSERVED_MISMATCH", f"{figure_id}: {observed_language}")
+            unintended = language_check.get("unintended_foreign_text")
+            if not isinstance(unintended, list) or any(not isinstance(item, str) for item in unintended):
+                self.error("LANGUAGE_CHECK_FOREIGN_TEXT_INVALID", figure_id)
+            elif unintended:
+                self.error("LANGUAGE_CHECK_FOREIGN_TEXT", f"{figure_id}: {unintended}")
+            if language_check.get("allowed_foreign_tokens_verified") is not True:
+                self.error("LANGUAGE_CHECK_TOKEN_VERIFICATION", figure_id)
+            exact_labels = language_contract.get("exact_labels")
+            if isinstance(exact_labels, list) and exact_labels and language_check.get("exact_labels_verified") is not True:
+                self.error("LANGUAGE_CHECK_EXACT_LABELS", figure_id)
+
+        if vlm_skipped:
             return
 
         level = vlm.get("evidence_level")
@@ -429,6 +524,24 @@ class FigureVerifier:
             declared = vlm.get("checked_file_sha256")
             if not isinstance(declared, str) or declared.lower() != self.sha256(final_path):
                 self.error("VLM_CHECKED_FILE_MISMATCH", figure_id)
+
+    def verify_text_overlay(
+        self, overlay: Any, generated: Optional[Path], final_path: Optional[Path], figure_id: str
+    ) -> None:
+        if not isinstance(overlay, dict):
+            self.error("TEXT_OVERLAY_MISSING", figure_id)
+            return
+        source = self.resolve_file(overlay.get("source_file"), "text_overlay.source_file", figure_id)
+        receipt = self.resolve_file(overlay.get("receipt_file"), "text_overlay.receipt_file", figure_id)
+        for field, path in [("source_sha256", source), ("receipt_sha256", receipt)]:
+            if path and overlay.get(field, "").lower() != self.sha256(path):
+                self.error("TEXT_OVERLAY_HASH_MISMATCH", f"{figure_id}.{field}")
+        if generated and overlay.get("base_generated_sha256", "").lower() != self.sha256(generated):
+            self.error("TEXT_OVERLAY_BASE_MISMATCH", figure_id)
+        if final_path and overlay.get("final_sha256", "").lower() != self.sha256(final_path):
+            self.error("TEXT_OVERLAY_FINAL_MISMATCH", figure_id)
+        if not isinstance(overlay.get("method"), str) or not overlay.get("method", "").strip():
+            self.error("TEXT_OVERLAY_METHOD_MISSING", figure_id)
 
     def verify_data_execution(
         self,

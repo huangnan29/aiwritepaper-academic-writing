@@ -4,7 +4,7 @@
 
 **从论文题目到一份完整执行提示词，再持续交付正文、配图、DOCX 与 PDF。**
 
-![Version](https://img.shields.io/badge/version-1.1.0-2563EB?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.2.0-2563EB?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-16A34A?style=flat-square)
 ![Architecture](https://img.shields.io/badge/architecture-MD--first-7C3AED?style=flat-square)
 ![Directions](https://img.shields.io/badge/paper%20directions-19-EA580C?style=flat-square)
@@ -15,6 +15,15 @@
 
 > [!NOTE]
 > 当前版本采用 **MD-first 单提示词执行 + Agent能力适配 + 确定性交付验收**。模型继续负责方向、检索、论证、写作和配图语义；脚本只统计字数、核对图片路由、文件、目录、表格与哈希，不生成论文内容。
+
+## v1.2.0中文论文配图语言一致性
+
+- 图片默认跟随论文主语言；中文论文的普通节点、流程动作、分组标题与风险提示使用简体中文；
+- Figure Manifest 1.5新增 `language_contract`、技术词白名单、逐字标签、文字渲染策略与语言视觉核验；
+- 图片Prompt可以用英文描述风格，但 `exact_labels` 必须使用论文目标语言并逐项出现；
+- Cursor GenerateImage、Imagine、imagegen等中文不稳定时保留生成底图，使用 `DETERMINISTIC_OVERLAY`确定性覆盖中文；
+- 覆盖路线绑定原始生成图、覆盖源、执行回执与最终PNG摘要，不能改插纯SVG冒充生图；
+- VLM发现非白名单英文长句、英文节点标题、中文错字、伪字或乱码时不能标记PASS。
 
 ## v1.1.0跨方向SVG绘制方法
 
@@ -281,7 +290,7 @@ v0.9.0据此不再继续堆叠提示语，而是新增机器能力报告、父�
 - `IMAGE_GENERATION` 必须保存图片工具实际返回结果或客户端调用片段，记录工具、模型、时间、调用ID以及Prompt、回执、生成文件SHA-256；
 - 只有模型文字声称“已调用Imagine/ImageGen/Nano Banana”属于 `DECLARED_ONLY`，机械校验失败；
 - VLM的 `PASS` 必须绑定视觉工具回执和被检查最终图片SHA-256，不能只填写状态；
-- `figure-manifest.json` 使用Schema 1.4，新增 `display_number`、`exactness_class`、`imagegen_eligible`、`route_exemption` 与数据来源类型；
+- `figure-manifest.json` 当前使用Schema 1.5，在1.4精确性字段基础上新增图片语言契约、外文白名单、文字渲染策略和语言视觉核验；
 - 人类摘要中的每个图号和最终插图路径必须与权威JSON恰好对应一次。
 
 ### SVG降级质量
@@ -543,7 +552,7 @@ aiwritepaper-academic-writing/
 
 ## 维护与版本
 
-- 当前版本：`1.1.0`
+- 当前版本：`1.2.0`
 - 更新记录：[CHANGELOG.md](CHANGELOG.md)
 - Skill入口：[SKILL.md](SKILL.md)
 - 历史复杂流水线版可通过Git标签`v0.3.1-runtime-gates`恢复

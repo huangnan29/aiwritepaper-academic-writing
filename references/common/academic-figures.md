@@ -74,6 +74,32 @@ SVG降级图必须先布局节点，再规划连接线。流程、架构、ER、
 - 中文字体栈至少包含 `PingFang SC, Songti SC, Noto Sans CJK SC, Source Han Sans SC, Microsoft YaHei, SimHei, sans-serif`，渲染后再确认实际命中字形。
 - `×`、`µ`、Unicode上下标、特殊箭头及数学符号属于高风险字形，不做跨环境可用的假设。缺字时优先嵌入/更换支持字体；确实无法保证时在图内使用可审计的ASCII写法，如 `x`、`uA`、`I2C`、`10^n`，正文仍可保留规范数学写法。
 
+### 论文与配图语言一致性
+
+图片语言默认跟随论文主语言。中文论文的普通说明、节点名称、流程动作、分组标题和风险提示使用简体中文；芯片型号、协议缩写、化学式、蛋白/基因名、单位和通行标准名可以保留原文。不能因为图片模型更擅长英文，就把整张中文论文配图改成英文。
+
+每张图在 `figure-plan.json` 与 Figure Manifest 中记录：
+
+```yaml
+language_contract:
+  manuscript_language: zh-CN
+  label_language: zh-CN
+  exact_labels: ["室内暴露", "卫生指南", "可测参数", "电路任务"]
+  allowed_foreign_tokens: ["ESP32-WROOM-32E", "I2C", "UART", "PM2.5", "CO2", "WHO AQG", "3.3 V"]
+text_render_strategy: DIRECT_IMAGE_TEXT | DETERMINISTIC_OVERLAY | DOMAIN_VECTOR_TEXT | NO_CANVAS_TEXT
+```
+
+- `exact_labels` 是应出现在画布上的逐字标签，必须写进图片Prompt；样式指令可用模型更易理解的语言，但标签区块必须使用目标语言。
+- `allowed_foreign_tokens` 只列确需保留的术语，不能把完整英文句子或说明段落伪装成技术词白名单。
+- `DIRECT_IMAGE_TEXT`：图片模型直接正确生成目标语言短标签；视觉核验逐字通过后可直接嵌入。
+- `DETERMINISTIC_OVERLAY`：图片模型生成构图、图标、材质和颜色底图，最终中文由SVG/HTML/canvas等确定性覆盖层写入，再合成为PNG。该路线必须保留原始生成图、覆盖源、执行回执与合成后文件摘要。
+- `DOMAIN_VECTOR_TEXT`：统计图、精确电路、ER/UML或其他领域矢量图直接由确定性工具写入目标语言。
+- `NO_CANVAS_TEXT`：图内没有文字，解释全部放在文档题注；不能在实际含有英文文字时冒用。
+
+中文标签优先使用短语，长定义、完整句子和证据边界移到Word/PDF图题或图注。图片模型中文出现错字、伪字、方框或英文替代时，先尝试图片编辑；仍不稳定则切换 `DETERMINISTIC_OVERLAY`，不能把整张生成图静默替换成纯SVG。
+
+语言视觉回执至少记录目标语言、观察到的主要语言、非白名单外文、技术词保留是否正确，以及逐字标签检查结果。中文论文中出现非白名单英文长句、英文节点标题或模型伪文字时不得标记 `PASS`。
+
 ### 预检与视觉闭环
 
 原生SVG完成后先运行与终验同口径的几何预检。内置预检检查可解析线段的严格交叉、穿越非端点矩形和共线重叠；模型再结合事实清单与最终PNG检查节点重叠、端点悬空、画布越界和连接侧是否合理。不能只验证XML可解析。预检不自动改拓扑，只报告模型需要修复的位置。

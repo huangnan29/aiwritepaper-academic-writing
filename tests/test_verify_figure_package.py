@@ -80,7 +80,7 @@ class FigurePackageTests(unittest.TestCase):
         source_hash = hashlib.sha256((self.root / "data/results.csv").read_bytes()).hexdigest()
         execution_hash = hashlib.sha256((self.root / "figures/data-execution.log").read_bytes()).hexdigest()
         self.manifest = {
-            "schema_version": "1.4",
+            "schema_version": "1.5",
             "figures": [{
                 "figure_id": "fig-1", "display_number": "1", "title": "趋势图", "figure_type": "STATISTICAL",
                 "exactness_class": "DATA_GRAPH", "imagegen_eligible": False, "route_exemption": None,
@@ -101,6 +101,12 @@ class FigurePackageTests(unittest.TestCase):
                 "limitations": [], "canvas_contains_figure_number_or_caption": False,
                 "generation_receipt": None,
                 "svg_layout_mode": None, "svg_layout": None,
+                "language_contract": {
+                    "manuscript_language": "zh-CN", "label_language": "zh-CN",
+                    "exact_labels": ["实验组", "对照组"],
+                    "allowed_foreign_tokens": ["95% CI"],
+                },
+                "text_render_strategy": "DOMAIN_VECTOR_TEXT", "text_overlay": None,
                 "final_embed_file": "figures/fig-1-final.png",
                 "vlm_verification": {
                     "status": "PASS", "iterations": 1, "remaining_issues": [],
@@ -108,6 +114,12 @@ class FigurePackageTests(unittest.TestCase):
                     "checked_at": "2026-08-23T09:05:00-07:00",
                     "checked_file_sha256": final_hash, "receipt_file": "figures/vlm-receipt.txt",
                     "receipt_sha256": vlm_receipt_hash,
+                    "language_check": {
+                        "status": "PASS", "target_language": "zh-CN",
+                        "observed_language": "zh-CN+technical-tokens",
+                        "unintended_foreign_text": [], "allowed_foreign_tokens_verified": True,
+                        "exact_labels_verified": True,
+                    },
                 },
             }],
         }
@@ -225,7 +237,7 @@ class FigurePackageTests(unittest.TestCase):
 
     def test_valid_image_generation_embeds_generated_file(self) -> None:
         figure = self.manifest["figures"][0]
-        (self.root / "figures/prompt.md").write_text("prompt", encoding="utf-8")
+        (self.root / "figures/prompt.md").write_text("逐字标签：实验组、对照组", encoding="utf-8")
         (self.root / "figures/tool-receipt.json").write_text(
             '{"source":"native tool result","call_id":"call-123"}', encoding="utf-8"
         )
@@ -238,6 +250,7 @@ class FigurePackageTests(unittest.TestCase):
             "claim_bearing": False,
             "prompt_file": "figures/prompt.md", "generated_file": "figures/fig-1-final.png",
             "source_data": [], "transformation": {"method": "none"},
+            "text_render_strategy": "DIRECT_IMAGE_TEXT", "text_overlay": None,
             "generation_receipt": {
                 "evidence_level": "NATIVE_TOOL_RESULT", "tool": "imagegen", "provider": "OpenAI",
                 "model": "gpt-image", "invoked_at": "2026-08-23T09:00:00-07:00",
@@ -264,11 +277,90 @@ class FigurePackageTests(unittest.TestCase):
     def test_skipped_visual_check_marks_partial(self) -> None:
         self.manifest["figures"][0]["vlm_verification"] = {
             "status": "SKIPPED", "remaining_issues": [], "reason": "无视觉工具",
+            "language_check": {
+                "status": "SKIPPED", "reason": "无视觉工具", "target_language": "zh-CN",
+                "observed_language": "unknown", "unintended_foreign_text": [],
+                "allowed_foreign_tokens_verified": True, "exact_labels_verified": True,
+            },
         }
         self.write_manifest()
         verifier = self.verify()
         self.assertEqual(verifier.errors, [])
         self.assertEqual(verifier.visual_status, "PARTIAL")
+
+    def test_chinese_manuscript_rejects_english_figure_language(self) -> None:
+        contract = self.manifest["figures"][0]["language_contract"]
+        contract["label_language"] = "en-US"
+        language_check = self.manifest["figures"][0]["vlm_verification"]["language_check"]
+        language_check["target_language"] = "en-US"
+        language_check["observed_language"] = "en-US"
+        self.write_manifest()
+        self.assertTrue(any("FIGURE_LANGUAGE_MISMATCH" in item for item in self.verify().errors))
+
+    def test_language_check_rejects_unintended_english(self) -> None:
+        language_check = self.manifest["figures"][0]["vlm_verification"]["language_check"]
+        language_check["unintended_foreign_text"] = ["Power supply"]
+        self.write_manifest()
+        self.assertTrue(any("LANGUAGE_CHECK_FOREIGN_TEXT" in item for item in self.verify().errors))
+
+    def test_text_strategy_requires_exact_labels(self) -> None:
+        self.manifest["figures"][0]["language_contract"]["exact_labels"] = []
+        self.write_manifest()
+        self.assertTrue(any("EXACT_LABELS_MISSING" in item for item in self.verify().errors))
+
+    def test_image_prompt_requires_exact_labels(self) -> None:
+        figure = self.manifest["figures"][0]
+        (self.root / "figures/prompt.md").write_text("English labels only", encoding="utf-8")
+        figure.update({
+            "exactness_class": "SEMANTIC_STRUCTURE", "imagegen_eligible": True,
+            "generation_route": "IMAGE_GENERATION", "data_status": "NOT_APPLICABLE",
+            "claim_bearing": False, "prompt_file": "figures/prompt.md",
+            "generated_file": "figures/fig-1-final.png", "source_data": [],
+            "transformation": {"method": "none"}, "generation_receipt": None,
+            "text_render_strategy": "DIRECT_IMAGE_TEXT", "text_overlay": None,
+        })
+        self.write_manifest()
+        self.assertTrue(any("PROMPT_EXACT_LABEL_MISSING" in item for item in self.verify().errors))
+
+    def test_valid_deterministic_text_overlay(self) -> None:
+        figure = self.manifest["figures"][0]
+        prompt = self.root / "figures/prompt.md"
+        prompt.write_text("生成无文字底图；逐字标签：实验组、对照组", encoding="utf-8")
+        generated = self.root / "figures/generated-base.png"
+        generated.write_bytes(b"generated-base")
+        tool_receipt = self.root / "figures/tool-receipt.json"
+        tool_receipt.write_text('{"source":"native","call_id":"call-overlay"}', encoding="utf-8")
+        overlay_source = self.root / "figures/labels.svg"
+        overlay_source.write_text('<svg><text>实验组</text><text>对照组</text></svg>', encoding="utf-8")
+        overlay_receipt = self.root / "figures/overlay.log"
+        overlay_receipt.write_text("render labels.svg over generated-base.png", encoding="utf-8")
+        figure.update({
+            "exactness_class": "SEMANTIC_STRUCTURE", "imagegen_eligible": True,
+            "generation_route": "IMAGE_GENERATION", "data_status": "NOT_APPLICABLE",
+            "claim_bearing": False, "prompt_file": "figures/prompt.md",
+            "generated_file": "figures/generated-base.png", "source_data": [],
+            "transformation": {"method": "generated_bitmap_plus_svg_text_overlay"},
+            "text_render_strategy": "DETERMINISTIC_OVERLAY",
+            "generation_receipt": {
+                "evidence_level": "NATIVE_TOOL_RESULT", "tool": "imagegen", "provider": "OpenAI",
+                "model": "gpt-image", "invoked_at": "2026-08-23T09:00:00-07:00",
+                "call_id": "call-overlay", "receipt_file": "figures/tool-receipt.json",
+                "receipt_sha256": hashlib.sha256(tool_receipt.read_bytes()).hexdigest(),
+                "prompt_sha256": hashlib.sha256(prompt.read_bytes()).hexdigest(),
+                "generated_sha256": hashlib.sha256(generated.read_bytes()).hexdigest(),
+            },
+            "text_overlay": {
+                "source_file": "figures/labels.svg",
+                "source_sha256": hashlib.sha256(overlay_source.read_bytes()).hexdigest(),
+                "receipt_file": "figures/overlay.log",
+                "receipt_sha256": hashlib.sha256(overlay_receipt.read_bytes()).hexdigest(),
+                "base_generated_sha256": hashlib.sha256(generated.read_bytes()).hexdigest(),
+                "final_sha256": hashlib.sha256((self.root / "figures/fig-1-final.png").read_bytes()).hexdigest(),
+                "method": "SVG labels composited over generated bitmap",
+            },
+        })
+        self.write_manifest()
+        self.assertEqual(self.verify().errors, [])
 
     def test_image_generation_without_receipt_fails(self) -> None:
         figure = self.manifest["figures"][0]
@@ -456,7 +548,7 @@ class FigurePackageTests(unittest.TestCase):
                 "spec_sha256": hashlib.sha256(spec.read_bytes()).hexdigest(),
                 "report_file": "figures/fig-1-layout-report.json",
                 "report_sha256": hashlib.sha256(report.read_bytes()).hexdigest(),
-                "renderer": "aiwritepaper-academic-writing@1.1.0/render_svg_layout.mjs",
+                "renderer": "aiwritepaper-academic-writing@1.2.0/render_svg_layout.mjs",
                 "renderer_sha256": hashlib.sha256(renderer.read_bytes()).hexdigest(),
             },
         })

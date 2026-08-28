@@ -62,7 +62,7 @@ figure_plan:
 
 ## 权威Figure Manifest
 
-`figures/figure-manifest.json` 是机器可读的唯一插图路由真源；`figures/figure-manifest.md` 是供人阅读的摘要，不能被导出程序用于重新选图。JSON根对象包含 `schema_version` 与 `figures[]`，当前版本为 `1.4`。每张图至少记录：
+`figures/figure-manifest.json` 是机器可读的唯一插图路由真源；`figures/figure-manifest.md` 是供人阅读的摘要，不能被导出程序用于重新选图。JSON根对象包含 `schema_version` 与 `figures[]`，当前版本为 `1.5`。每张图至少记录：
 
 ```json
 {
@@ -81,6 +81,14 @@ figure_plan:
   "generation_receipt": null,
   "svg_layout_mode": null,
   "svg_layout": null,
+  "language_contract": {
+    "manuscript_language": "zh-CN",
+    "label_language": "zh-CN",
+    "exact_labels": ["实验组", "对照组", "均值与置信区间"],
+    "allowed_foreign_tokens": ["95% CI", "n"]
+  },
+  "text_render_strategy": "DOMAIN_VECTOR_TEXT",
+  "text_overlay": null,
   "fallback_file": null,
   "source_data": [{"dataset_id": "bench-v1", "file": "data/bench.csv", "sha256": "...", "origin": "USER_PROVIDED", "acquisition_receipt": null}],
   "transformation": {
@@ -109,7 +117,15 @@ figure_plan:
     "checked_at": "2026-08-23T09:05:00-07:00",
     "checked_file_sha256": "...",
     "receipt_file": "figures/receipts/fig-4-1-vlm.txt",
-    "receipt_sha256": "..."
+    "receipt_sha256": "...",
+    "language_check": {
+      "status": "PASS",
+      "target_language": "zh-CN",
+      "observed_language": "zh-CN+technical-tokens",
+      "unintended_foreign_text": [],
+      "allowed_foreign_tokens_verified": true,
+      "exact_labels_verified": true
+    }
   }
 }
 ```
@@ -117,6 +133,9 @@ figure_plan:
 条件字段规则：
 
 - `IMAGE_GENERATION`：必须有独立 `prompt_file` 与真实 `generated_file`；最终文件若不同，必须记录文字、箭头或格式合成过程，不能改用纯SVG重画。
+- 每张图必须有 `language_contract`、`text_render_strategy` 与VLM `language_check`。中文论文默认 `label_language=zh-CN`；型号、协议、化学式和单位只能按 `allowed_foreign_tokens` 保留。
+- `DIRECT_IMAGE_TEXT`要求图片模型逐字生成目标语言标签；`DETERMINISTIC_OVERLAY`要求保存原始生成图、文字覆盖源、执行回执以及底图和最终PNG摘要；`DOMAIN_VECTOR_TEXT`用于统计图与精确矢量图；`NO_CANVAS_TEXT`仅用于画布确实无文字。
+- `exact_labels` 必须逐项出现在IMAGE_GENERATION的Prompt中。语言检查发现非白名单英文长句、错字、伪字或英文替代时不得标记 `PASS`。
 - `display_number` 是Word/PDF唯一图号来源，必须在全文唯一；不得从 `figure_id` 或文件名猜测图号。
 - `exactness_class` 只能为：`SEMANTIC_STRUCTURE`（普通流程、组织、框架，可ImageGen）、`DOMAIN_EXACT`（电路、引脚、化学/晶体结构、公式、尺度、载荷、焊接、精确生物通路，必须领域工具或确定性底图）、`DATA_GRAPH`（真实数据代码图）或 `EVIDENCE_IMAGE`（真实科研图像）。ImageGen只允许直接承担 `SEMANTIC_STRUCTURE`；精确图可在领域底图上做不改变事实核心的视觉合成。
 - 流程、架构、ER/UML、组织、机制、研究框架、时间线和概念场景通常设置 `imagegen_eligible=true`。当能力报告显示图片生成可用时，这些图只能使用 `IMAGE_GENERATION`，否则机械校验返回 `IMAGEGEN_BYPASSED`。
@@ -136,7 +155,7 @@ figure_plan:
   "spec_sha256": "...",
   "report_file": "figures/fig-2-1-layout-report.json",
   "report_sha256": "...",
-  "renderer": "aiwritepaper-academic-writing@1.1.0/render_svg_layout.mjs",
+  "renderer": "aiwritepaper-academic-writing@1.2.0/render_svg_layout.mjs",
   "renderer_sha256": "..."
 }
 ```

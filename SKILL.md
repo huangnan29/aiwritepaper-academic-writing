@@ -4,7 +4,7 @@ description: 根据题目和材料完成毕业论文、学位论文、期刊论�
 license: MIT
 metadata:
   author: huangnan29
-  version: "1.1.0"
+  version: "1.2.0"
   repository: https://github.com/huangnan29/aiwritepaper-academic-writing
 ---
 

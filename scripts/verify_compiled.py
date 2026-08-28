@@ -177,6 +177,8 @@ def main() -> int:
         "exactness_class", "DOMAIN_EXACT", "data_origin", "MODEL_SYNTHETIC",
         "figures/<FIGURE_ID>-facts.md", "各类SVG的通用布局语法", "整数坐标网格",
         "共线重叠", "预留空白带", "字形安全", "预检与视觉闭环",
+        "language_contract", "allowed_foreign_tokens", "DETERMINISTIC_OVERLAY",
+        "text_render_strategy", "language_check", "非白名单英文长句",
     ]:
         if required_term not in figure_rules:
             errors.append(f"图表公共规则缺少关键契约: {required_term}")
@@ -189,8 +191,8 @@ def main() -> int:
     schema_path = SKILL_ROOT / "references" / "schemas" / "figure-manifest.schema.json"
     try:
         schema = json.loads(schema_path.read_text(encoding="utf-8"))
-        if schema.get("properties", {}).get("schema_version", {}).get("const") != "1.4":
-            errors.append("Figure Manifest Schema版本不是1.4")
+        if schema.get("properties", {}).get("schema_version", {}).get("const") != "1.5":
+            errors.append("Figure Manifest Schema版本不是1.5")
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:
         errors.append(f"Figure Manifest Schema不可用: {exc}")
 
