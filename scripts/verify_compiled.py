@@ -61,7 +61,7 @@ def main() -> int:
             errors.append(f"输出契约缺少最终文件命名规则: {term}")
     for term in ["document_profile", "THESIS", "FINAL_STATUS", "figure-verification.json"]:
         if term not in output_contract and term not in read_source(COMMON_DIR / "autonomous-completion.md"):
-            errors.append(f"输出契约缺少1.0.0闭环字段: {term}")
+            errors.append(f"输出契约缺少当前闭环字段: {term}")
 
     if len(directions) != 19:
         errors.append(f"方向源文件应为19个，实际为{len(directions)}个")
@@ -175,6 +175,8 @@ def main() -> int:
         "svg_layout_mode", "COMPILED", "figure-spec.json",
         "display_number", "imagegen_eligible", "route_exemption", "IMAGEGEN_BYPASSED",
         "exactness_class", "DOMAIN_EXACT", "data_origin", "MODEL_SYNTHETIC",
+        "figures/<FIGURE_ID>-facts.md", "各类SVG的通用布局语法", "整数坐标网格",
+        "共线重叠", "预留空白带", "字形安全", "预检与视觉闭环",
     ]:
         if required_term not in figure_rules:
             errors.append(f"图表公共规则缺少关键契约: {required_term}")

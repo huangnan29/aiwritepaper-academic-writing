@@ -388,6 +388,42 @@ class FigurePackageTests(unittest.TestCase):
         self.write_manifest()
         self.assertTrue(any("SVG_LINE_CROSSING" in item for item in self.verify().errors))
 
+    def test_svg_collinear_overlap_fails(self) -> None:
+        figure = self.manifest["figures"][0]
+        (self.root / "figures/fallback.svg").write_text(
+            '<svg xmlns="http://www.w3.org/2000/svg">'
+            '<line x1="20" y1="40" x2="160" y2="40"/>'
+            '<polyline points="80,40 200,40 200,100"/>'
+            '</svg>', encoding="utf-8"
+        )
+        figure.update({
+            "exactness_class": "DOMAIN_EXACT", "imagegen_eligible": False,
+            "route_exemption": "DOMAIN_EXACTNESS", "generation_route": "SVG_FALLBACK",
+            "data_status": "NOT_APPLICABLE", "claim_bearing": False,
+            "fallback_file": "figures/fallback.svg", "source_data": [],
+            "transformation": {"method": "svg-render"},
+            "capability_gap": "IMAGE_GENERATOR unavailable",
+            "svg_layout_mode": "NATIVE", "svg_layout": None,
+        })
+        self.write_manifest()
+        self.assertTrue(any("SVG_LINE_COLLINEAR_OVERLAP" in item for item in self.verify().errors))
+
+    def test_svg_preflight_cli(self) -> None:
+        svg = self.root / "figures/preflight.svg"
+        svg.write_text(
+            '<svg xmlns="http://www.w3.org/2000/svg">'
+            '<style>text{font-family:"PingFang SC",sans-serif}</style>'
+            '<rect x="10" y="10" width="100" height="50"/>'
+            '<text x="20" y="35">中文节点</text>'
+            '</svg>', encoding="utf-8"
+        )
+        result = subprocess.run(
+            [sys.executable, str(SCRIPT), "--root", str(self.root), "--preflight-svg", "figures/preflight.svg"],
+            capture_output=True, text=True, check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(json.loads(result.stdout)["status"], "SVG_PREFLIGHT_OK")
+
     def make_compiled_svg_figure(self) -> None:
         figure = self.manifest["figures"][0]
         fallback = self.root / "figures/fallback.svg"
@@ -420,7 +456,7 @@ class FigurePackageTests(unittest.TestCase):
                 "spec_sha256": hashlib.sha256(spec.read_bytes()).hexdigest(),
                 "report_file": "figures/fig-1-layout-report.json",
                 "report_sha256": hashlib.sha256(report.read_bytes()).hexdigest(),
-                "renderer": "aiwritepaper-academic-writing@1.0.0/render_svg_layout.mjs",
+                "renderer": "aiwritepaper-academic-writing@1.1.0/render_svg_layout.mjs",
                 "renderer_sha256": hashlib.sha256(renderer.read_bytes()).hexdigest(),
             },
         })

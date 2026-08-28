@@ -110,11 +110,21 @@ test("报告包含哈希、状态和校验结果", () => {
   const report = result.parsedReport;
   assert.match(report.input_sha256, /^[0-9a-f]{64}$/u);
   assert.match(report.output_sha256, /^[0-9a-f]{64}$/u);
-  assert.equal(report.renderer_version, "1.0.0");
+  assert.equal(report.renderer_version, "1.1.0");
   assert.equal(report.checks.node_overlap, true);
+  assert.equal(report.checks.edge_collinear_overlap, true);
   const actualHash = crypto.createHash("sha256").update(result.svg).digest("hex");
   assert.equal(report.output_sha256, actualHash);
   assert.ok(report.counts.nodes >= 3);
+});
+
+test("不同边共线重叠会失败", () => {
+  const spec = baseSpec("LR");
+  spec.edges.push({ from: "input", to: "model", label: "重复通道" });
+  const result = runCompiler(spec);
+  assert.equal(result.result.status, 1);
+  assert.equal(result.parsedReport.status, "FAIL");
+  assert.ok(result.parsedReport.errors.some((item) => item.code === "EDGE_COLLINEAR_OVERLAP"));
 });
 
 test("标准输入短横线可作为合法输入值", () => {

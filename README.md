@@ -4,7 +4,7 @@
 
 **从论文题目到一份完整执行提示词，再持续交付正文、配图、DOCX 与 PDF。**
 
-![Version](https://img.shields.io/badge/version-1.0.0-2563EB?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.1.0-2563EB?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-16A34A?style=flat-square)
 ![Architecture](https://img.shields.io/badge/architecture-MD--first-7C3AED?style=flat-square)
 ![Directions](https://img.shields.io/badge/paper%20directions-19-EA580C?style=flat-square)
@@ -15,6 +15,17 @@
 
 > [!NOTE]
 > 当前版本采用 **MD-first 单提示词执行 + Agent能力适配 + 确定性交付验收**。模型继续负责方向、检索、论证、写作和配图语义；脚本只统计字数、核对图片路由、文件、目录、表格与哈希，不生成论文内容。
+
+## v1.1.0跨方向SVG绘制方法
+
+- 每张SVG先生成事实与禁止项清单，再决定节点、边和坐标，防止拓扑先天画错；
+- 简单节点—边图优先无坐标语义Spec和确定性编译，稠密跨域结构失败后拆图或转原生SVG；
+- 为流程、架构、组织、ER/UML、电路、机制、时间线分别规定可复用布局语法；
+- 原生SVG采用整数网格、正交连线、边界端口、独立通道、外缘绕行和文字空白带；
+- 几何预检新增不同边共线重叠检测，与交叉、穿节点、节点重叠共同硬阻断；
+- `verify_figure_package.py --preflight-svg`可在整合Manifest前单独检查原生SVG；
+- 按论文实际栏宽反推字号与DPI，并对中文字体、特殊符号和实际PNG执行两轮视觉闭环。
+- 使用5张ESP32参考SVG前向验证：3张直接通过，2张准确检出此前严格交叉算法遗漏的共线通道重叠。
 
 ## v1.0.0一步到位更名
 
@@ -532,7 +543,7 @@ aiwritepaper-academic-writing/
 
 ## 维护与版本
 
-- 当前版本：`1.0.0`
+- 当前版本：`1.1.0`
 - 更新记录：[CHANGELOG.md](CHANGELOG.md)
 - Skill入口：[SKILL.md](SKILL.md)
 - 历史复杂流水线版可通过Git标签`v0.3.1-runtime-gates`恢复

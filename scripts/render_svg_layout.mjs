@@ -1050,6 +1050,18 @@ function properSegmentIntersection(a, b, c, d) {
   );
 }
 
+function collinearSegmentOverlap(a, b, c, d) {
+  const eps = 1e-7;
+  const ab = point(b.x - a.x, b.y - a.y);
+  const cd = point(d.x - c.x, d.y - c.y);
+  if (Math.hypot(ab.x, ab.y) < eps || Math.hypot(cd.x, cd.y) < eps) return false;
+  if (Math.abs(orientation(a, b, c)) > eps || Math.abs(orientation(a, b, d)) > eps) return false;
+  const axis = Math.abs(ab.x) >= Math.abs(ab.y) ? "x" : "y";
+  const first = [a[axis], b[axis]].sort((left, right) => left - right);
+  const second = [c[axis], d[axis]].sort((left, right) => left - right);
+  return Math.min(first[1], second[1]) - Math.max(first[0], second[0]) > eps;
+}
+
 function isNearPoint(a, b, epsilon = 0.05) {
   return Math.hypot(a.x - b.x, a.y - b.y) <= epsilon;
 }
@@ -1102,6 +1114,7 @@ function validateLayout(model, layout, bag) {
     }
   }
   const crossings = [];
+  const collinearOverlaps = [];
   for (let left = 0; left < edgeSegments.length; left += 1) {
     for (let right = left + 1; right < edgeSegments.length; right += 1) {
       const first = edgeSegments[left];
@@ -1109,6 +1122,10 @@ function validateLayout(model, layout, bag) {
       if (first.edge.id === second.edge.id) continue;
       for (const [a, b] of first.segments) {
         for (const [c, d] of second.segments) {
+          if (collinearSegmentOverlap(a, b, c, d)) {
+            collinearOverlaps.push({ edges: [first.edge.id, second.edge.id], segments: [[a, b], [c, d]] });
+            continue;
+          }
           const intersection = properSegmentIntersection(a, b, c, d);
           if (!intersection) continue;
           const sharedEndpoint = [a, b].some((item) => isNearPoint(item, intersection)) && [c, d].some((item) => isNearPoint(item, intersection));
@@ -1119,9 +1136,13 @@ function validateLayout(model, layout, bag) {
     }
   }
   if (crossings.length) bag.error("EDGE_CROSSING", `检测到 ${crossings.length} 处可识别的边线段交叉。`, { crossings });
+  if (collinearOverlaps.length) {
+    bag.error("EDGE_COLLINEAR_OVERLAP", `检测到 ${collinearOverlaps.length} 处不同边共线重叠。`, { overlaps: collinearOverlaps });
+  }
   return {
     nodeOverlap: overlapPairs,
     edgeCrossing: crossings,
+    edgeCollinearOverlap: collinearOverlaps,
     errors: bag.errors,
     warnings: bag.warnings,
   };
@@ -1161,10 +1182,11 @@ function buildReport(model, layout, diagnostics, validation, inputSha256 = null,
     text_overflow: !errors.some((item) => item.code === "TEXT_OVERFLOW"),
     edge_through_node: !errors.some((item) => item.code === "EDGE_THROUGH_NODE"),
     edge_crossing: validation.edgeCrossing.length === 0,
+    edge_collinear_overlap: validation.edgeCollinearOverlap.length === 0,
   };
   return {
     schema_version: "1.0",
-    renderer_version: "1.0.0",
+    renderer_version: "1.1.0",
     compiler: "render_svg_layout.mjs",
     status: errors.length === 0 ? "PASS" : "FAIL",
     ok: errors.length === 0,

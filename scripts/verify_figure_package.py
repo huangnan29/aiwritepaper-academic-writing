@@ -501,22 +501,51 @@ class FigureVerifier:
         o1, o2, o3, o4 = orient(a, b, c), orient(a, b, d), orient(c, d, a), orient(c, d, b)
         return o1 * o2 < 0 and o3 * o4 < 0
 
+    @staticmethod
+    def _segments_collinear_overlap(
+        a: tuple[float, float], b: tuple[float, float],
+        c: tuple[float, float], d: tuple[float, float],
+    ) -> bool:
+        """识别两条共线线段是否共享了非零长度，端点相接不算重叠。"""
+        ab = (b[0] - a[0], b[1] - a[1])
+        cd = (d[0] - c[0], d[1] - c[1])
+        if abs(ab[0]) < 1e-9 and abs(ab[1]) < 1e-9:
+            return False
+        if abs(cd[0]) < 1e-9 and abs(cd[1]) < 1e-9:
+            return False
+
+        def cross(left: tuple[float, float], right: tuple[float, float]) -> float:
+            return left[0] * right[1] - left[1] * right[0]
+
+        if abs(cross(ab, (c[0] - a[0], c[1] - a[1]))) > 1e-6:
+            return False
+        if abs(cross(ab, (d[0] - a[0], d[1] - a[1]))) > 1e-6:
+            return False
+
+        axis = 0 if abs(ab[0]) >= abs(ab[1]) else 1
+        first = sorted((a[axis], b[axis]))
+        second = sorted((c[axis], d[axis]))
+        overlap = min(first[1], second[1]) - max(first[0], second[0])
+        return overlap > 1e-6
+
     def verify_svg_geometry(self, root: ET.Element, figure_id: str) -> None:
-        segments: List[tuple[tuple[float, float], tuple[float, float]]] = []
+        segments: List[
+            tuple[tuple[float, float], tuple[float, float], int, str]
+        ] = []
         rectangles: List[tuple[float, float, float, float]] = []
         has_unchecked_paths = False
-        for element in root.iter():
+        for owner, element in enumerate(root.iter()):
             tag = element.tag.rsplit("}", 1)[-1]
             if tag == "line":
                 coords = [self._number(element.get(name)) for name in ("x1", "y1", "x2", "y2")]
                 if all(value is not None for value in coords):
                     x1, y1, x2, y2 = (float(value) for value in coords)
-                    segments.append(((x1, y1), (x2, y2)))
+                    segments.append(((x1, y1), (x2, y2), owner, tag))
             elif tag in {"polyline", "polygon"}:
                 values = [self._number(token) for token in re.split(r"[ ,]+", element.get("points", "").strip())]
                 clean = [value for value in values if value is not None]
                 points = [(float(clean[i]), float(clean[i + 1])) for i in range(0, len(clean) - 1, 2)]
-                segments.extend(zip(points, points[1:]))
+                segments.extend((start, end, owner, tag) for start, end in zip(points, points[1:]))
             elif tag == "rect":
                 values = [self._number(element.get(name)) for name in ("x", "y", "width", "height")]
                 if all(value is not None for value in values):
@@ -525,11 +554,26 @@ class FigureVerifier:
             elif tag == "path" and element.get("d"):
                 has_unchecked_paths = True
 
-        for index, (start, end) in enumerate(segments):
-            for other_start, other_end in segments[index + 1:]:
+        crossing_reported = False
+        overlap_reported = False
+        for index, (start, end, owner, tag) in enumerate(segments):
+            for other_start, other_end, other_owner, other_tag in segments[index + 1:]:
                 if self._segments_cross(start, end, other_start, other_end):
-                    self.error("SVG_LINE_CROSSING", figure_id)
-                    break
+                    if not crossing_reported:
+                        self.error("SVG_LINE_CROSSING", figure_id)
+                        crossing_reported = True
+                if (
+                    owner != other_owner
+                    and tag in {"line", "polyline"}
+                    and other_tag in {"line", "polyline"}
+                    and self._segments_collinear_overlap(start, end, other_start, other_end)
+                    and not overlap_reported
+                ):
+                    self.error(
+                        "SVG_LINE_COLLINEAR_OVERLAP",
+                        f"{figure_id}: {start}->{end} 与 {other_start}->{other_end}",
+                    )
+                    overlap_reported = True
             for left, top, right, bottom in rectangles:
                 endpoint_inside = any(left <= p[0] <= right and top <= p[1] <= bottom for p in (start, end))
                 if endpoint_inside:
@@ -689,6 +733,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--run-manifest", type=Path, default=Path("run-manifest.json"))
     parser.add_argument("--docx", type=Path, default=None)
     parser.add_argument("--pdf", type=Path, default=None)
+    parser.add_argument("--preflight-svg", type=Path, default=None, help="只预检单个SVG的字体、远程资源与可解析几何")
     parser.add_argument("--skip-documents", action="store_true", help="FIGURES_ONLY且没有文档交付时使用")
     parser.add_argument("--report", type=Path, default=None)
     return parser.parse_args()
@@ -698,6 +743,25 @@ def main() -> int:
     args = parse_args()
     root = args.root.resolve()
     verifier = FigureVerifier(root)
+    if args.preflight_svg is not None:
+        svg = args.preflight_svg if args.preflight_svg.is_absolute() else root / args.preflight_svg
+        if not svg.is_file():
+            verifier.error("SVG_FILE_MISSING", str(svg))
+        else:
+            verifier.verify_svg(svg, svg.stem)
+        payload = {
+            "status": "SVG_PREFLIGHT_OK" if not verifier.errors else "SVG_PREFLIGHT_FAIL",
+            "errors": verifier.errors,
+            "warnings": verifier.warnings,
+            "scope_note": "预检只覆盖可解析直线、折线、矩形、CJK字体声明与远程资源；文字视觉边界仍需查看最终PNG",
+        }
+        rendered = json.dumps(payload, ensure_ascii=False, indent=2)
+        print(rendered)
+        if args.report:
+            report = args.report if args.report.is_absolute() else root / args.report
+            report.parent.mkdir(parents=True, exist_ok=True)
+            report.write_text(rendered + "\n", encoding="utf-8")
+        return 0 if not verifier.errors else 1
     capability_report = args.capability_report if args.capability_report.is_absolute() else root / args.capability_report
     verifier.verify_capability_report(capability_report)
     manifest = args.manifest if args.manifest.is_absolute() else root / args.manifest
