@@ -75,7 +75,15 @@ AIWritePaper 范文仅提供结构观察，不是事实来源。不得复制范�
 
 凡涉及定量结果或“系统已实现/已运行”的主张，必须能够回到用户材料、数据文件、源码版本、执行命令、原始日志、公开数据集或已核验来源。`FULL_BUILD` 必须建立 `data/data-provenance.json`，根对象记录 `schema_version: 1.0`、与Manifest一致的 `research_claim_level` 和 `datasets[]`。每个真实数据集记录 `dataset_id`、文件、SHA-256、`origin`、`claim_role` 与 `supports_claims`。
 
-`origin` 只能为 `USER_PROVIDED`、`AUTHOR_OBSERVED`、`OFFICIAL_DOWNLOAD`、`FORMAL_SIMULATION`、`CALCULATED`、`MODEL_SYNTHETIC` 或 `MANUSCRIPT_CONTEXT`；`claim_role` 只能为 `RESULT`、`SIMULATION_RESULT`、`DESIGN_CALCULATION`、`ILLUSTRATION` 或 `CONTEXT_ONLY`。每个登记数据集必须有真实文件和SHA-256。`MODEL_SYNTHETIC` 不能支撑结果、仿真结果或正式设计计算；`CALCULATED` 不能冒充观察结果。`USER_PROVIDED` 与 `AUTHOR_OBSERVED` 绑定观察回执，`OFFICIAL_DOWNLOAD` 绑定获取回执，`FORMAL_SIMULATION` 与承担设计计算的 `CALCULATED` 绑定执行回执；回执文件本身也记录SHA-256。Python局部变量、随机休眠、手写JSON或模拟请求不是真实数据库、Web服务、GPU、课堂、问卷或硬件实验。
+`origin` 只能为 `USER_PROVIDED`、`AUTHOR_OBSERVED`、`OFFICIAL_DOWNLOAD`、`FORMAL_SIMULATION`、`CALCULATED`、`SYNTHETIC_DEMO`、兼容旧名 `MODEL_SYNTHETIC` 或 `MANUSCRIPT_CONTEXT`；`claim_role` 只能为 `RESULT`、`SIMULATION_RESULT`、`DESIGN_CALCULATION`、`ILLUSTRATION` 或 `CONTEXT_ONLY`。每个登记数据集必须有真实文件和SHA-256。合成/演示数据不能支撑结果、仿真结果或正式设计计算；`CALCULATED` 不能冒充观察结果。Python局部变量、随机休眠、手写JSON、自写“下载成功/ERP已核验/GDC已读取”文本或模拟请求不是真实数据库、Web服务、GPU、课堂、问卷或硬件实验。
+
+所有数据回执使用Skill的 `scripts/capture_provenance.py` 生成，不能由生产数据的同一个项目脚本手写：
+
+- `USER_PROVIDED` 与 `AUTHOR_OBSERVED` 必须先登记不可变原始文件，并在数据项的 `source_artifacts[]` 记录原始文件路径、SHA-256与来源；本次运行脚本创建的CSV/JSON不能登记为作者观察。
+- `OFFICIAL_DOWNLOAD` 必须保留实际下载字节，回执记录原始URL、最终URL、HTTP状态、时间、内容类型、文件大小与SHA-256；只有平台名称和`SUCCESS`的文本无效。
+- `FORMAL_SIMULATION` 必须捕获领域引擎、版本/类别、真实命令、退出码、输入模型、原始输出、stdout/stderr与SHA-256；Python手工数组、插值曲线或绘图脚本不能冒充SPICE、FEA、CFD或实验结果。
+- 承担正式设计计算的 `CALCULATED` 必须捕获输入、脚本、命令和输出。结果脚本使用随机数时必须记录用途、种子和分布；未声明随机生成的正式结果直接失败。
+- `OBSERVED_STUDY` 至少有一个能够回到用户/作者真实原始文件或官方真实下载字节的结果数据集；只有题录、回执文本或模型生成数据时必须降级。
 
 `run-manifest.json` 的 `research_claim_level` 只能为：
 
@@ -149,7 +157,7 @@ arXiv、bioRxiv、ChemRxiv、SSRN、NBER工作论文可以收录，但必须在�
 
 运行开始时保留 `run-params.md`，并通过文件级确定性拼接生成 `final-execution-prompt.md`；不得由模型重新生成完整方向提示词。
 
-`FULL_BUILD` 输出：`run-params.md`、`final-execution-prompt.md`、`00-prompt-composition.json`、`00-capability-report.md`、`00-capability-report.json`、`00-profile-selection.json`、GUIDED/WEAK模型使用的 `00-execution-checkpoints.json`、`01-research-contract.md`、`02-search-log.md`、`03-evidence-matrix.csv`、`04-reference-audit.md`、`04-evidence-verification.json`、`references.bib`、`data/data-provenance.json`、`05-outline.md`、`06-argument-map.md`、`chapters/`、`figures/figure-plan.json`、`figures/figure-manifest.json`、`figures/figure-manifest.md`、`figures/figure-verification.json`、`tables/table-data-and-sources.md`、`equations/formula-audit.md`、`equations/formula-verification.json`、`07-paper-full.md`、`08-claim-citation-audit.md`、`09-peer-review.md`、`10-revision-log.md`、按下述规则命名的DOCX与PDF、可选同名TEX、`11-format-validation.md`、`12-final-qa-report.md`、`13-delivery-verification.json`、`14-adjudicated-status.json` 和 `run-manifest.json`。FULL_AUTONOMY不强制创建阶段任务卡；没有真实生成的文件不得列入完成清单。
+`FULL_BUILD` 输出：`run-params.md`、`final-execution-prompt.md`、`00-prompt-composition.json`、`00-capability-report.md`、`00-capability-report.json`、`00-profile-selection.json`、GUIDED/WEAK模型使用的 `00-execution-checkpoints.json`、`01-research-contract.md`、`02-search-log.md`、`03-evidence-matrix.csv`、`04-reference-audit.md`、`04-evidence-verification.json`、`references.bib`、`data/data-provenance.json`、`05-outline.md`、`06-argument-map.md`、`chapters/`、`figures/figure-plan.json`、`figures/figure-manifest.json`、`figures/figure-manifest.md`、`figures/figure-verification.json`、`tables/table-data-and-sources.md`、`equations/formula-audit.md`、`equations/formula-verification.json`、`07-paper-full.md`、`08-claim-citation-audit.md`、`09-peer-review.md`、终稿后的 `09-final-peer-review.json`、`10-revision-log.md`、按下述规则命名的DOCX与PDF、可选同名TEX、`11-format-validation.md`、`12-final-qa-report.md`、`13-delivery-verification.json`、`14-adjudicated-status.json` 和 `run-manifest.json`。FULL_AUTONOMY不强制创建阶段任务卡；没有真实生成的文件不得列入完成清单。
 
 `RESUME` 额外输出 `00-resume-plan.json`，不覆盖原提示词和冻结产物。`REVISE_ONLY` 输出 `revision-request.md`、`revision-impact.json`、`revision-execution-prompt.md`、`revision-prompt-composition.json`、`revision-log.md` 以及新时间戳DOCX/PDF，并保留修改前摘要。
 
@@ -676,7 +684,7 @@ SVG降级图的机械校验额外检查可解析的直线、折线与矩形节�
 - 证据矩阵包含完整题录、主张与章节映射字段；只有元数据的文献没有被用于全文级实验、参数、结果或引语主张；
 - 每条 `VERIFIED_FULLTEXT` 文献具有合法全文来源、`fulltext_locator` 与 `page_locator`；仅有Crossref、OpenAlex、索引库或题录页时不得标为全文；DOI解析后题名不存在明确错配；
 - 正文引用模式与文末列表一致，每条正式参考文献在正文出现且所有正文引用均能回到证据矩阵；
-- `data/data-provenance.json` 可解析，研究主张等级、数据来源、文件摘要、观察回执和支持主张一致；模型合成数据或普通计算没有冒充实验、问卷、业务、临床或性能结果；
+- `data/data-provenance.json` 可解析，研究主张等级、数据来源、文件摘要、真实原始文件、统一捕获回执和支持主张一致；观察回执不是本次脚本自写声明，官方下载具有真实字节与HTTP记录，正式仿真具有领域引擎、输入模型、命令、退出码和原始输出；模型合成数据、随机生成结果或普通绘图计算没有冒充实验、问卷、业务、临床、仿真或性能结果；
 - 图表不裁切、不越界，表格宽度合理；
 - 详细大纲包含 `figure_plan[]`，每张实际图片均能回到计划中的目的、来源、路线和位置；
 - 权威 `figures/figure-manifest.json` 可解析、图号唯一、条件字段完整，Markdown摘要没有覆盖JSON路由；
@@ -691,8 +699,10 @@ SVG降级图的机械校验额外检查可解析的直线、折线与矩形节�
 - SVG中可解析的直线和折线不存在非共享端点交叉或横穿矩形节点；复杂贝塞尔路径保留VLM或人工核验，不以静态检查冒充完整几何证明；
 - SVG只执行单向降级：图片生成成功时未被SVG覆盖；原生SVG通过时未被模板重绘；`COMPILED`模式的语义Spec不含坐标，布局报告、输入、输出和渲染器SHA-256一致且状态为 `PASS`；
 - 当前Agent具备视觉能力时，主张型统计图和复杂结构图已完成VLM渲染核验；两轮修复后仍有问题则为 `NEEDS_REVIEW`，不得标记通过；
+- 文档视觉检查的 `checked_file` 是最终PDF对应页实际渲染出的PNG/JPEG/WebP，不是整份PDF或自写说明；每个检查点使用正整数页码并绑定页面图与视觉回执SHA-256；
 - `IMAGE_GENERATION` 产物没有独立视觉或人工核验时，机械状态可以通过但视觉状态为 `PARTIAL`，最终交付不得写成完全 `PASS`；
 - VLM的 `PASS` 或 `PASS_WITH_NOTES` 绑定实际视觉工具回执、检查时间和被检查文件SHA-256；只有模型自述的VLM状态无效；
+- 全部图片和最终文档完成后已执行最终隔离审稿，`09-final-peer-review.json` 绑定最终正文、Manifest、视觉审计、DOCX和PDF摘要，Critical与Important开放数均为0；`15-quality-scorecard.json` 不得脱离终稿审稿自行抬分；
 - 图表的 `caption_claim`、正文实质性用图主张、源数据/上下文、转换过程和limitations双向可追溯；空limitations只表示未声明，不等于确认没有限制；
 - Word中每个图号和表号只有一个可见题注，不存在图片内题注与Word题注重复；
 - Word图片和图题不侵入页脚，与页码保持清晰间距，不形成“图题后多出页码”的视觉假重复；
@@ -805,11 +815,13 @@ python3 "<SKILL_DIR>/scripts/verify_formula_rendering.py" \
 
 正文完成后建立 `claim-evidence-map.json`：列出重要主张、章节定位、主张状态、证据source_id、页码/章节、反例/限制和是否进入结论。重要主张没有证据或限制时必须修改，不能用多篇段尾引文掩盖。
 
-依据当前方向评分卡进行独立同行评审，写入 `15-quality-scorecard.json`。先列Critical/Important/Minor与正文定位，再定点修订；不得先给高分再补理由。任何Critical未清零、任一维度低于该维度80%、总分低于90时不能标记“90+质量目标达成”。
+依据当前方向评分卡进行独立同行评审。初稿审稿可以写入 `09-peer-review.md`，但不能直接作为最终评分。全部图片、DOCX、PDF和视觉审计完成后必须重新隔离审稿，写入 `09-final-peer-review.json`，绑定最终正文、Figure Manifest、视觉审计、DOCX和PDF的SHA-256；审稿输入不包含作者自评分。最终 `15-quality-scorecard.json` 的分项与总分必须与该审稿报告一致，并记录审稿报告路径和SHA-256。不得先给高分再补理由，也不得在旧审稿后由作者自行抬分。
+
+任何Critical未清零、Important仍为OPEN/ACCEPTED/NOTED、任一维度低于该维度80%、总分低于90时不能标记“90+质量目标达成”。已修复Important可以保留审计记录，但状态必须是 `RESOLVED`、`FIXED`、`CLOSED` 或 `ADDRESSED`。
 
 配图另建 `figures/figure-semantic-audit.json`：每张图记录图题主张、遮住图题后的盲读摘要、正文定位、节点/箭头/数据来源一致性和PASS/PARTIAL/FAIL。可换标题复用的模板图、与正文无关曲线、错误箭头或ImageGen虚构关系不得PASS。
 
-文档另建 `16-document-visual-audit.json`，抽查封面、中文摘要、英文摘要、目录、复杂表格、复杂公式、代表性配图、参考文献及末页；记录页码、问题、修复和状态。只解析文件不等于视觉通过。
+文档另建 `16-document-visual-audit.json`，抽查封面、中文摘要、英文摘要、目录、复杂表格、复杂公式、代表性配图、参考文献及末页；每个检查点绑定实际页码、由最终PDF渲染的PNG/JPEG/WebP页面图、页面图SHA-256、视觉回执、问题、修复和状态。整份PDF不能冒充某一页的视觉检查文件；页码不能写“约12页”一类字符串。只解析文件不等于视觉通过。
 
 正文质量审查关注重复句式、列表占比、无证据强化词、摘要—结论机械复述和边界声明密度。只报告位置和修订建议，不输出AI率，不自动重写正文。
 

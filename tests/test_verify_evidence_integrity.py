@@ -44,7 +44,7 @@ class EvidenceIntegrityTests(unittest.TestCase):
             "citation_mode": "NUMERIC", "research_claim_level": "DESIGN_ONLY",
             "execution_profile": "FULL_AUTONOMY",
             "profile_selection_report": "00-profile-selection.json",
-            "run_mode": "FULL_BUILD",
+            "run_mode": "FULL_BUILD", "direction_id": "electronic-circuit-design",
         }
         (self.root / "run-manifest.json").write_text(
             json.dumps(self.manifest, ensure_ascii=False), encoding="utf-8"
@@ -147,6 +147,26 @@ class EvidenceIntegrityTests(unittest.TestCase):
         }]
         self.write_provenance()
         self.assertTrue(any("MODEL_SYNTHETIC_RESULT_FORBIDDEN" in item for item in self.run_verifier().errors))
+
+    def test_self_written_observation_receipt_fails(self) -> None:
+        data = self.root / "data/result.csv"
+        data.write_text("group,value\nA,12\n", encoding="utf-8")
+        receipt = self.root / "data/receipt.txt"
+        receipt.write_text("企业ERP已核验", encoding="utf-8")
+        self.provenance["datasets"] = [{
+            "dataset_id": "D1", "origin": "AUTHOR_OBSERVED", "claim_role": "RESULT",
+            "file": "data/result.csv", "sha256": MODULE.sha256(data), "supports_claims": ["结果"],
+            "source_artifacts": [{"file": "data/result.csv", "sha256": MODULE.sha256(data), "origin": "AUTHOR_OBSERVED"}],
+            "observation_receipt": "data/receipt.txt", "observation_receipt_sha256": MODULE.sha256(receipt),
+        }]
+        self.write_provenance()
+        errors = self.run_verifier().errors
+        self.assertTrue(any("REGISTER_RECEIPT_INVALID" in item for item in errors))
+
+    def test_invalid_direction_fails(self) -> None:
+        self.manifest["direction_id"] = "invented-direction"
+        (self.root / "run-manifest.json").write_text(json.dumps(self.manifest), encoding="utf-8")
+        self.assertTrue(any("DIRECTION_ID_INVALID" in item for item in self.run_verifier().errors))
 
     def test_design_claiming_observed_result_without_data_fails(self) -> None:
         self.markdown.write_text(

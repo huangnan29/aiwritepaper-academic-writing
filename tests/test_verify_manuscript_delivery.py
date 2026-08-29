@@ -76,6 +76,7 @@ class DeliveryTests(unittest.TestCase):
             "docx_sha256": hashlib.sha256((self.root / docx_name).read_bytes()).hexdigest(),
             "pdf_sha256": hashlib.sha256((self.root / pdf_name).read_bytes()).hexdigest(),
             "tables": 1, "document_profile": "REPORT",
+            "citation_mode": "NUMERIC",
             "figure_verification_report": "figures/figure-verification.json",
             "formula_verification_report": "equations/formula-verification.json",
             "research_status": "PARTIAL", "delivery_status": "PASS", "final_status": "PARTIAL",
@@ -131,6 +132,19 @@ class DeliveryTests(unittest.TestCase):
             "source_id,title,status\nS1,标题,作者,VERIFIED_FULLTEXT\n", encoding="utf-8"
         )
         self.assertTrue(any("EVIDENCE_MATRIX_ROW" in item for item in self.verifier().errors))
+
+    def test_author_year_reference_list_is_not_treated_as_missing(self) -> None:
+        self.markdown.write_text(
+            "# 第1章 绪论\n正文采用作者年份引用（测试作者，2026）。\n\n"
+            "# 参考文献\n测试作者. (2026). 测试文献. 测试期刊.\n",
+            encoding="utf-8",
+        )
+        verifier = MODULE.DeliveryVerifier(self.root, 1, 1000, 100)
+        verifier.verify_evidence_matrix(
+            self.root / "03-evidence-matrix.csv", self.markdown,
+            self.root / "references.bib", "AUTHOR_YEAR",
+        )
+        self.assertFalse(any("FINAL_REFERENCES_MISSING" in item for item in verifier.errors))
 
     def test_minimal_evidence_matrix_fails(self) -> None:
         (self.root / "03-evidence-matrix.csv").write_text(

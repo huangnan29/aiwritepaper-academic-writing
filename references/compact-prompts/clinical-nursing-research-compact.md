@@ -32,7 +32,7 @@
 
 没有真实样机、课堂、问卷、实验或业务数据时，不写“本系统实测”“实验班提高”“结果显著”“p<0.05”“满意度达到”“通过某项测试”。改写为设计计算、测试协议、验收标准、文献结果或待验证假设。
 
-建立 `data/data-provenance.json`，记录 `schema_version: 1.0`、`research_claim_level` 和 `datasets[]`。每个数据集记录文件、SHA-256、来源、用途与支持主张。模型合成CSV只能用于版式或说明，不能支撑正式结果；设计计算不能冒充观察结果；观察、官方下载、仿真和计算分别绑定真实回执。
+建立 `data/data-provenance.json`，记录 `schema_version: 1.0`、`research_claim_level` 和 `datasets[]`。每个数据集记录文件、SHA-256、来源、用途、支持主张与真实原始文件。模型合成CSV只能用于版式或说明，不能支撑正式结果；设计计算不能冒充观察结果。观察、官方下载、仿真和计算分别使用 `scripts/capture_provenance.py` 捕获原始文件、HTTP状态、命令、退出码与输入输出；生产脚本自写的成功文本无效。
 
 ## 三、文献与引用
 
@@ -89,7 +89,7 @@ DOCX公式必须是可编辑OMML对象，PDF不得显示LaTeX源码。表格使�
 4. `verify_manuscript_delivery.py` → `13-delivery-verification.json`
 5. `adjudicate_status.py` → `14-adjudicated-status.json`
 
-底层报告失败时只返回对应阶段修复，不重写已通过内容。每次只修一类错误，修后重新生成受影响的后续文件与报告。最终答复只能读取 `14-adjudicated-status.json.authoritative_status`；Manifest或模型自述的PASS没有裁决权。设计稿和实验方案的研究状态通常为PARTIAL，这不等于交付质量低。
+底层报告失败时只返回对应阶段修复，不重写已通过内容。每次只修一类错误，修后重新生成受影响的后续文件与报告。最终答复只能读取 `14-adjudicated-status.json.authoritative_status`；Manifest或模型自述的PASS没有裁决权。设计稿和实验方案的研究状态通常为PARTIAL，这不等于交付质量低。文档视觉检查点必须绑定具体页渲染PNG/JPEG/WebP；整份PDF不能冒充页面检查文件。
 
 ## 九、弱模型任务卡
 
@@ -108,7 +108,7 @@ DOCX公式必须是可编辑OMML对象，PDF不得显示LaTeX源码。表格使�
 
 ## 十、90分质量目标
 
-最终按证据25、内容20、结构15、配图15、文档15、自审10评分，并执行本方向附带的专业关注点与Critical清单。建立 `claim-evidence-map.json`、`15-quality-scorecard.json`、`figures/figure-semantic-audit.json` 和 `16-document-visual-audit.json`。Critical必须为0，总分至少90且各维度达到其满分80%；不满足时定点修订，不全面重写。
+最终按证据25、内容20、结构15、配图15、文档15、自审10评分，并执行本方向附带的专业关注点与Critical清单。建立 `claim-evidence-map.json`、`15-quality-scorecard.json`、`figures/figure-semantic-audit.json` 和 `16-document-visual-audit.json`。全部图片与DOCX/PDF完成后重新隔离审稿，`09-final-peer-review.json` 绑定最终正文、图表清单、视觉审计和文档SHA-256；最终评分卡不得脱离该报告自行抬分。Critical与Important开放数必须为0，总分至少90且各维度达到其满分80%；不满足时定点修订，不全面重写。
 
 <!-- 方向来源：references/directions/clinical-nursing-research.md -->
 

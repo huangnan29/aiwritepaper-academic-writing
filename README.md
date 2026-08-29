@@ -4,7 +4,7 @@
 
 **从论文题目到一份完整执行提示词，再持续交付正文、配图、DOCX 与 PDF。**
 
-![Version](https://img.shields.io/badge/version-1.9.1-2563EB?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.9.2-2563EB?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-16A34A?style=flat-square)
 ![Architecture](https://img.shields.io/badge/architecture-MD--first-7C3AED?style=flat-square)
 ![Directions](https://img.shields.io/badge/paper%20directions-19-EA580C?style=flat-square)
@@ -15,6 +15,15 @@
 
 > [!NOTE]
 > 当前版本采用 **MD-first 单提示词执行 + Agent能力适配 + 外部真实性与状态裁决**。模型继续负责方向、检索、论证、写作、公式含义和配图语义；脚本只核对文献、数据来源、公式、图片、文档和状态，不生成论文内容。
+
+## v1.9.2可信验收修复
+
+- 新增统一数据来源捕获器，真实观察、官方下载、正式仿真和计算分别绑定原始文件、命令、退出码与SHA-256；
+- `AUTHOR_OBSERVED`不能由本次脚本生成，只有文本声明的“ERP已核验、GDC已读取、下载成功”不再有效；
+- 非19方向ID、随机结果未声明、普通Python数组冒充SPICE/FEA以及自写裁决报告会被拦截；
+- 作者—年份参考文献不再按数字编号误判为零篇；
+- 文档视觉审计必须绑定具体页的PNG/JPEG/WebP，整份PDF不能冒充页面截图；
+- Critical或未关闭Important阻止QUALITY_OK，终稿完成后必须重新隔离审稿并绑定最终文件摘要。
 
 ## v1.9.1方向级90分质量闭环
 
@@ -537,7 +546,7 @@ aiwritepaper-academic-writing/
 
 ## 维护与版本
 
-- 当前版本：`1.9.1`
+- 当前版本：`1.9.2`
 - 更新记录：[CHANGELOG.md](CHANGELOG.md)
 - Skill入口：[SKILL.md](SKILL.md)
 - 历史复杂流水线版可通过Git标签`v0.3.1-runtime-gates`恢复

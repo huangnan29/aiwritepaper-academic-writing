@@ -23,7 +23,7 @@
           "origin": {
             "enum": [
               "USER_PROVIDED", "AUTHOR_OBSERVED", "OFFICIAL_DOWNLOAD", "FORMAL_SIMULATION",
-              "CALCULATED", "MODEL_SYNTHETIC", "MANUSCRIPT_CONTEXT"
+              "CALCULATED", "MODEL_SYNTHETIC", "SYNTHETIC_DEMO", "MANUSCRIPT_CONTEXT"
             ]
           },
           "claim_role": {
@@ -36,6 +36,18 @@
           "supports_claims": {
             "type": "array",
             "items": {"type": "string", "minLength": 1}
+          },
+          "source_artifacts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["file", "sha256", "origin"],
+              "properties": {
+                "file": {"type": "string", "minLength": 1},
+                "sha256": {"type": "string", "pattern": "^[0-9a-fA-F]{64}$"},
+                "origin": {"enum": ["USER_PROVIDED", "AUTHOR_OBSERVED", "OFFICIAL_DOWNLOAD"]}
+              }
+            }
           },
           "observation_receipt": {"type": ["string", "null"]},
           "observation_receipt_sha256": {

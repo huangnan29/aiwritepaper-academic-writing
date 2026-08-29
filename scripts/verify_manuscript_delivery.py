@@ -153,7 +153,10 @@ class DeliveryVerifier:
             for code, ok in [("CHINESE_ABSTRACT_MISSING", chinese), ("ENGLISH_ABSTRACT_MISSING", english), ("CHINESE_KEYWORDS_MISSING", chinese_keywords), ("ENGLISH_KEYWORDS_MISSING", english_keywords)]:
                 if not ok: self.error(code, str(markdown))
 
-    def verify_evidence_matrix(self, matrix: Path, markdown: Path, bibliography: Path) -> None:
+    def verify_evidence_matrix(
+        self, matrix: Path, markdown: Path, bibliography: Path,
+        citation_mode: str = "NUMERIC",
+    ) -> None:
         if not matrix.is_file():
             self.error("EVIDENCE_MATRIX_MISSING", str(matrix))
             return
@@ -198,7 +201,22 @@ class DeliveryVerifier:
         final_text = markdown.read_text(encoding="utf-8", errors="replace") if markdown.is_file() else ""
         reference_match = REFERENCE_HEADING.search(final_text)
         reference_section = final_text[reference_match.end():] if reference_match else ""
-        final_references = len(re.findall(r"^\s*(?:[-*]\s*)?\[[0-9]+\]", reference_section, re.MULTILINE))
+        numbered_references = len(re.findall(r"^\s*(?:[-*]\s*)?\[[0-9]+\]", reference_section, re.MULTILINE))
+        accepted_rows = [
+            row for row in rows
+            if str(row.get("status") or "").strip() not in {"UNVERIFIED", "REJECTED"}
+        ]
+        if citation_mode == "AUTHOR_YEAR":
+            compact_reference = re.sub(r"[\s*_`]+", "", reference_section).lower()
+            matched_titles = 0
+            for row in accepted_rows:
+                title = re.sub(r"[\s*_`]+", "", str(row.get("title") or "")).lower()
+                minimum_title_length = 4 if re.search(r"[\u3400-\u9fff]", title) else 8
+                if len(title) >= minimum_title_length and title in compact_reference:
+                    matched_titles += 1
+            final_references = matched_titles
+        else:
+            final_references = numbered_references
         bib_entries = 0
         if bibliography.is_file():
             bib_entries = len(re.findall(r"^\s*@\w+\s*\{", bibliography.read_text(encoding="utf-8", errors="replace"), re.MULTILINE))
@@ -216,9 +234,11 @@ class DeliveryVerifier:
             "evidence_rows": len(rows),
             "final_references": final_references,
             "bib_entries": bib_entries,
+            "citation_mode": citation_mode,
         }
         if final_references == 0:
-            self.error("FINAL_REFERENCES_MISSING", "最终正文没有编号参考文献")
+            detail = "最终正文没有可匹配的作者—年份参考文献" if citation_mode == "AUTHOR_YEAR" else "最终正文没有编号参考文献"
+            self.error("FINAL_REFERENCES_MISSING", detail)
         if bib_entries != final_references:
             self.error("BIB_FINAL_COUNT_MISMATCH", f"BibTeX={bib_entries}，最终参考文献={final_references}")
         if len(rows) < final_references:
@@ -570,8 +590,15 @@ def main() -> int:
     bibliography_path = rooted(root, args.bibliography)
     manifest_path = rooted(root, args.run_manifest)
     verifier.verify_body_length(markdown)
+    citation_mode = "NUMERIC"
+    try:
+        manifest_for_citations = json.loads(manifest_path.read_text(encoding="utf-8"))
+        if isinstance(manifest_for_citations, dict):
+            citation_mode = str(manifest_for_citations.get("citation_mode") or "NUMERIC")
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        pass
     verifier.verify_evidence_matrix(
-        matrix_path, markdown, bibliography_path
+        matrix_path, markdown, bibliography_path, citation_mode
     )
     verifier.verify_run_manifest(manifest_path, markdown)
     input_sha256: Dict[str, str] = {}
@@ -602,7 +629,7 @@ def main() -> int:
         "metrics": verifier.metrics,
         "input_sha256": input_sha256,
         "verifier": {
-            "name": Path(__file__).name, "version": "1.9.0",
+            "name": Path(__file__).name, "version": "1.9.2",
             "sha256": verifier.sha256(Path(__file__).resolve()),
             "generated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
         },

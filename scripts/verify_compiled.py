@@ -212,7 +212,7 @@ def main() -> int:
         "select_execution_profile.py",
         "write_skipped_report.py", "prepare_resume.py", "compose_revision.py",
         "resolve_default_length.py",
-        "verify_quality_package.py", "build_benchmark_matrix.py", "build_direction_reviewers.py", "run_strong_model_benchmark.py",
+        "verify_quality_package.py", "capture_provenance.py", "build_benchmark_matrix.py", "build_direction_reviewers.py", "run_strong_model_benchmark.py",
     ]:
         if not (SKILL_ROOT / "scripts" / script_name).is_file():
             errors.append(f"缺少脚本: scripts/{script_name}")

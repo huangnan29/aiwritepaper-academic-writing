@@ -28,7 +28,7 @@ VALID_CLAIM_LEVELS = {"OBSERVED_STUDY", "DESIGN_ONLY", "PROTOCOL_ONLY", "REVIEW_
 VALID_RUN_MODES = {"FULL_BUILD", "RESUME", "REVISE_ONLY", "FIGURES_ONLY", "EXPORT_ONLY", "AUDIT_ONLY", "PROPOSAL_ONLY", "DEFENSE_ONLY"}
 VALID_DATA_ORIGINS = {
     "USER_PROVIDED", "AUTHOR_OBSERVED", "OFFICIAL_DOWNLOAD", "FORMAL_SIMULATION",
-    "CALCULATED", "MODEL_SYNTHETIC", "MANUSCRIPT_CONTEXT",
+    "CALCULATED", "MODEL_SYNTHETIC", "SYNTHETIC_DEMO", "MANUSCRIPT_CONTEXT",
 }
 VALID_CLAIM_ROLES = {
     "RESULT", "SIMULATION_RESULT", "DESIGN_CALCULATION", "ILLUSTRATION", "CONTEXT_ONLY",
@@ -58,6 +58,11 @@ FIELD_ALIASES = {
     "status": ["status", "状态"],
     "notes": ["notes", "备注"],
 }
+RUBRIC_PATH = SKILL_ROOT / "references" / "quality" / "direction-rubrics.json"
+CAPTURE_SCRIPT = SKILL_ROOT / "scripts" / "capture_provenance.py"
+VALID_DIRECTION_IDS = set(json.loads(RUBRIC_PATH.read_text(encoding="utf-8"))["directions"])
+WRITE_MARKERS = ("to_csv", "to_excel", "write_text", "write_bytes", "json.dump", "csv.writer", "open(")
+RANDOM_MARKERS = ("np.random", "numpy.random", "random.", "default_rng", "faker", "mimesis")
 
 
 def sha256(path: Path) -> str:
@@ -72,7 +77,7 @@ def verifier_identity() -> Dict[str, str]:
     script = Path(__file__).resolve()
     return {
         "name": script.name,
-        "version": "1.9.0",
+        "version": "1.9.2",
         "sha256": sha256(script),
         "generated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
     }
@@ -137,7 +142,7 @@ class EvidenceVerifier:
             return {}
         for field in [
             "model_label", "skill_version", "citation_mode", "research_claim_level",
-            "execution_profile", "profile_selection_report", "run_mode",
+            "execution_profile", "profile_selection_report", "run_mode", "direction_id",
         ]:
             if not isinstance(payload.get(field), str) or not payload.get(field, "").strip():
                 self.error("RUN_MANIFEST_FIELD_MISSING", field)
@@ -149,6 +154,8 @@ class EvidenceVerifier:
             self.error("EXECUTION_PROFILE_INVALID", str(payload.get("execution_profile")))
         if payload.get("run_mode") not in VALID_RUN_MODES:
             self.error("RUN_MODE_INVALID", str(payload.get("run_mode")))
+        if payload.get("direction_id") not in VALID_DIRECTION_IDS:
+            self.error("DIRECTION_ID_INVALID", str(payload.get("direction_id")))
         return payload
 
     def verify_profile_selection(self, manifest: Dict[str, Any]) -> List[Path]:
@@ -405,6 +412,100 @@ class EvidenceVerifier:
             "records": results,
         }
 
+    def verify_file_record(self, record: Any, code: str, dataset_id: str) -> Optional[Path]:
+        if not isinstance(record, dict):
+            self.error(f"{code}_SHAPE", dataset_id)
+            return None
+        file_path = resolve_under_root(self.root, record.get("file"))
+        if file_path is None or not file_path.is_file() or file_path.stat().st_size == 0:
+            self.error(f"{code}_FILE_MISSING", dataset_id)
+            return None
+        declared = str(record.get("sha256") or "").lower()
+        if declared != sha256(file_path):
+            self.error(f"{code}_HASH_MISMATCH", dataset_id)
+        return file_path
+
+    def load_capture_receipt(self, path: Optional[Path], dataset_id: str, expected_type: str) -> Dict[str, Any]:
+        if path is None or not path.is_file() or path.stat().st_size == 0:
+            self.error(f"{expected_type}_RECEIPT_MISSING", dataset_id)
+            return {}
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (UnicodeError, json.JSONDecodeError) as exc:
+            self.error(f"{expected_type}_RECEIPT_INVALID", f"{dataset_id}: {exc}")
+            return {}
+        if not isinstance(payload, dict) or payload.get("schema_version") != "1.0":
+            self.error(f"{expected_type}_RECEIPT_SCHEMA", dataset_id)
+            return {}
+        if payload.get("receipt_type") != expected_type:
+            self.error(f"{expected_type}_RECEIPT_TYPE", dataset_id)
+        producer = payload.get("producer")
+        if not isinstance(producer, dict) or producer.get("name") != CAPTURE_SCRIPT.name:
+            self.error(f"{expected_type}_RECEIPT_PRODUCER", dataset_id)
+        elif producer.get("sha256") != sha256(CAPTURE_SCRIPT):
+            self.error(f"{expected_type}_RECEIPT_STALE", dataset_id)
+        return payload
+
+    def script_writes_file(self, target: Path) -> bool:
+        relative = str(target.resolve().relative_to(self.root))
+        names = {target.name, relative}
+        for script in list(self.root.rglob("*.py")) + list(self.root.rglob("*.R")) + list(self.root.rglob("*.js")):
+            if not script.is_file() or CAPTURE_SCRIPT == script.resolve():
+                continue
+            text = script.read_text(encoding="utf-8", errors="replace")
+            if any(name in text for name in names) and any(marker in text for marker in WRITE_MARKERS):
+                return True
+        return False
+
+    def verify_execution_receipt(
+        self, payload: Dict[str, Any], dataset_id: str, dataset_file: Optional[Path],
+        origin: Any, role: Any,
+    ) -> None:
+        if not payload:
+            return
+        if payload.get("exit_code") != 0:
+            self.error("EXECUTION_EXIT_NONZERO", dataset_id)
+        inputs = payload.get("inputs")
+        outputs = payload.get("outputs")
+        if not isinstance(inputs, list) or not inputs:
+            self.error("EXECUTION_INPUTS_MISSING", dataset_id)
+        else:
+            for item in inputs:
+                self.verify_file_record(item, "EXECUTION_INPUT", dataset_id)
+        output_paths: List[Path] = []
+        if not isinstance(outputs, list) or not outputs:
+            self.error("EXECUTION_OUTPUTS_MISSING", dataset_id)
+        else:
+            for item in outputs:
+                checked = self.verify_file_record(item, "EXECUTION_OUTPUT", dataset_id)
+                if checked:
+                    output_paths.append(checked.resolve())
+        if dataset_file and dataset_file.resolve() not in output_paths:
+            self.error("EXECUTION_DATASET_NOT_OUTPUT", dataset_id)
+        engine_class = payload.get("engine_class")
+        if origin == "FORMAL_SIMULATION" and engine_class in {None, "CALCULATION"}:
+            self.error("FORMAL_SIMULATION_ENGINE_INVALID", dataset_id)
+        command = payload.get("command")
+        if not isinstance(command, list) or not command:
+            self.error("EXECUTION_COMMAND_MISSING", dataset_id)
+            return
+        script_paths: List[Path] = []
+        for token in command:
+            if not isinstance(token, str) or not token.endswith((".py", ".R", ".js")):
+                continue
+            script_path = resolve_under_root(self.root, token)
+            if script_path and script_path.is_file():
+                script_paths.append(script_path)
+        stochastic = any(
+            any(marker in script.read_text(encoding="utf-8", errors="replace") for marker in RANDOM_MARKERS)
+            for script in script_paths
+        )
+        if stochastic and role in {"RESULT", "SIMULATION_RESULT"}:
+            randomness = payload.get("randomness")
+            required = {"purpose", "seed", "distribution"}
+            if not isinstance(randomness, dict) or not required.issubset(randomness):
+                self.error("STOCHASTIC_RESULT_UNDECLARED", dataset_id)
+
     def verify_provenance(self, path: Path, markdown: Path, claim_level: str) -> None:
         try:
             payload = json.loads(path.read_text(encoding="utf-8"))
@@ -421,6 +522,7 @@ class EvidenceVerifier:
             self.error("DATA_PROVENANCE_DATASETS", "datasets必须为数组")
             return
         observed_count = 0
+        valid_observed_results = 0
         result_count = 0
         for index, dataset in enumerate(datasets):
             if not isinstance(dataset, dict):
@@ -435,9 +537,7 @@ class EvidenceVerifier:
                 self.error("DATASET_CLAIM_ROLE_INVALID", f"{dataset_id}: {role}")
             if role in {"RESULT", "SIMULATION_RESULT"}:
                 result_count += 1
-            if origin in {"USER_PROVIDED", "AUTHOR_OBSERVED"}:
-                observed_count += 1
-            if origin == "MODEL_SYNTHETIC" and role in {"RESULT", "SIMULATION_RESULT", "DESIGN_CALCULATION"}:
+            if origin in {"MODEL_SYNTHETIC", "SYNTHETIC_DEMO"} and role in {"RESULT", "SIMULATION_RESULT", "DESIGN_CALCULATION"}:
                 self.error("MODEL_SYNTHETIC_RESULT_FORBIDDEN", dataset_id)
             if origin == "CALCULATED" and role == "RESULT":
                 self.error("CALCULATED_OBSERVED_RESULT_FORBIDDEN", dataset_id)
@@ -448,32 +548,57 @@ class EvidenceVerifier:
                 declared = str(dataset.get("sha256") or "").lower()
                 if not declared or declared != sha256(file_path):
                     self.error("DATASET_HASH_MISMATCH", dataset_id)
+            source_artifacts = dataset.get("source_artifacts")
+            source_paths: List[Path] = []
+            if isinstance(source_artifacts, list):
+                for artifact in source_artifacts:
+                    checked = self.verify_file_record(artifact, "SOURCE_ARTIFACT", dataset_id)
+                    if checked:
+                        source_paths.append(checked)
+            elif origin in {"USER_PROVIDED", "AUTHOR_OBSERVED"}:
+                self.error("OBSERVED_SOURCE_ARTIFACTS_MISSING", dataset_id)
             if origin in {"USER_PROVIDED", "AUTHOR_OBSERVED"}:
                 receipt = resolve_under_root(self.root, dataset.get("observation_receipt"))
-                if receipt is None or not receipt.is_file() or receipt.stat().st_size == 0:
-                    self.error("OBSERVATION_RECEIPT_MISSING", dataset_id)
-                else:
+                payload_receipt = self.load_capture_receipt(receipt, dataset_id, "REGISTER")
+                if receipt and receipt.is_file():
                     declared_receipt = str(dataset.get("observation_receipt_sha256") or "").lower()
-                    if not declared_receipt or declared_receipt != sha256(receipt):
+                    if declared_receipt != sha256(receipt):
                         self.error("OBSERVATION_RECEIPT_HASH_MISMATCH", dataset_id)
+                registered_source = self.verify_file_record(payload_receipt.get("source"), "REGISTER_SOURCE", dataset_id) if payload_receipt else None
+                if payload_receipt.get("origin") != origin:
+                    self.error("REGISTER_ORIGIN_MISMATCH", dataset_id)
+                if registered_source and registered_source.resolve() not in {item.resolve() for item in source_paths}:
+                    self.error("REGISTER_SOURCE_NOT_DECLARED", dataset_id)
+                if registered_source and self.script_writes_file(registered_source):
+                    self.error("OBSERVED_RAW_SOURCE_GENERATED_LOCALLY", dataset_id)
+                if registered_source and source_paths:
+                    observed_count += 1
+                    if role == "RESULT":
+                        valid_observed_results += 1
             if origin == "OFFICIAL_DOWNLOAD":
                 receipt = resolve_under_root(self.root, dataset.get("acquisition_receipt"))
-                if receipt is None or not receipt.is_file() or receipt.stat().st_size == 0:
-                    self.error("ACQUISITION_RECEIPT_MISSING", dataset_id)
-                else:
-                    declared_receipt = str(dataset.get("acquisition_receipt_sha256") or "").lower()
-                    if not declared_receipt or declared_receipt != sha256(receipt):
-                        self.error("ACQUISITION_RECEIPT_HASH_MISMATCH", dataset_id)
+                payload_receipt = self.load_capture_receipt(receipt, dataset_id, "DOWNLOAD")
+                if receipt and receipt.is_file() and str(dataset.get("acquisition_receipt_sha256") or "").lower() != sha256(receipt):
+                    self.error("ACQUISITION_RECEIPT_HASH_MISMATCH", dataset_id)
+                downloaded = self.verify_file_record(payload_receipt.get("output"), "DOWNLOAD_OUTPUT", dataset_id) if payload_receipt else None
+                if file_path and downloaded and file_path.resolve() != downloaded.resolve() and downloaded.resolve() not in {item.resolve() for item in source_paths}:
+                    self.error("DOWNLOAD_OUTPUT_NOT_DATASET_SOURCE", dataset_id)
+                if not isinstance(payload_receipt.get("source_url"), str) or not payload_receipt.get("source_url", "").startswith(("http://", "https://")):
+                    self.error("DOWNLOAD_SOURCE_URL_INVALID", dataset_id)
+                if payload_receipt.get("http_status") not in range(200, 300):
+                    self.error("DOWNLOAD_HTTP_STATUS_INVALID", dataset_id)
+                if role == "RESULT" and downloaded:
+                    valid_observed_results += 1
             if origin in {"FORMAL_SIMULATION", "CALCULATED"} and role in {
                 "SIMULATION_RESULT", "DESIGN_CALCULATION", "RESULT"
             }:
                 receipt = resolve_under_root(self.root, dataset.get("execution_receipt"))
-                if receipt is None or not receipt.is_file() or receipt.stat().st_size == 0:
-                    self.error("DATA_EXECUTION_RECEIPT_MISSING", dataset_id)
-                else:
-                    declared_receipt = str(dataset.get("execution_receipt_sha256") or "").lower()
-                    if not declared_receipt or declared_receipt != sha256(receipt):
-                        self.error("DATA_EXECUTION_RECEIPT_HASH_MISMATCH", dataset_id)
+                payload_receipt = self.load_capture_receipt(receipt, dataset_id, "EXECUTION")
+                if receipt and receipt.is_file() and str(dataset.get("execution_receipt_sha256") or "").lower() != sha256(receipt):
+                    self.error("DATA_EXECUTION_RECEIPT_HASH_MISMATCH", dataset_id)
+                self.verify_execution_receipt(payload_receipt, dataset_id, file_path, origin, role)
+                if origin == "FORMAL_SIMULATION" and role == "SIMULATION_RESULT" and payload_receipt.get("exit_code") == 0:
+                    valid_observed_results += 1
             claims = dataset.get("supports_claims")
             if not isinstance(claims, list):
                 self.error("DATASET_CLAIMS_INVALID", dataset_id)
@@ -481,10 +606,11 @@ class EvidenceVerifier:
         suspicious = [re.sub(r"\s+", " ", item.group(0)).strip() for item in SELF_RESULT_PATTERN.finditer(text)]
         if suspicious and observed_count == 0 and claim_level != "REVIEW_SYNTHESIS":
             self.error("OBSERVED_RESULT_WITHOUT_DATA", " | ".join(suspicious[:5]))
-        if claim_level == "OBSERVED_STUDY" and observed_count == 0:
-            self.error("OBSERVED_STUDY_DATA_MISSING", "没有USER_PROVIDED或AUTHOR_OBSERVED数据")
+        if claim_level == "OBSERVED_STUDY" and valid_observed_results == 0:
+            self.error("OBSERVED_STUDY_DATA_MISSING", "没有带真实原始来源的观察或官方下载结果数据")
         self.metrics["data_provenance"] = {
             "datasets": len(datasets), "observed_datasets": observed_count,
+            "valid_observed_results": valid_observed_results,
             "result_datasets": result_count, "suspicious_self_result_claims": len(suspicious),
         }
 

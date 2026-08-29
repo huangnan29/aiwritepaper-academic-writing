@@ -16,7 +16,15 @@ AIWritePaper 范文仅提供结构观察，不是事实来源。不得复制范�
 
 凡涉及定量结果或“系统已实现/已运行”的主张，必须能够回到用户材料、数据文件、源码版本、执行命令、原始日志、公开数据集或已核验来源。`FULL_BUILD` 必须建立 `data/data-provenance.json`，根对象记录 `schema_version: 1.0`、与Manifest一致的 `research_claim_level` 和 `datasets[]`。每个真实数据集记录 `dataset_id`、文件、SHA-256、`origin`、`claim_role` 与 `supports_claims`。
 
-`origin` 只能为 `USER_PROVIDED`、`AUTHOR_OBSERVED`、`OFFICIAL_DOWNLOAD`、`FORMAL_SIMULATION`、`CALCULATED`、`MODEL_SYNTHETIC` 或 `MANUSCRIPT_CONTEXT`；`claim_role` 只能为 `RESULT`、`SIMULATION_RESULT`、`DESIGN_CALCULATION`、`ILLUSTRATION` 或 `CONTEXT_ONLY`。每个登记数据集必须有真实文件和SHA-256。`MODEL_SYNTHETIC` 不能支撑结果、仿真结果或正式设计计算；`CALCULATED` 不能冒充观察结果。`USER_PROVIDED` 与 `AUTHOR_OBSERVED` 绑定观察回执，`OFFICIAL_DOWNLOAD` 绑定获取回执，`FORMAL_SIMULATION` 与承担设计计算的 `CALCULATED` 绑定执行回执；回执文件本身也记录SHA-256。Python局部变量、随机休眠、手写JSON或模拟请求不是真实数据库、Web服务、GPU、课堂、问卷或硬件实验。
+`origin` 只能为 `USER_PROVIDED`、`AUTHOR_OBSERVED`、`OFFICIAL_DOWNLOAD`、`FORMAL_SIMULATION`、`CALCULATED`、`SYNTHETIC_DEMO`、兼容旧名 `MODEL_SYNTHETIC` 或 `MANUSCRIPT_CONTEXT`；`claim_role` 只能为 `RESULT`、`SIMULATION_RESULT`、`DESIGN_CALCULATION`、`ILLUSTRATION` 或 `CONTEXT_ONLY`。每个登记数据集必须有真实文件和SHA-256。合成/演示数据不能支撑结果、仿真结果或正式设计计算；`CALCULATED` 不能冒充观察结果。Python局部变量、随机休眠、手写JSON、自写“下载成功/ERP已核验/GDC已读取”文本或模拟请求不是真实数据库、Web服务、GPU、课堂、问卷或硬件实验。
+
+所有数据回执使用Skill的 `scripts/capture_provenance.py` 生成，不能由生产数据的同一个项目脚本手写：
+
+- `USER_PROVIDED` 与 `AUTHOR_OBSERVED` 必须先登记不可变原始文件，并在数据项的 `source_artifacts[]` 记录原始文件路径、SHA-256与来源；本次运行脚本创建的CSV/JSON不能登记为作者观察。
+- `OFFICIAL_DOWNLOAD` 必须保留实际下载字节，回执记录原始URL、最终URL、HTTP状态、时间、内容类型、文件大小与SHA-256；只有平台名称和`SUCCESS`的文本无效。
+- `FORMAL_SIMULATION` 必须捕获领域引擎、版本/类别、真实命令、退出码、输入模型、原始输出、stdout/stderr与SHA-256；Python手工数组、插值曲线或绘图脚本不能冒充SPICE、FEA、CFD或实验结果。
+- 承担正式设计计算的 `CALCULATED` 必须捕获输入、脚本、命令和输出。结果脚本使用随机数时必须记录用途、种子和分布；未声明随机生成的正式结果直接失败。
+- `OBSERVED_STUDY` 至少有一个能够回到用户/作者真实原始文件或官方真实下载字节的结果数据集；只有题录、回执文本或模型生成数据时必须降级。
 
 `run-manifest.json` 的 `research_claim_level` 只能为：
 

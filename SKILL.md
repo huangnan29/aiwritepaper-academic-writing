@@ -4,7 +4,7 @@ description: 根据题目和材料完成毕业论文、学位论文、期刊论�
 license: MIT
 metadata:
   author: huangnan29
-  version: "1.9.1"
+  version: "1.9.2"
   repository: https://github.com/huangnan29/aiwritepaper-academic-writing
 ---
 
@@ -142,11 +142,12 @@ python3 "<SKILL_DIR>/scripts/compose_revision.py" \
 - `verify_manuscript_delivery.py`：核对正文长度、文件名、目录、表格、DOCX/PDF和哈希。
 - `adjudicate_status.py`：读取底层报告并计算唯一权威状态。
 - `verify_quality_package.py`：核对方向评分卡、主张证据、图文语义和文档视觉覆盖。
+- `capture_provenance.py`：登记真实原始文件、官方下载和实际计算/仿真命令；生产脚本不得自行伪造观察或执行回执。
 
 检查器不决定论文观点、公式含义或证据取舍，也不生成论文内容。
 
 方向90分标准来自 [评分卡](references/quality/direction-rubrics.json)，强模型发布回归使用 [57任务基准](references/benchmarks/strong-model-benchmark.json)。评分卡只规定关注点和Critical，不规定正文句式。
-初稿完成后必须调用同方向 `references/reviewers/<DIRECTION_ID>.md` 进行隔离审稿；审稿输入不含作者自评分，先定位问题再生成评分卡。
+初稿完成后调用同方向 `references/reviewers/<DIRECTION_ID>.md` 进行第一次隔离审稿。全部图片、DOCX、PDF和视觉回执完成后必须再次调用同方向审稿提示词，生成绑定终稿SHA-256的 `09-final-peer-review.json`；最终评分卡只能采用这次终稿审稿分数。
 
 按 [模式×检查器矩阵](references/mode-checker-matrix.json) 运行检查。FULL_BUILD和AUDIT_ONLY运行四个底层检查器；其他模式只运行适用项，对不适用或未变化项使用标准SKIPPED报告。完整论文另运行 `verify_quality_package.py`，质量目标依据当前方向内嵌90分评分卡。最后运行裁决器。
 
