@@ -212,7 +212,7 @@ def main() -> int:
         "select_execution_profile.py",
         "write_skipped_report.py", "prepare_resume.py", "compose_revision.py",
         "resolve_default_length.py",
-        "verify_quality_package.py", "build_benchmark_matrix.py",
+        "verify_quality_package.py", "build_benchmark_matrix.py", "build_direction_reviewers.py", "run_strong_model_benchmark.py",
     ]:
         if not (SKILL_ROOT / "scripts" / script_name).is_file():
             errors.append(f"缺少脚本: scripts/{script_name}")
@@ -324,6 +324,7 @@ def main() -> int:
         required_modes = {"FULL_BUILD","RESUME","REVISE_ONLY","FIGURES_ONLY","EXPORT_ONLY","AUDIT_ONLY","PROPOSAL_ONLY","DEFENSE_ONLY"}
         if set(mode_matrix.get("modes", {})) != required_modes:
             errors.append("模式检查器矩阵模式集合不完整")
+        if any(set(v)!={"evidence","figure","formula","delivery","quality"} for v in mode_matrix.get("modes",{}).values()): errors.append("模式检查器矩阵未覆盖五类底层报告")
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:
         errors.append(f"模式检查器矩阵不可用: {exc}")
 
@@ -333,6 +334,7 @@ def main() -> int:
         if sum(rubrics.get("weights",{}).values())!=100: errors.append("方向评分权重总和不是100")
         benchmark=json.loads((SKILL_ROOT/"references/benchmarks/strong-model-benchmark.json").read_text(encoding="utf-8"))
         if len(benchmark.get("tasks",[]))!=57: errors.append("强模型基准任务不是57个")
+        if len(list((SKILL_ROOT/"references/reviewers").glob("*.md")))!=19: errors.append("独立方向审稿Prompt不是19份")
     except (OSError,UnicodeError,json.JSONDecodeError) as exc:
         errors.append(f"质量基准不可用: {exc}")
     try:

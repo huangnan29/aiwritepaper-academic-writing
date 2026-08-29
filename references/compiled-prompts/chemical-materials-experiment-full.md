@@ -155,7 +155,7 @@ arXiv、bioRxiv、ChemRxiv、SSRN、NBER工作论文可以收录，但必须在�
 
 所有完整论文与修改稿在最终裁决前输出 `claim-evidence-map.json`、`15-quality-scorecard.json`、`figures/figure-semantic-audit.json`、`16-document-visual-audit.json` 与 `17-quality-verification.json`。这些文件用于质量上限审查，不改变研究证据状态。
 
-`run-manifest.json` 必须记录真实 `run_mode`、`model_label`、`skill_version`、`execution_profile`、`profile_selection_report`、GUIDED/WEAK使用的 `execution_checkpoints`、`paper_level`、`manuscript_language`、`abstract_contract`、`citation_mode`、`research_claim_level`、`document_profile`（`THESIS`、`JOURNAL`、`REPORT` 或 `CUSTOM`）、目标长度和容差、模型声明的三层状态、五份报告路径以及正式文档路径与摘要。Profile必须与选择报告一致；检查器运行/跳过必须符合模式矩阵。模型声明只供冲突审计，最终状态以 `14-adjudicated-status.json` 为唯一真源。
+`run-manifest.json` 必须记录真实 `run_mode`、`model_label`、`skill_version`、`execution_profile`、`profile_selection_report`、GUIDED/WEAK使用的 `execution_checkpoints`、`direction_id`、`paper_level`、`manuscript_language`、`abstract_contract`、`citation_mode`、`research_claim_level`、`document_profile`、目标长度和容差、模型声明的三层状态、文献/图表/公式/文档/质量五份底层报告与权威状态报告路径。质量报告字段为 `quality_verification_report`。Profile必须与选择报告一致；检查器运行/跳过必须符合模式矩阵。模型声明只供冲突审计，最终状态以 `14-adjudicated-status.json` 为唯一真源。
 
 ## 最终文档文件名
 

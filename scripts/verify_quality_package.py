@@ -8,6 +8,14 @@ def load(p):
     x=json.loads(p.read_text(encoding="utf-8"));
     if not isinstance(x,(dict,list)):raise ValueError(p)
     return x
+def check_artifact(root,item,prefix,errors):
+    for field in ["checked_file","visual_receipt"]:
+        rel=item.get(field);p=(root/str(rel)).resolve()
+        try:p.relative_to(root)
+        except ValueError:errors.append(f"{prefix}_PATH_ESCAPE");continue
+        if not p.is_file():errors.append(f"{prefix}_{field.upper()}_MISSING");continue
+        expected=item.get(field+"_sha256")
+        if expected!=sha(p):errors.append(f"{prefix}_{field.upper()}_HASH")
 def main():
     a=argparse.ArgumentParser();a.add_argument("--root",type=Path,default=Path.cwd());a.add_argument("--report",type=Path,default=Path("17-quality-verification.json"));x=a.parse_args();r=x.root.resolve();errors=[];warnings=[]
     m=load(r/"run-manifest.json");direction=m.get("direction_id");score=load(r/"15-quality-scorecard.json");claims=load(r/"claim-evidence-map.json");semantic=load(r/"figures/figure-semantic-audit.json");visual=load(r/"16-document-visual-audit.json");manifest=load(r/"figures/figure-manifest.json")
@@ -20,8 +28,10 @@ def main():
     rows=claims.get("claims",[]) if isinstance(claims,dict) else []
     if not rows or any(not q.get("location") or (q.get("importance") in {"CORE","CONCLUSION"} and not q.get("evidence_ids")) for q in rows):errors.append("CLAIM_EVIDENCE_COVERAGE")
     figs=manifest.get("figures",[]);expected={q.get("figure_id") for q in figs};audits=semantic.get("figures",[]) if isinstance(semantic,dict) else [];actual={q.get("figure_id") for q in audits}
-    if expected!=actual or any(q.get("status")!="PASS" for q in audits):errors.append("FIGURE_SEMANTIC_NOT_PASS")
+    if expected!=actual or any(q.get("status")!="PASS" or not q.get("blind_summary") for q in audits):errors.append("FIGURE_SEMANTIC_NOT_PASS")
+    for q in audits:check_artifact(r,q,"FIGURE_SEMANTIC",errors)
     required={"cover","primary_abstract","toc","complex_table","complex_formula","representative_figure","references","last_page"};checks=visual.get("checks",[]) if isinstance(visual,dict) else []
-    if not required.issubset({q.get("checkpoint") for q in checks}) or any(q.get("status")!="PASS" for q in checks):errors.append("DOCUMENT_VISUAL_NOT_PASS")
-    status="QUALITY_FAIL" if errors else ("QUALITY_PARTIAL" if warnings or calc<90 else "QUALITY_OK");inputs={str(p.relative_to(r)):sha(p) for p in [r/"run-manifest.json",r/"15-quality-scorecard.json",r/"claim-evidence-map.json",r/"figures/figure-semantic-audit.json",r/"16-document-visual-audit.json",r/"figures/figure-manifest.json"]};script=Path(__file__).resolve();payload={"schema_version":"1.0","status":status,"total":calc,"errors":errors,"warnings":warnings,"input_sha256":inputs,"verifier":{"name":script.name,"version":"1.9.0","sha256":sha(script)}};out=x.report if x.report.is_absolute() else r/x.report;out.write_text(json.dumps(payload,ensure_ascii=False,indent=2)+"\n",encoding="utf-8");print(json.dumps(payload,ensure_ascii=False,indent=2));return 1 if status=="QUALITY_FAIL" else 0
+    if not required.issubset({q.get("checkpoint") for q in checks}) or any(q.get("status")!="PASS" or not q.get("page") for q in checks):errors.append("DOCUMENT_VISUAL_NOT_PASS")
+    for q in checks:check_artifact(r,q,"DOCUMENT_VISUAL",errors)
+    status="QUALITY_FAIL" if errors else ("QUALITY_PARTIAL" if warnings or calc<90 else "QUALITY_OK");inputs={str(p.relative_to(r)):sha(p) for p in [r/"run-manifest.json",r/"15-quality-scorecard.json",r/"claim-evidence-map.json",r/"figures/figure-semantic-audit.json",r/"16-document-visual-audit.json",r/"figures/figure-manifest.json"]};script=Path(__file__).resolve();payload={"schema_version":"1.0","status":status,"total":calc,"errors":errors,"warnings":warnings,"input_sha256":inputs,"verifier":{"name":script.name,"version":"1.9.1","sha256":sha(script)}};out=x.report if x.report.is_absolute() else r/x.report;out.write_text(json.dumps(payload,ensure_ascii=False,indent=2)+"\n",encoding="utf-8");print(json.dumps(payload,ensure_ascii=False,indent=2));return 1 if status=="QUALITY_FAIL" else 0
 if __name__=="__main__":raise SystemExit(main())

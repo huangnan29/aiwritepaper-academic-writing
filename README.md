@@ -4,7 +4,7 @@
 
 **从论文题目到一份完整执行提示词，再持续交付正文、配图、DOCX 与 PDF。**
 
-![Version](https://img.shields.io/badge/version-1.9.0-2563EB?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.9.1-2563EB?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-16A34A?style=flat-square)
 ![Architecture](https://img.shields.io/badge/architecture-MD--first-7C3AED?style=flat-square)
 ![Directions](https://img.shields.io/badge/paper%20directions-19-EA580C?style=flat-square)
@@ -16,13 +16,14 @@
 > [!NOTE]
 > 当前版本采用 **MD-first 单提示词执行 + Agent能力适配 + 外部真实性与状态裁决**。模型继续负责方向、检索、论证、写作、公式含义和配图语义；脚本只核对文献、数据来源、公式、图片、文档和状态，不生成论文内容。
 
-## v1.9.0方向级90分质量与强模型基准
+## v1.9.1方向级90分质量闭环
 
 - 19方向分别内置专业深度关注点和Critical错误，不使用统一正文模板；
 - 新增主张—证据映射、方向评分卡、图文盲读语义审计和文档关键页视觉审计；
 - 质量分固定为证据25、内容20、结构15、配图15、文档15、自审10；Critical为0、总分≥90且各维度≥80%才可声明90+；
 - 新增57任务强模型基准矩阵，覆盖充分材料、无数据题和诱导虚构题；
 - 强模型发布门为平均≥90、方向平均≥88、单篇≥85、Critical=0、版本回退不超过3分。
+- QUALITY报告已接入权威裁决，视觉PASS绑定真实文件、页面图和工具回执；19方向使用隔离审稿Prompt。
 
 ## v1.6.0续跑、修改稿与模式化验收
 
@@ -536,7 +537,7 @@ aiwritepaper-academic-writing/
 
 ## 维护与版本
 
-- 当前版本：`1.9.0`
+- 当前版本：`1.9.1`
 - 更新记录：[CHANGELOG.md](CHANGELOG.md)
 - Skill入口：[SKILL.md](SKILL.md)
 - 历史复杂流水线版可通过Git标签`v0.3.1-runtime-gates`恢复
