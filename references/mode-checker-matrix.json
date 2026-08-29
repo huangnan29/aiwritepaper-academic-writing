@@ -1,0 +1,13 @@
+{
+  "schema_version": "1.0",
+  "modes": {
+    "FULL_BUILD": {"evidence": ["RUN"], "figure": ["RUN"], "formula": ["RUN"], "delivery": ["RUN"]},
+    "RESUME": {"evidence": ["RUN", "SKIPPED_UNCHANGED"], "figure": ["RUN", "SKIPPED_UNCHANGED"], "formula": ["RUN", "SKIPPED_UNCHANGED"], "delivery": ["RUN", "SKIPPED_UNCHANGED"]},
+    "REVISE_ONLY": {"evidence": ["RUN", "SKIPPED_UNCHANGED"], "figure": ["RUN", "SKIPPED_UNCHANGED"], "formula": ["RUN"], "delivery": ["RUN"]},
+    "FIGURES_ONLY": {"evidence": ["SKIPPED_NOT_APPLICABLE", "SKIPPED_UNCHANGED"], "figure": ["RUN"], "formula": ["SKIPPED_NOT_APPLICABLE", "SKIPPED_UNCHANGED"], "delivery": ["RUN", "SKIPPED_NOT_APPLICABLE", "SKIPPED_UNCHANGED"]},
+    "EXPORT_ONLY": {"evidence": ["SKIPPED_UNCHANGED"], "figure": ["SKIPPED_UNCHANGED"], "formula": ["RUN"], "delivery": ["RUN"]},
+    "AUDIT_ONLY": {"evidence": ["RUN"], "figure": ["RUN"], "formula": ["RUN"], "delivery": ["RUN"]},
+    "PROPOSAL_ONLY": {"evidence": ["RUN"], "figure": ["RUN", "SKIPPED_NOT_APPLICABLE"], "formula": ["RUN", "SKIPPED_NOT_APPLICABLE"], "delivery": ["RUN", "SKIPPED_NOT_APPLICABLE"]},
+    "DEFENSE_ONLY": {"evidence": ["SKIPPED_UNCHANGED"], "figure": ["RUN", "SKIPPED_NOT_APPLICABLE", "SKIPPED_UNCHANGED"], "formula": ["SKIPPED_NOT_APPLICABLE"], "delivery": ["SKIPPED_NOT_APPLICABLE"]}
+  }
+}

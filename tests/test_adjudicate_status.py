@@ -28,6 +28,7 @@ class AdjudicateStatusTests(unittest.TestCase):
         self.manifest = {
             "research_claim_level": "DESIGN_ONLY",
             "execution_profile": "FULL_AUTONOMY",
+            "run_mode": "FULL_BUILD",
             "research_status": "PASS", "delivery_status": "PASS", "final_status": "PASS",
             "evidence_verification_report": "04-evidence-verification.json",
             "figure_verification_report": "figures/figure-verification.json",
@@ -59,7 +60,7 @@ class AdjudicateStatusTests(unittest.TestCase):
             script = MODULE.SKILL_ROOT / "scripts" / spec["script"]
             complete = dict(payload)
             complete["verifier"] = {
-                "name": spec["script"], "sha256": MODULE.sha256(script), "version": "1.5.0",
+                "name": spec["script"], "sha256": MODULE.sha256(script), "version": "1.6.0",
             }
             complete["input_sha256"] = {"artifact.txt": MODULE.sha256(self.root / "artifact.txt")}
             path = self.report_path(name)
@@ -70,9 +71,24 @@ class AdjudicateStatusTests(unittest.TestCase):
         adjudicator = MODULE.StatusAdjudicator(self.root)
         manifest = adjudicator.load_manifest(self.root / "run-manifest.json")
         adjudicator.validate_execution_checkpoints(manifest)
+        adjudicator.validate_revision_impact(manifest)
         adjudicator.load_reports(manifest)
         derived = adjudicator.derive(manifest)
         return adjudicator, derived
+
+    def write_skip(self, name: str, status: str, mode: str) -> None:
+        path = self.report_path(name)
+        payload = {
+            "schema_version": "1.0", "status": status, "category": name, "mode": mode,
+            "reason": "测试模式不适用", "inherited": None,
+            "input_sha256": {"artifact.txt": MODULE.sha256(self.root / "artifact.txt")},
+            "verifier": {
+                "name": "write_skipped_report.py",
+                "version": "1.6.0",
+                "sha256": MODULE.sha256(MODULE.SKILL_ROOT / "scripts/write_skipped_report.py"),
+            },
+        }
+        path.write_text(json.dumps(payload), encoding="utf-8")
 
     def test_design_only_caps_research_at_partial(self) -> None:
         adjudicator, derived = self.adjudicate()
@@ -148,6 +164,25 @@ class AdjudicateStatusTests(unittest.TestCase):
         adjudicator, derived = self.adjudicate()
         self.assertTrue(any("EXECUTION_CHECKPOINT" in item for item in adjudicator.errors))
         self.assertEqual(derived["final_status"], "FAIL")
+
+    def test_figures_only_allows_not_applicable_reports(self) -> None:
+        self.manifest["run_mode"] = "FIGURES_ONLY"
+        self.write_all()
+        for name in ["evidence", "formula", "delivery"]:
+            self.write_skip(name, "SKIPPED_NOT_APPLICABLE", "FIGURES_ONLY")
+        adjudicator, derived = self.adjudicate()
+        self.assertEqual(adjudicator.errors, [])
+        self.assertEqual(derived["delivery_status"], "PASS")
+
+    def test_full_build_rejects_skipped_report(self) -> None:
+        self.write_all()
+        self.write_skip("evidence", "SKIPPED_NOT_APPLICABLE", "FULL_BUILD")
+        adjudicator, derived = self.adjudicate()
+        self.assertTrue(any("REPORT_SKIP_NOT_ALLOWED" in item for item in adjudicator.errors))
+        self.assertEqual(derived["final_status"], "FAIL")
+
+    def test_revision_requires_impact_file(self) -> None:
+        self.manifest["run_mode"] = "REVISE_ONLY"; self.write_all(); adjudicator,derived=self.adjudicate(); self.assertTrue(any("REVISION_IMPACT_MISSING" in item for item in adjudicator.errors)); self.assertEqual(derived["final_status"],"FAIL")
 
 
 if __name__ == "__main__":

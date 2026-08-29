@@ -51,6 +51,7 @@ class DeliveryVerifier:
         self.errors: List[str] = []
         self.warnings: List[str] = []
         self.metrics: Dict[str, Any] = {}
+        self.require_bilingual_abstract = False
 
     def error(self, code: str, detail: str) -> None:
         self.errors.append(f"{code}: {detail}")
@@ -137,6 +138,20 @@ class DeliveryVerifier:
             self.error("BODY_LENGTH_LOW", f"实际{units}，最低{self.minimum}")
         elif units > self.maximum:
             self.error("BODY_LENGTH_HIGH", f"实际{units}，最高{self.maximum}")
+
+    def verify_abstracts(self, markdown: Path, contract: str) -> None:
+        if not markdown.is_file():
+            return
+        text = markdown.read_text(encoding="utf-8", errors="replace")
+        chinese = bool(re.search(r"^(?:#{1,6}\s*摘要\s*$|\*\*摘要[:：]?\*\*)", text, re.MULTILINE))
+        english = bool(re.search(r"^#{1,6}\s*Abstract\s*$", text, re.MULTILINE | re.IGNORECASE))
+        chinese_keywords = bool(re.search(r"(?:关键词|关键字)[:：]", text))
+        english_keywords = bool(re.search(r"\bKeywords?\s*[:：]", text, re.IGNORECASE))
+        self.metrics["abstracts"] = {"contract": contract, "chinese": chinese, "english": english, "chinese_keywords": chinese_keywords, "english_keywords": english_keywords}
+        if contract == "BILINGUAL":
+            self.require_bilingual_abstract = True
+            for code, ok in [("CHINESE_ABSTRACT_MISSING", chinese), ("ENGLISH_ABSTRACT_MISSING", english), ("CHINESE_KEYWORDS_MISSING", chinese_keywords), ("ENGLISH_KEYWORDS_MISSING", english_keywords)]:
+                if not ok: self.error(code, str(markdown))
 
     def verify_evidence_matrix(self, matrix: Path, markdown: Path, bibliography: Path) -> None:
         if not matrix.is_file():
@@ -348,6 +363,11 @@ class DeliveryVerifier:
             )
             if require_toc and not re.search(r"\bTOC\b", field_text, re.IGNORECASE):
                 self.error("DOCX_TOC_FIELD_MISSING", str(path))
+            if self.require_bilingual_abstract:
+                visible_all = "\n".join(node.text or "" for node in root.findall(".//w:t", WORD_NS))
+                for term in ["摘要", "Abstract", "关键词", "Keywords"]:
+                    if not re.search(re.escape(term), visible_all, re.IGNORECASE):
+                        self.error("DOCX_BILINGUAL_ABSTRACT_MISSING", term)
             if style_counts[1] == 0 or style_counts[2] == 0:
                 self.error("DOCX_HEADING_HIERARCHY", str(style_counts))
             markdown_text = markdown.read_text(encoding="utf-8", errors="replace") if markdown.is_file() else ""
@@ -404,6 +424,11 @@ class DeliveryVerifier:
         if document_profile not in DOCUMENT_PROFILES:
             self.error("DOCUMENT_PROFILE_INVALID", str(document_profile))
             document_profile = "THESIS"
+        language = str(manifest.get("manuscript_language") or "zh-CN")
+        abstract_contract = manifest.get("abstract_contract")
+        if abstract_contract not in {"BILINGUAL", "PRIMARY_ONLY", "TEMPLATE_DEFINED"}:
+            abstract_contract = "BILINGUAL" if document_profile in {"THESIS", "JOURNAL"} and language.lower().startswith("zh") else "PRIMARY_ONLY"
+        self.verify_abstracts(markdown, abstract_contract)
         format_contract = manifest.get("format_contract")
         minimum_body_font_pt = 11.5
         requires_pdf_toc = document_profile == "THESIS"
@@ -577,7 +602,7 @@ def main() -> int:
         "metrics": verifier.metrics,
         "input_sha256": input_sha256,
         "verifier": {
-            "name": Path(__file__).name, "version": "1.5.0",
+            "name": Path(__file__).name, "version": "1.6.0",
             "sha256": verifier.sha256(Path(__file__).resolve()),
             "generated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
         },

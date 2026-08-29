@@ -229,6 +229,23 @@ class DeliveryTests(unittest.TestCase):
             for item in errors
         ))
 
+    def test_chinese_thesis_requires_english_abstract(self) -> None:
+        manifest_path = self.root / "run-manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest.update({"document_profile": "THESIS", "manuscript_language": "zh-CN", "abstract_contract": "BILINGUAL"})
+        manifest_path.write_text(json.dumps(manifest, ensure_ascii=False), encoding="utf-8")
+        errors = self.verifier().errors
+        self.assertTrue(any("ENGLISH_ABSTRACT_MISSING" in item for item in errors))
+
+    def test_bilingual_markdown_contract_passes(self) -> None:
+        self.markdown.write_text(
+            "# 摘要\n中文内容。\n\n关键词：测试\n\n# Abstract\nEnglish content.\n\nKeywords: test\n\n# 第1章 绪论\n正文。\n\n# 参考文献\n[1] 文献。\n",
+            encoding="utf-8",
+        )
+        verifier = MODULE.DeliveryVerifier(self.root, 1, 1000, 100)
+        verifier.verify_abstracts(self.markdown, "BILINGUAL")
+        self.assertEqual(verifier.errors, [])
+
     def test_thesis_rejects_small_body_font(self) -> None:
         manifest_path = self.root / "run-manifest.json"
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))

@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/huangnan29/aiwritepaper-academic-writing/references/schemas/revision-impact.schema.json",
+  "type": "object",
+  "required": ["schema_version", "run_mode", "items", "affected_stages", "frozen_files"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "run_mode": {"const": "REVISE_ONLY"},
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["comment", "target", "severity", "action", "affects"],
+        "properties": {
+          "comment": {"type": "string"},
+          "target": {"type": "string"},
+          "severity": {"enum": ["Critical", "Important", "Minor"]},
+          "action": {"type": "string"},
+          "affects": {"type": "array", "items": {"enum": ["EVIDENCE", "DRAFT", "FIGURES", "FORMULAS", "DOCUMENTS"]}}
+        }
+      }
+    },
+    "affected_stages": {"type": "array", "items": {"type": "string"}},
+    "frozen_files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["file", "sha256"],
+        "properties": {
+          "file": {"type": "string"},
+          "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+        }
+      }
+    }
+  }
+}

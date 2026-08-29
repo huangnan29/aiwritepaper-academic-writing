@@ -55,6 +55,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--profile-selection", type=Path, default=None, help="00-profile-selection.json")
     parser.add_argument("--profile-rules", type=Path, default=None, help="GUIDED或WEAK_MODEL规则")
     parser.add_argument("--output", required=True, type=Path, help="最终输出文件")
+    parser.add_argument("--report", type=Path, default=None, help="保存00-prompt-composition.json")
     return parser.parse_args()
 
 
@@ -118,6 +119,11 @@ def main() -> int:
         "profile_selection_sha256": selection_hash,
     }
     print(json.dumps(report, ensure_ascii=False, indent=2))
+    if args.report is not None:
+        report_path = args.report.expanduser().resolve()
+        if report_path == output or report_path in resolved_inputs:
+            raise ValueError("合成报告不能覆盖输入或最终提示词")
+        atomic_write(report_path, (json.dumps(report, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))
     return 0
 
 

@@ -31,6 +31,8 @@
 本提示词支持以下模式：
 
 - `FULL_BUILD`：完整研究、写作、配图、DOCX、PDF和最终验收；
+- `RESUME`：从已有运行状态和冻结阶段继续，不重建已通过产物；
+- `REVISE_ONLY`：依据导师、评审或用户意见定点修改现有定稿并重新导出；
 - `FIGURES_ONLY`：读取现有正文，新增或优化配图，不改变正文主张；
 - `EXPORT_ONLY`：从现有定稿导出DOCX/PDF，不重新研究；
 - `AUDIT_ONLY`：只读检查现有交付物；
@@ -38,17 +40,17 @@
 - `PROPOSAL_ONLY`：依据研究契约与已核验文献生成开题报告，不提前生成结果；
 - `DEFENSE_ONLY`：依据现有定稿生成答辩大纲、逐页内容和工具允许的PPTX/PDF，不新增论文主张。
 
-严格遵守模式边界：`FIGURES_ONLY`直接读取现有正文和图表，不重做检索或改写结论；`EXPORT_ONLY`只处理现有定稿和图片；`AUDIT_ONLY`不创建研究结果；`ROUTE_ONLY`不进入正文生产；`PROPOSAL_ONLY`使用计划性时态；`DEFENSE_ONLY`只压缩和重组现有论文证据。只有 `FULL_BUILD` 执行全部论文生产阶段。
+严格遵守模式边界：`RESUME`验证原提示词和阶段摘要后从首个未完成阶段继续；`REVISE_ONLY`只处理意见影响范围；`FIGURES_ONLY`直接读取现有正文和图表；`EXPORT_ONLY`只处理现有定稿和图片；`AUDIT_ONLY`不创建研究结果；`ROUTE_ONLY`不进入正文生产；`PROPOSAL_ONLY`使用计划性时态；`DEFENSE_ONLY`只压缩和重组现有论文证据。只有 `FULL_BUILD` 执行全部论文生产阶段。
 
-用户已给出完整题目、输出目录或明确要求“开始执行”时，默认 `AUTO_BENCHMARK`：不重复询问题目、不等待大纲批准、不要求用户确认模式，除非遇到权限、伦理、凭证、付费或无法继续的硬阻塞。用户明确要求交互时才使用 `INTERACTIVE`。
+用户已给出完整题目、输出目录或明确要求“开始执行”时，默认 `AUTO_COMPLETE`：不重复询问题目、不等待大纲批准、不要求用户确认模式，除非遇到权限、伦理、凭证、付费或无法继续的硬阻塞。`AUTO_BENCHMARK`保留为兼容别名；用户明确要求交互时才使用 `INTERACTIVE`。
 
-直接给出完整题目并触发 `FULL_BUILD`，但没有指定正文长度时，默认 `TARGET_LENGTH=25000`，允许误差±10%，可接受区间为22,500—27,500。正文统计第一章至结论的主体论述，不含摘要、目录、参考文献、致谢、附录、代码、Markdown表格行和图表题注；一个汉字计一个单位，一个连续英文词计一个单位。用户明确指定的目标优先于默认值。
+正文目标优先级为：用户明确值 > 学校/期刊模板 > 明确文档层次默认值 > 25,000兜底。中文JOURNAL默认10,000，REPORT默认12,000；中文THESIS明确本科默认20,000、硕士30,000、博士50,000，层次未知继续25,000。英文稿不得套用中文字符目标：JOURNAL默认8,000词，本科THESIS 8,000词、硕士15,000词、博士30,000词，层次未知按文档模板或12,000词兜底。所有默认允许±10%。用户此前或本次明确25,000时始终优先。
 
 开始前直接检查当前环境是否具有网络与页面访问、学术文献检索、文件读写、代码执行、图片生成、图形渲染、DOCX、PDF、文档解析和视觉检查能力，并把人类可读说明写入 `00-capability-report.md`，把机器可读结果写入 `00-capability-report.json`。JSON遵循 `references/schemas/capability-report.schema.json`，至少记录 `agent_adapter`、观察时间以及图片生成、视觉检查、DOCX和PDF能力的 `available`、`callers`、`tools` 与 `evidence`。
 
 能力检查覆盖当前执行器、父代理、客户端和MCP/插件。任一调用层真实暴露图片生成工具时，图片生成能力即为可用；不得把“当前子执行器无工具”误写为整个任务无工具。反之，模型品牌或产品宣传支持图片不等于当前客户端已经暴露工具。能力判断来自当前实际工具、可见接口或真实调用，不需要运行Skill探测脚本。缺少能力时记录 `CAPABILITY_GAP`、影响和替代方案；能继续的部分继续完成，不能虚报文件或调用。
 
-在 `01-research-contract.md` 冻结题目、论文类型、学科、研究对象、核心问题、方法或技术栈、证据边界、已有材料、目标正文长度、最低文献数、图表数、表格数、引用格式、个人信息和停止条件。字数按上述25,000字默认值处理；其他数量未指定时按论文层次和学科惯例制定明确目标。技术栈或研究方法变更必须记录原因。
+在 `01-research-contract.md` 冻结题目、`PAPER_LEVEL`（UNDERGRADUATE/MASTER/DOCTORAL/UNSPECIFIED）、论文类型、主语言、摘要合同、学科、研究对象、核心问题、方法或技术栈、证据边界、已有材料、目标正文长度、最低文献数、图表数、表格数、引用格式、个人信息和停止条件。其他数量未指定时按论文层次和学科惯例制定明确目标。
 
 所有阶段都在用户指定的输出目录中工作。不得访问用户禁止的目录，不得借用其他模型或其他论文的正文、文献、图片、数据和审查结果。执行过程中只简短汇报当前阶段、真实产物和阻塞项，不在聊天窗口重复整篇正文。
 
@@ -146,9 +148,11 @@ arXiv、bioRxiv、ChemRxiv、SSRN、NBER工作论文可以收录，但必须在�
 
 运行开始时保留 `run-params.md`，并通过文件级确定性拼接生成 `final-execution-prompt.md`；不得由模型重新生成完整方向提示词。
 
-`FULL_BUILD` 输出：`run-params.md`、`final-execution-prompt.md`、`00-capability-report.md`、`00-capability-report.json`、`00-profile-selection.json`、GUIDED/WEAK模型使用的 `00-execution-checkpoints.json`、`01-research-contract.md`、`02-search-log.md`、`03-evidence-matrix.csv`、`04-reference-audit.md`、`04-evidence-verification.json`、`references.bib`、`data/data-provenance.json`、`05-outline.md`、`06-argument-map.md`、`chapters/`、`figures/figure-plan.json`、`figures/figure-manifest.json`、`figures/figure-manifest.md`、`figures/figure-verification.json`、`tables/table-data-and-sources.md`、`equations/formula-audit.md`、`equations/formula-verification.json`、`07-paper-full.md`、`08-claim-citation-audit.md`、`09-peer-review.md`、`10-revision-log.md`、按下述规则命名的DOCX与PDF、可选同名TEX、`11-format-validation.md`、`12-final-qa-report.md`、`13-delivery-verification.json`、`14-adjudicated-status.json` 和 `run-manifest.json`。FULL_AUTONOMY不强制创建阶段任务卡；没有真实生成的文件不得列入完成清单。
+`FULL_BUILD` 输出：`run-params.md`、`final-execution-prompt.md`、`00-prompt-composition.json`、`00-capability-report.md`、`00-capability-report.json`、`00-profile-selection.json`、GUIDED/WEAK模型使用的 `00-execution-checkpoints.json`、`01-research-contract.md`、`02-search-log.md`、`03-evidence-matrix.csv`、`04-reference-audit.md`、`04-evidence-verification.json`、`references.bib`、`data/data-provenance.json`、`05-outline.md`、`06-argument-map.md`、`chapters/`、`figures/figure-plan.json`、`figures/figure-manifest.json`、`figures/figure-manifest.md`、`figures/figure-verification.json`、`tables/table-data-and-sources.md`、`equations/formula-audit.md`、`equations/formula-verification.json`、`07-paper-full.md`、`08-claim-citation-audit.md`、`09-peer-review.md`、`10-revision-log.md`、按下述规则命名的DOCX与PDF、可选同名TEX、`11-format-validation.md`、`12-final-qa-report.md`、`13-delivery-verification.json`、`14-adjudicated-status.json` 和 `run-manifest.json`。FULL_AUTONOMY不强制创建阶段任务卡；没有真实生成的文件不得列入完成清单。
 
-`run-manifest.json` 必须记录真实 `model_label`、`skill_version`、`execution_profile`、`profile_selection_report`、GUIDED/WEAK使用的 `execution_checkpoints`、`citation_mode`、`research_claim_level`、`document_profile`（`THESIS`、`JOURNAL`、`REPORT` 或 `CUSTOM`）、模型声明的 `research_status`、`delivery_status`、`final_status`、文献证据/图表/公式/交付/权威状态五份报告路径以及正式文档路径与摘要。`execution_profile` 只能为 `FULL_AUTONOMY`、`GUIDED` 或 `WEAK_MODEL`，并与 `00-profile-selection.json` 一致。字段固定为 `evidence_verification_report`、`figure_verification_report`、`formula_verification_report`、`delivery_verification_report`、`adjudicated_status_report`。模型声明只供冲突审计，最终状态以 `14-adjudicated-status.json` 为唯一真源。`THESIS`使用默认论文格式并要求PDF可见目录；`JOURNAL`和`REPORT`按对应模板/体例，不强制毕业论文目录；`CUSTOM`必须记录用户或学校模板的关键格式契约。
+`RESUME` 额外输出 `00-resume-plan.json`，不覆盖原提示词和冻结产物。`REVISE_ONLY` 输出 `revision-request.md`、`revision-impact.json`、`revision-execution-prompt.md`、`revision-prompt-composition.json`、`revision-log.md` 以及新时间戳DOCX/PDF，并保留修改前摘要。
+
+`run-manifest.json` 必须记录真实 `run_mode`、`model_label`、`skill_version`、`execution_profile`、`profile_selection_report`、GUIDED/WEAK使用的 `execution_checkpoints`、`paper_level`、`manuscript_language`、`abstract_contract`、`citation_mode`、`research_claim_level`、`document_profile`（`THESIS`、`JOURNAL`、`REPORT` 或 `CUSTOM`）、目标长度和容差、模型声明的三层状态、五份报告路径以及正式文档路径与摘要。Profile必须与选择报告一致；检查器运行/跳过必须符合模式矩阵。模型声明只供冲突审计，最终状态以 `14-adjudicated-status.json` 为唯一真源。
 
 ## 最终文档文件名
 
@@ -176,6 +180,8 @@ DOCX与PDF必须使用同一文件名主体和同一时间戳。`final-paper.doc
 ## 默认学术论文排版
 
 用户或学校没有提供模板时，使用以下通用中文学术论文格式；一旦提供模板，以模板为最高优先级：
+
+- 中文THESIS默认包含中文摘要、中文关键词、英文 `Abstract` 与英文 `Keywords`；两种摘要的研究对象、方法、结果性质与限制必须一致。中文JOURNAL无模板时同样使用双语摘要；REPORT、PROPOSAL和DEFENSE默认按主语言单语，学校或期刊模板优先；
 
 - 页面为A4；上、下页边距2.54cm，左3.0cm，右2.5cm；
 - 论文主标题居中、黑体或等价中文无衬线字体、22pt、加粗；
@@ -520,7 +526,7 @@ figure_plan:
   "spec_sha256": "...",
   "report_file": "figures/fig-2-1-layout-report.json",
   "report_sha256": "...",
-  "renderer": "aiwritepaper-academic-writing@1.5.0/render_svg_layout.mjs",
+  "renderer": "aiwritepaper-academic-writing@1.6.0/render_svg_layout.mjs",
   "renderer_sha256": "..."
 }
 ```
@@ -622,7 +628,7 @@ SVG降级图的机械校验额外检查可解析的直线、折线与矩形节�
 
 能力检查后、研究契约前先运行Profile选择器。没有用户覆盖、同模型历史失败或交付工具缺口时保持 `FULL_AUTONOMY`，不增加任务卡；同模型历史PARTIAL使用 `GUIDED`；同模型历史FAIL使用 `WEAK_MODEL`。Profile只改变执行组织方式，不改变真实性、文献、配图、公式和交付标准。GUIDED/WEAK使用阶段任务卡自动完成，不向用户逐阶段确认。
 
-`AUTO_BENCHMARK` 中不要停下来等待确认。每完成一个阶段就立即进入下一阶段，除非权限、伦理、凭证、付费或工具缺失使任务无法继续。材料不足时降低主张等级，不降低论文结构和设计论证的完成度。
+`AUTO_COMPLETE`（兼容旧名 `AUTO_BENCHMARK`）中不要停下来等待确认。每完成一个阶段就立即进入下一阶段，除非权限、伦理、凭证、付费或工具缺失使任务无法继续。材料不足时降低主张等级，不降低论文结构和设计论证的完成度。
 
 ## 字数与结构控制
 
@@ -658,6 +664,7 @@ SVG降级图的机械校验额外检查可解析的直线、折线与矩形节�
 - DOCX 可解包和解析；
 - PDF 可解析、页数大于零且无异常空白页；
 - 标题、摘要、各章、参考文献和致谢均存在；
+- 摘要合同满足文档类型与模板：中文THESIS/默认中文JOURNAL具有中文摘要、英文Abstract及两套关键词，且研究对象、方法、结果性质和限制一致；
 - 全文只有一份连续参考文献，各章没有重复插入局部书目；摘要、章节首尾与结论没有机械复述同一套多层分类；
 - 主体段落由具体材料、推理和边界推动，不以大量加粗列表、空泛框架词或无证据的“显著、全面、有效”代替论证；
 - 实际字数、图、表和文献达到合同要求；
@@ -726,7 +733,7 @@ python3 "<SKILL_DIR>/scripts/adjudicate_status.py" \
   --report "14-adjudicated-status.json"
 ```
 
-`FIGURES_ONLY` 且用户没有要求重新导出文档时，第一个命令增加 `--skip-documents`；`FULL_BUILD` 不得跳过文档检查。检查器默认从 `run-manifest.json` 读取正式DOCX/PDF路径，避免模型传入另一个临时文件规避验收。
+按 `references/mode-checker-matrix.json` 决定每个检查器是RUN、`SKIPPED_NOT_APPLICABLE`或`SKIPPED_UNCHANGED`。SKIPPED必须由 `write_skipped_report.py` 生成并绑定Manifest、未变化输入和上游真实报告；不得手写跳过状态。FULL_BUILD不得跳过任何底层检查。FIGURES_ONLY未要求重导文档时图表检查增加 `--skip-documents`，其他报告按矩阵生成。检查器默认从Manifest读取正式路径，避免传入临时文件规避验收。
 
 把实际值和目标值写入 `12-final-qa-report.md` 与 `run-manifest.json`：正文长度及目标区间、文献数、图片数、表格数、公式数与公式渲染状态、DOCX/PDF状态、Critical/Important数量、能力缺口、模型声明状态和五份报告路径。最终答复中的 `RESEARCH_STATUS`、`DELIVERY_STATUS`、`FINAL_STATUS`只读取 `14-adjudicated-status.json.authoritative_status`。总状态只能为：
 

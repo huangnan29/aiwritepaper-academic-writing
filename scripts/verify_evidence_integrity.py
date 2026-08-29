@@ -25,6 +25,7 @@ SKILL_ROOT = Path(__file__).resolve().parents[1]
 VALID_STATUSES = {"VERIFIED_FULLTEXT", "VERIFIED_METADATA", "UNVERIFIED", "REJECTED"}
 VALID_CITATION_MODES = {"NUMERIC", "AUTHOR_YEAR"}
 VALID_CLAIM_LEVELS = {"OBSERVED_STUDY", "DESIGN_ONLY", "PROTOCOL_ONLY", "REVIEW_SYNTHESIS"}
+VALID_RUN_MODES = {"FULL_BUILD", "RESUME", "REVISE_ONLY", "FIGURES_ONLY", "EXPORT_ONLY", "AUDIT_ONLY", "PROPOSAL_ONLY", "DEFENSE_ONLY"}
 VALID_DATA_ORIGINS = {
     "USER_PROVIDED", "AUTHOR_OBSERVED", "OFFICIAL_DOWNLOAD", "FORMAL_SIMULATION",
     "CALCULATED", "MODEL_SYNTHETIC", "MANUSCRIPT_CONTEXT",
@@ -71,7 +72,7 @@ def verifier_identity() -> Dict[str, str]:
     script = Path(__file__).resolve()
     return {
         "name": script.name,
-        "version": "1.5.0",
+        "version": "1.6.0",
         "sha256": sha256(script),
         "generated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
     }
@@ -136,7 +137,7 @@ class EvidenceVerifier:
             return {}
         for field in [
             "model_label", "skill_version", "citation_mode", "research_claim_level",
-            "execution_profile", "profile_selection_report",
+            "execution_profile", "profile_selection_report", "run_mode",
         ]:
             if not isinstance(payload.get(field), str) or not payload.get(field, "").strip():
                 self.error("RUN_MANIFEST_FIELD_MISSING", field)
@@ -146,6 +147,8 @@ class EvidenceVerifier:
             self.error("RESEARCH_CLAIM_LEVEL_INVALID", str(payload.get("research_claim_level")))
         if payload.get("execution_profile") not in {"FULL_AUTONOMY", "GUIDED", "WEAK_MODEL"}:
             self.error("EXECUTION_PROFILE_INVALID", str(payload.get("execution_profile")))
+        if payload.get("run_mode") not in VALID_RUN_MODES:
+            self.error("RUN_MODE_INVALID", str(payload.get("run_mode")))
         return payload
 
     def verify_profile_selection(self, manifest: Dict[str, Any]) -> List[Path]:

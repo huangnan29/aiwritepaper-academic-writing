@@ -64,6 +64,9 @@ class StatusAdjudicator:
         self.conflicts: List[str] = []
         self.report_hashes: Dict[str, str] = {}
         self.reports: Dict[str, Dict[str, Any]] = {}
+        self.mode_matrix = json.loads(
+            (SKILL_ROOT / "references" / "mode-checker-matrix.json").read_text(encoding="utf-8")
+        )
 
     def error(self, code: str, detail: str) -> None:
         self.errors.append(f"{code}: {detail}")
@@ -80,6 +83,7 @@ class StatusAdjudicator:
         return payload
 
     def load_reports(self, manifest: Dict[str, Any]) -> None:
+        run_mode = manifest.get("run_mode", "FULL_BUILD")
         for name, spec in REPORT_SPECS.items():
             value = manifest.get(spec["manifest_field"], spec["default"])
             path = resolve_under_root(self.root, value)
@@ -95,12 +99,14 @@ class StatusAdjudicator:
                 self.error("REPORT_SHAPE", name)
                 continue
             verifier = payload.get("verifier")
-            expected_script = SKILL_ROOT / "scripts" / spec["script"]
+            skipped = payload.get("status") in {"SKIPPED_NOT_APPLICABLE", "SKIPPED_UNCHANGED"}
+            expected_name = "write_skipped_report.py" if skipped else spec["script"]
+            expected_script = SKILL_ROOT / "scripts" / expected_name
             expected_hash = sha256(expected_script)
             if not isinstance(verifier, dict):
                 self.error("REPORT_VERIFIER_MISSING", name)
             else:
-                if verifier.get("name") != spec["script"]:
+                if verifier.get("name") != expected_name:
                     self.error("REPORT_VERIFIER_NAME", f"{name}: {verifier.get('name')}")
                 if verifier.get("sha256") != expected_hash:
                     self.error("REPORT_VERIFIER_STALE", name)
@@ -114,6 +120,18 @@ class StatusAdjudicator:
                         self.error("REPORT_INPUT_MISSING", f"{name}: {relative}")
                     elif not isinstance(declared_hash, str) or declared_hash.lower() != sha256(input_path):
                         self.error("REPORT_INPUT_STALE", f"{name}: {relative}")
+            if skipped:
+                allowed = self.mode_matrix.get("modes", {}).get(run_mode, {}).get(name, [])
+                if payload.get("status") not in allowed:
+                    self.error("REPORT_SKIP_NOT_ALLOWED", f"{run_mode}.{name}: {payload.get('status')}")
+                if payload.get("mode") != run_mode or payload.get("category") != name:
+                    self.error("REPORT_SKIP_IDENTITY", name)
+                if payload.get("status") == "SKIPPED_UNCHANGED":
+                    inherited = payload.get("inherited")
+                    if not isinstance(inherited, dict) or inherited.get("status") in {
+                        "SKIPPED_NOT_APPLICABLE", "SKIPPED_UNCHANGED"
+                    }:
+                        self.error("REPORT_SKIP_UPSTREAM_INVALID", name)
             self.reports[name] = payload
             self.report_hashes[name] = sha256(path)
 
@@ -166,11 +184,36 @@ class StatusAdjudicator:
                 elif item.get("sha256") != sha256(output_path):
                     self.error("EXECUTION_CHECKPOINT_HASH_MISMATCH", f"{stage_name}: {item.get('file')}")
 
+    def validate_revision_impact(self, manifest: Dict[str, Any]) -> None:
+        if manifest.get("run_mode") != "REVISE_ONLY": return
+        path = resolve_under_root(self.root, manifest.get("revision_impact", "revision-impact.json"))
+        if path is None or not path.is_file(): self.error("REVISION_IMPACT_MISSING", "revision-impact.json"); return
+        try: payload=json.loads(path.read_text(encoding="utf-8"))
+        except Exception as exc: self.error("REVISION_IMPACT_INVALID", str(exc)); return
+        if payload.get("schema_version")!="1.0" or payload.get("run_mode")!="REVISE_ONLY": self.error("REVISION_IMPACT_SCHEMA", str(path))
+        if not payload.get("items"): self.error("REVISION_ITEMS_MISSING", str(path))
+        for item in payload.get("frozen_files",[]):
+            p=resolve_under_root(self.root,item.get("file")) if isinstance(item,dict) else None
+            if p is None or not p.is_file(): self.error("REVISION_FROZEN_FILE_MISSING", str(item))
+            elif item.get("sha256")!=sha256(p): self.error("REVISION_FROZEN_FILE_CHANGED", str(item.get("file")))
+
     def derive(self, manifest: Dict[str, Any]) -> Dict[str, str]:
-        evidence = self.reports.get("evidence", {})
-        figure = self.reports.get("figure", {})
-        formula = self.reports.get("formula", {})
-        delivery = self.reports.get("delivery", {})
+        def effective(name: str) -> Dict[str, Any]:
+            payload = self.reports.get(name, {})
+            if payload.get("status") == "SKIPPED_UNCHANGED":
+                inherited = payload.get("inherited")
+                return inherited if isinstance(inherited, dict) else {}
+            if payload.get("status") == "SKIPPED_NOT_APPLICABLE":
+                if name == "evidence": return {"status": "EVIDENCE_OK"}
+                if name == "figure": return {"mechanical_status": "PASS", "visual_status": "PASS"}
+                if name == "formula": return {"status": "FORMULA_OK"}
+                if name == "delivery": return {"status": "DELIVERY_OK"}
+            return payload
+
+        evidence = effective("evidence")
+        figure = effective("figure")
+        formula = effective("formula")
+        delivery = effective("delivery")
         evidence_status = evidence.get("status")
         claim_level = manifest.get("research_claim_level")
 
@@ -239,6 +282,7 @@ def main() -> int:
     manifest_path = args.run_manifest if args.run_manifest.is_absolute() else root / args.run_manifest
     manifest = adjudicator.load_manifest(manifest_path)
     adjudicator.validate_execution_checkpoints(manifest)
+    adjudicator.validate_revision_impact(manifest)
     adjudicator.load_reports(manifest)
     authoritative = adjudicator.derive(manifest)
     script = Path(__file__).resolve()
@@ -249,6 +293,7 @@ def main() -> int:
             "model_label": manifest.get("model_label"),
             "skill_version": manifest.get("skill_version"),
             "execution_profile": manifest.get("execution_profile"),
+            "run_mode": manifest.get("run_mode", "FULL_BUILD"),
         },
         "authoritative_status": authoritative,
         "declared_status": {
@@ -261,7 +306,7 @@ def main() -> int:
         "warnings": adjudicator.warnings,
         "report_sha256": adjudicator.report_hashes,
         "verifier": {
-            "name": script.name, "version": "1.5.0", "sha256": sha256(script),
+            "name": script.name, "version": "1.6.0", "sha256": sha256(script),
             "generated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
         },
         "scope_note": "权威状态只裁决证据与交付门禁，不替代同行评审或学校审查",

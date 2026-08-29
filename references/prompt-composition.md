@@ -1,6 +1,6 @@
 # 最终执行提示词的原生文件拼接
 
-仅当 `python3 <SKILL_DIR>/scripts/compose_prompt.py` 不可用时读取本文件。目标是通过文件系统按顺序拼接，不让模型复述完整提示词。
+先依次尝试 `python3`、`python`，Windows再尝试 `py -3`。只有三个入口均不可用时才使用本文件的原生拼接。目标是通过文件系统按顺序拼接，不让模型复述完整提示词；原生拼接不能替代Profile选择和最终裁决。
 
 拼接顺序固定为：
 
@@ -33,6 +33,17 @@ cat "<SKILL_DIR>/references/deliverables/proposal-report.md"
 答辩材料改用 `defense-presentation.md`。
 
 ## Windows PowerShell
+
+可先解析Python启动器：
+
+```powershell
+if (Get-Command python3 -ErrorAction SilentlyContinue) { $Py = @("python3") }
+elseif (Get-Command python -ErrorAction SilentlyContinue) { $Py = @("python") }
+elseif (Get-Command py -ErrorAction SilentlyContinue) { $Py = @("py", "-3") }
+else { $Py = $null }
+```
+
+`$Py`非空时调用：单元素使用 `& $Py[0] <script> <args>`；`py -3`使用 `& $Py[0] $Py[1] <script> <args>`。为空时才执行下述PowerShell原生拼接。
 
 ```powershell
 $promptParts = @(

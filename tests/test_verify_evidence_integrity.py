@@ -40,10 +40,11 @@ class EvidenceIntegrityTests(unittest.TestCase):
             encoding="utf-8",
         )
         self.manifest = {
-            "model_label": "test-model", "skill_version": "1.5.0",
+            "model_label": "test-model", "skill_version": "1.6.0",
             "citation_mode": "NUMERIC", "research_claim_level": "DESIGN_ONLY",
             "execution_profile": "FULL_AUTONOMY",
             "profile_selection_report": "00-profile-selection.json",
+            "run_mode": "FULL_BUILD",
         }
         (self.root / "run-manifest.json").write_text(
             json.dumps(self.manifest, ensure_ascii=False), encoding="utf-8"

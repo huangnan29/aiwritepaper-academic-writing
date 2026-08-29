@@ -4,7 +4,7 @@ description: 根据题目和材料完成毕业论文、学位论文、期刊论�
 license: MIT
 metadata:
   author: huangnan29
-  version: "1.5.0"
+  version: "1.6.0"
   repository: https://github.com/huangnan29/aiwritepaper-academic-writing
 ---
 
@@ -15,6 +15,8 @@ metadata:
 ## 一、确定请求类型
 
 - 用户已有完整题目并要求完整论文：`FULL_BUILD`。
+- 用户要求“继续、恢复上次、接着完成”且目录已有运行文件：`RESUME`。
+- 用户提供导师、评审或修改意见并要求改稿：`REVISE_ONLY`。
 - 用户已有正文，只要求新增或优化配图：`FIGURES_ONLY`。
 - 用户已有定稿，只要求DOCX/PDF：`EXPORT_ONLY`。
 - 用户只要求检查：`AUDIT_ONLY`。
@@ -23,9 +25,15 @@ metadata:
 - 用户只要求答辩材料：`DEFENSE_ONLY`。
 - 用户没有题目或只有模糊方向：完整读取 [references/topic-selection.md](references/topic-selection.md)，一次收集必要信息并推荐10个题目；用户选定后再进入方向路由，不提前生成论文。
 
-已有题目且用户要求开始执行时，默认 `AUTO_BENCHMARK`：除权限、伦理、凭证、付费或无法继续的硬阻塞外，不停下来等待用户确认。
+已有题目且用户要求开始执行时，默认 `AUTO_COMPLETE`；`AUTO_BENCHMARK`作为兼容别名。除权限、伦理、凭证、付费或无法继续的硬阻塞外，不停下来等待用户确认。
 
-已有完整题目并触发 `FULL_BUILD` 时，用户没有明确指定正文长度则固定使用 `TARGET_LENGTH: 25000`，允许误差±10%，正文下限为22,500。用户明确给出的字数目标始终优先，不得被默认值覆盖。
+字数优先级为用户明确值、学校/期刊模板、明确论文层次默认值、25,000兜底。THESIS层次未知时仍使用25,000；详细中英文默认值见最终方向提示词。用户明确值始终优先。
+
+使用 `scripts/resolve_default_length.py` 根据 `DOCUMENT_PROFILE`、`PAPER_LEVEL`、语言和可选用户目标计算 `TARGET_LENGTH/MIN_LENGTH/MAX_LENGTH`，把结果写入 `run-params.md`；脚本只计算默认值，不参与正文。
+
+`RESUME` 不重新路由或重新合成提示词。先运行 `scripts/prepare_resume.py --root <OUTPUT_DIR>`，验证原提示词、Manifest和阶段SHA-256，从 `00-resume-plan.json.resume_from` 继续；只有提示词缺失/损坏或用户明确迁移版本时才确定性恢复。
+
+`REVISE_ONLY` 不重新研究整篇。保存用户意见为 `revision-request.md`，依据 [修改稿规则](references/deliverables/revision.md) 建立影响清单，再用 `compose_revision.py` 生成唯一 `revision-execution-prompt.md`；不覆盖原正式文档。
 
 ## 二、选择唯一方向
 
@@ -44,13 +52,15 @@ metadata:
 - Kimi Code、WorkBuddy或其承载的MiniMax模型：`references/integrations/kimi-workbuddy.md`
 - OpenCode、GitHub Copilot、ZCode、DeepSeek-tui及其他终端Agent：`references/integrations/universal-terminal.md`
 
+优先按实际工具拓扑选择：当前Agent直接生图选直连型适配；需要父任务代调图片选父子交接型；客户端提供GenerateImage和文件查看选客户端集成型；仅有终端与MCP选通用终端型。商品名只是示例，不是永久判断依据。
+
 不要按模型宣传能力推断工具。适配文件要求检查当前执行器、父代理、客户端和MCP/插件实际暴露的能力；任一层可以调用图片生成时，不能把“当前子执行器无工具”当成整个任务无工具。
 
 ## 四、能力预检与执行Profile
 
 除 `ROUTE_ONLY` 外，先在输出目录完成真实工具检查并写入 `00-capability-report.json`，再选择执行Profile。不要根据模型品牌或产品宣传推断能力。
 
-`MODEL_LABEL` 必须记录实际模型与客户端，例如 `Grok 4.6 @ Grok Build`、`Gemini Flash @ Antigravity`；无法读取模型名时写 `UNKNOWN @ <客户端>`，不能用 `aas-1.5.0` 或目录名冒充模型。多模型测试目录名另记为 `RUN_LABEL`。
+`MODEL_LABEL` 必须记录实际模型与客户端，例如 `Grok 4.6 @ Grok Build`、`Gemini Flash @ Antigravity`；无法读取模型名时写 `UNKNOWN @ <客户端>`，不能用Skill版本或目录名冒充模型。多模型测试目录名另记为 `RUN_LABEL`。
 
 使用Profile选择器生成 `00-profile-selection.json`：
 
@@ -93,14 +103,26 @@ python3 "<SKILL_DIR>/scripts/compose_prompt.py" \
   --compiled "<SKILL_DIR>/references/compiled-prompts/<PROMPT>-full.md" \
   --addon "<SKILL_DIR>/references/integrations/<ADAPTER>.md" \
   --profile-selection "<OUTPUT_DIR>/00-profile-selection.json" \
-  --output "<OUTPUT_DIR>/final-execution-prompt.md"
+  --output "<OUTPUT_DIR>/final-execution-prompt.md" \
+  --report "<OUTPUT_DIR>/00-prompt-composition.json"
 ```
 
 GUIDED增加 `--addon "<SKILL_DIR>/references/profiles/execution-checkpoints-template.json"` 与 `--profile-rules "<SKILL_DIR>/references/profiles/guided.md"`。WEAK_MODEL把 `--compiled` 改为同方向 `*-compact.md`，并增加同一个阶段模板addon与 `--profile-rules "<SKILL_DIR>/references/profiles/weak-model.md"`。
 
+REVISE_ONLY使用：
+
+```bash
+python3 "<SKILL_DIR>/scripts/compose_revision.py" \
+  --base-prompt "<OUTPUT_DIR>/final-execution-prompt.md" \
+  --request "<OUTPUT_DIR>/revision-request.md" \
+  --rules "<SKILL_DIR>/references/deliverables/revision.md" \
+  --output "<OUTPUT_DIR>/revision-execution-prompt.md" \
+  --report "<OUTPUT_DIR>/revision-prompt-composition.json"
+```
+
 - `PROPOSAL_ONLY` 或用户附加要求开题报告时，增加 `--addon "<SKILL_DIR>/references/deliverables/proposal-report.md"`。
 - `DEFENSE_ONLY` 或用户附加要求答辩材料时，增加 `--addon "<SKILL_DIR>/references/deliverables/defense-presentation.md"`。
-- `python3` 不可用时，读取 [references/prompt-composition.md](references/prompt-composition.md)，使用对应平台的原生文件拼接命令；但Profile选择和最终五项裁决无法执行时必须记录能力缺口，权威状态不能为PASS。
+- Python启动命令依次尝试 `python3`、`python`，Windows再尝试 `py -3`；后续所有示例中的 `python3` 替换为实际可用命令。三者均不可用时读取 [references/prompt-composition.md](references/prompt-composition.md) 使用原生拼接；Profile选择和最终裁决无法执行时记录能力缺口，权威状态不能为PASS。
 
 合成工具只负责文件拼接、UTF-8校验、原文完整性和SHA-256输出，不决定方向、章节、证据、图片或最终状态。`scripts/build_compiled.py` 与 `scripts/verify_compiled.py` 仅供Skill维护，不在论文生产阶段运行。
 
@@ -114,9 +136,17 @@ GUIDED增加 `--addon "<SKILL_DIR>/references/profiles/execution-checkpoints-tem
 
 执行模型自主选择当前可用工具。只有数据统计图、DOCX/PDF导出或本次任务确实需要时，才在输出目录创建项目专用代码；不得调用Skill维护脚本决定正文、证据、章节状态或 `PASS`。
 
-`scripts/verify_evidence_integrity.py` 只允许核对题录、引用覆盖、全文状态证据和数据来源；`scripts/verify_figure_package.py` 只允许检查能力报告与配图路由、图表Manifest、图片/VLM回执、文件摘要、Markdown路由、DOCX嵌图与标题/目录/题注结构以及基础PDF解析；`scripts/verify_formula_rendering.py` 只允许检查Markdown公式语法、Word OMML对象、PDF可见TeX残留和文件摘要；`scripts/verify_manuscript_delivery.py` 只允许统一统计正文、检查证据矩阵结构、正式文件名、路径、验收报告、哈希、Word表格/目录和PDF基础状态；`scripts/adjudicate_status.py` 只读取上述报告并计算唯一权威状态。这些检查器都不决定论文观点、公式含义或证据取舍，也不生成论文内容。
+- `verify_evidence_integrity.py`：核对题录、引用、全文状态和数据来源。
+- `verify_figure_package.py`：核对能力、图表路线、回执、嵌图和视觉状态。
+- `verify_formula_rendering.py`：核对公式源稿、OMML、PDF残留和摘要。
+- `verify_manuscript_delivery.py`：核对正文长度、文件名、目录、表格、DOCX/PDF和哈希。
+- `adjudicate_status.py`：读取底层报告并计算唯一权威状态。
 
-最终交付前必须依次运行文献证据、图表、公式、总交付四个检查器，再运行状态裁决器，并把五份报告保存到约定路径。文献或数据失败时回到检索、证据矩阵或结果章节；图表失败时回到配图阶段；公式失败时回到公式源稿或文档导出阶段；正文或文档失败时回到对应阶段。任何底层检查失败都不能被模型自述覆盖。图片机械通过但视觉核验缺失时权威交付状态为 `PARTIAL`；公式无法解析或Word中不是可编辑公式对象时为 `FAIL`。最终回复和任何评分只能读取 `14-adjudicated-status.json` 的 `authoritative_status`，不能读取模型在Manifest中自行声明的状态。
+检查器不决定论文观点、公式含义或证据取舍，也不生成论文内容。
+
+按 [模式×检查器矩阵](references/mode-checker-matrix.json) 运行检查。FULL_BUILD和AUDIT_ONLY运行四个底层检查器；其他模式只运行适用项，对不适用或未变化项使用 `write_skipped_report.py` 生成绑定上游摘要的标准SKIPPED报告，不能手写“跳过”。最后始终运行裁决器。
+
+文献或数据失败时回到证据阶段；图表失败时回到配图；公式失败时回到公式或导出；文档失败时回到排版。任何失败都不能被模型自述覆盖。最终回复只读取 `14-adjudicated-status.json.authoritative_status`。
 
 图片工具已经成功生成某图时，正文、DOCX和PDF必须插入该生成图或由它合成的最终PNG；同名SVG只能作为备用或修正源。最终嵌入路径以图表清单中的 `final_embed_file` 为唯一依据，不能按文件名或扩展名自行改选SVG。
 

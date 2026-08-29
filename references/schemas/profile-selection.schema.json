@@ -28,7 +28,7 @@
       "required": ["name", "version", "sha256", "generated_at"],
       "properties": {
         "name": {"const": "select_execution_profile.py"},
-        "version": {"const": "1.5.0"},
+        "version": {"const": "1.6.0"},
         "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
         "generated_at": {"type": "string", "minLength": 1}
       }

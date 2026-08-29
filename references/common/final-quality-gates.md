@@ -10,6 +10,7 @@
 - DOCX 可解包和解析；
 - PDF 可解析、页数大于零且无异常空白页；
 - 标题、摘要、各章、参考文献和致谢均存在；
+- 摘要合同满足文档类型与模板：中文THESIS/默认中文JOURNAL具有中文摘要、英文Abstract及两套关键词，且研究对象、方法、结果性质和限制一致；
 - 全文只有一份连续参考文献，各章没有重复插入局部书目；摘要、章节首尾与结论没有机械复述同一套多层分类；
 - 主体段落由具体材料、推理和边界推动，不以大量加粗列表、空泛框架词或无证据的“显著、全面、有效”代替论证；
 - 实际字数、图、表和文献达到合同要求；
@@ -78,7 +79,7 @@ python3 "<SKILL_DIR>/scripts/adjudicate_status.py" \
   --report "14-adjudicated-status.json"
 ```
 
-`FIGURES_ONLY` 且用户没有要求重新导出文档时，第一个命令增加 `--skip-documents`；`FULL_BUILD` 不得跳过文档检查。检查器默认从 `run-manifest.json` 读取正式DOCX/PDF路径，避免模型传入另一个临时文件规避验收。
+按 `references/mode-checker-matrix.json` 决定每个检查器是RUN、`SKIPPED_NOT_APPLICABLE`或`SKIPPED_UNCHANGED`。SKIPPED必须由 `write_skipped_report.py` 生成并绑定Manifest、未变化输入和上游真实报告；不得手写跳过状态。FULL_BUILD不得跳过任何底层检查。FIGURES_ONLY未要求重导文档时图表检查增加 `--skip-documents`，其他报告按矩阵生成。检查器默认从Manifest读取正式路径，避免传入临时文件规避验收。
 
 把实际值和目标值写入 `12-final-qa-report.md` 与 `run-manifest.json`：正文长度及目标区间、文献数、图片数、表格数、公式数与公式渲染状态、DOCX/PDF状态、Critical/Important数量、能力缺口、模型声明状态和五份报告路径。最终答复中的 `RESEARCH_STATUS`、`DELIVERY_STATUS`、`FINAL_STATUS`只读取 `14-adjudicated-status.json.authoritative_status`。总状态只能为：
 

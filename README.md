@@ -4,7 +4,7 @@
 
 **从论文题目到一份完整执行提示词，再持续交付正文、配图、DOCX 与 PDF。**
 
-![Version](https://img.shields.io/badge/version-1.5.0-2563EB?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.6.0-2563EB?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-16A34A?style=flat-square)
 ![Architecture](https://img.shields.io/badge/architecture-MD--first-7C3AED?style=flat-square)
 ![Directions](https://img.shields.io/badge/paper%20directions-19-EA580C?style=flat-square)
@@ -16,110 +16,18 @@
 > [!NOTE]
 > 当前版本采用 **MD-first 单提示词执行 + Agent能力适配 + 外部真实性与状态裁决**。模型继续负责方向、检索、论证、写作、公式含义和配图语义；脚本只核对文献、数据来源、公式、图片、文档和状态，不生成论文内容。
 
-## v1.5.0强弱模型自适应Profile
+## v1.6.0续跑、修改稿与模式化验收
 
-- 新增 `FULL_AUTONOMY`、`GUIDED`、`WEAK_MODEL` 三档执行Profile，学术标准完全一致，只改变任务组织和上下文负载；
-- 默认无弱信号时保持FULL_AUTONOMY，强模型最终提示词字节与旧版完全一致，不增加任务卡或中间停顿；
-- 同MODEL_LABEL历史PARTIAL自动选择GUIDED，历史FAIL自动选择WEAK_MODEL；用户显式覆盖优先，模型/客户端品牌不参与硬编码；
-- 新增 `select_execution_profile.py` 与 `00-profile-selection.json`，绑定实际能力报告、同模型历史裁决和选择器SHA-256；
-- 19份完整提示词继续保留，另由同一方向源生成19份 `*-compact.md`；完整版约84KB，紧凑版约11.6—13.0KB；
-- WEAK_MODEL只读取一个紧凑方向提示词和弱模型任务卡，不再加载完整版公共规则；
-- 真实电子电路方向前向合成中，Cursor FULL_AUTONOMY为86,561字节且与旧路径逐字节一致，Antigravity WEAK_MODEL为16,344字节，输入体积下降81.1%；
-- GUIDED/WEAK使用 `00-execution-checkpoints.json` 冻结六阶段产物和SHA-256，返修时一次只修文献、数据、图表、公式或文档中的一类问题；
-- 最终裁决器检查阶段文件与摘要，未关闭任务卡、产物被改写或Profile与Manifest不一致时不能交付PASS。
+- 新增RESUME：校验原提示词、Manifest、阶段产物和SHA-256，从首个未完成阶段继续，不重建冻结成果；
+- 新增REVISE_ONLY：把导师/评审意见转成影响清单，只修改受影响正文、证据、图表或公式，并以新时间戳导出；
+- 新增机器可读模式×检查器矩阵和 `SKIPPED_NOT_APPLICABLE/SKIPPED_UNCHANGED`，跳过项必须绑定原因、输入和上游报告；
+- 中文THESIS与无模板中文JOURNAL默认要求中文摘要/关键词和英文Abstract/Keywords；
+- 默认字数按用户、模板、论文层次和25,000兜底分层，英文稿使用独立词数口径；
+- Python入口依次尝试 `python3`、`python`、Windows `py -3`；
+- `AUTO_COMPLETE`成为面向用户的默认名称，`AUTO_BENCHMARK`保留兼容；
+- 适配器优先按实际工具拓扑选择，商品名仅作示例。
 
-## v1.4.0真实性与权威状态裁决
-
-- 新增 `verify_evidence_integrity.py`，核对DOI与题名、全文状态来源、页码/章节定位、引用覆盖和数据来源；
-- `VERIFIED_FULLTEXT`不能再只写Crossref、OpenAlex或题录页，必须提供合法全文定位与页码/章节；
-- 新增 `data/data-provenance.json`，区分用户数据、作者观察、官方下载、正式仿真、设计计算和模型合成数据；
-- 设计稿、实验方案没有真实观察数据时，出现“本系统实测”“实验班提升”“p<0.05”等结果型主张会机械失败；
-- 图表、公式、文献和交付报告绑定当前检查器与输入文件SHA-256，旧报告、检查后修改或手写PASS不能冒充新版验收；
-- 新增 `adjudicate_status.py`，在四个底层检查器之后生成 `14-adjudicated-status.json`；
-- 最终回复只读取权威状态，Manifest中的模型自报PASS只作为冲突证据保留；
-- 设计与方案论文可以保持高质量交付，但研究状态自动封顶为PARTIAL，不再被错误标为研究完成。
-
-## v1.3.1表格文字缩进修复
-
-- 正文两字符首行缩进只用于表格外普通段落，不再继承到表格单元格；
-- Pandoc常用的 `Compact`、`Table`、`Table Text` 样式必须显式取消首行与悬挂缩进；
-- 自定义DOCX导出器需要把单元格段落的 `firstLine`、`firstLineChars`、`hanging` 和 `hangingChars` 全部清零；
-- 交付检查器按“直接格式—当前样式—basedOn父样式—无效样式ID回退Normal”计算有效缩进，避免只检查单元格XML而漏掉样式继承；
-- 对Grok Build v1.3.0九篇结果回测，准确检出3篇共424个继承 `Compact firstLine=420` 的异常单元格，另外6篇保持通过。
-
-## v1.3.0公式渲染闭环
-
-- 最终Markdown统一使用 `$...$` 与 `$$...$$`；HY4常见的 `\(...\)`、`\[...\]` 必须在导出前等价归一化；
-- 检查程序写文件时的反斜杠转义，阻止 `\text`、`\frac`、`\nabla` 被错误转换成TAB、换页或换行控制字符；
-- DOCX公式必须转换为可编辑OMML对象，禁止把 `\frac`、`\sqrt`、`\text`、`\partial` 等TeX命令写进普通Word文本；
-- 优先使用支持Markdown/TeX数学到OMML的成熟导出链，后续排版不得以纯文本重建段落破坏公式；
-- PDF必须来自同一份已验证定稿，页面中不得显示公式分隔符或TeX源码；
-- 新增 `equations/formula-audit.md`，记录重要公式的符号、单位、量纲、假设和视觉抽查；
-- 新增 `verify_formula_rendering.py`，同时检查四类源稿分隔符、花括号、Word公式对象、DOCX/PDF残留源码与最终文件摘要；
-- `formula-verification.json` 未达到 `FORMULA_OK`，或者未与最终DOCX/PDF摘要绑定时，总交付检查不能通过。
-
-## v1.2.0中文论文配图语言一致性
-
-- 图片默认跟随论文主语言；中文论文的普通节点、流程动作、分组标题与风险提示使用简体中文；
-- Figure Manifest 1.5新增 `language_contract`、技术词白名单、逐字标签、文字渲染策略与语言视觉核验；
-- 图片Prompt可以用英文描述风格，但 `exact_labels` 必须使用论文目标语言并逐项出现；
-- Cursor GenerateImage、Imagine、imagegen等中文不稳定时保留生成底图，使用 `DETERMINISTIC_OVERLAY`确定性覆盖中文；
-- 覆盖路线绑定原始生成图、覆盖源、执行回执与最终PNG摘要，不能改插纯SVG冒充生图；
-- VLM发现非白名单英文长句、英文节点标题、中文错字、伪字或乱码时不能标记PASS。
-
-## v1.1.0跨方向SVG绘制方法
-
-- 每张SVG先生成事实与禁止项清单，再决定节点、边和坐标，防止拓扑先天画错；
-- 简单节点—边图优先无坐标语义Spec和确定性编译，稠密跨域结构失败后拆图或转原生SVG；
-- 为流程、架构、组织、ER/UML、电路、机制、时间线分别规定可复用布局语法；
-- 原生SVG采用整数网格、正交连线、边界端口、独立通道、外缘绕行和文字空白带；
-- 几何预检新增不同边共线重叠检测，与交叉、穿节点、节点重叠共同硬阻断；
-- `verify_figure_package.py --preflight-svg`可在整合Manifest前单独检查原生SVG；
-- 按论文实际栏宽反推字号与DPI，并对中文字体、特殊符号和实际PNG执行两轮视觉闭环。
-- 使用5张ESP32参考SVG前向验证：3张直接通过，2张准确检出此前严格交叉算法遗漏的共线通道重叠。
-
-## v1.0.0一步到位更名
-
-- 中文展示名统一为 **AIWritePaper｜AI学术写作全流程**；
-- Skill注册名与安装目录统一为 `aiwritepaper-academic-writing`；
-- GitHub仓库统一为 `huangnan29/aiwritepaper-academic-writing`；
-- `install.sh`与`install.ps1`支持迁移旧安装，安装成功后再清理旧目录；
-- 论文生成规则、19个方向和0.9.1验收能力保持不变。
-
-## v0.9.0解决什么
-
-```text
-统一Skill规则
-    ↓
-按当前客户端合入一个Agent适配文件
-    ↓
-模型完成论文与完整图片任务单
-    ↓
-当前执行器或父代理逐张调用真实图片工具
-    ↓
-图表验收 + 正文/文献/文档验收
-    ↓
-失败返回对应阶段修复，通过后才允许交付
-```
-
-- **Agent适配**：Codex、Grok、Gemini/Antigravity、Claude/Cursor、Kimi/WorkBuddy和通用终端Agent只维护短小工具映射，19个论文方向仍共用同一套规则。
-- **父子代理生图交接**：只要当前执行器、父代理、客户端或MCP任一层可以生图，适合生图的结构图就不能降级为SVG；Grok父代理不得只补第一张概念图。
-- **统一字数**：最终正文由确定性检查器按同一口径重新统计，模型自报和章节预算不能覆盖结果。
-- **文档闭环**：正式DOCX/PDF必须带相同时间戳，Manifest路径和哈希真实存在；Word目录、Heading层级、表格和图片题注缺失会阻止交付。
-- **双状态**：`RESEARCH_STATUS` 描述研究材料是否完整，`DELIVERY_STATUS` 描述文件是否合格；诚实降级的研究方案不再与损坏的Word交付混为一谈。
-
-## v0.9.1条件化验收
-
-v0.9.1根据Grok 38篇方向回归与Antigravity 0.8.2失败样本，增加不会一票否决正常功能的分级核验：
-
-- 虚构/模型合成数据、缺失文件、损坏矩阵、错误路由继续硬阻断；
-- 图片已机械通过但缺少VLM或人工视觉核验时，交付降为 `PARTIAL`，仍保留可用文件；
-- `THESIS`检查默认/学校模板字号和PDF可见目录，`JOURNAL`、`REPORT`不强制毕业论文目录，`CUSTOM`读取用户格式契约；
-- Figure Manifest 1.4新增 `exactness_class`，普通流程与框架可ImageGen，电路、晶体、化学结构、尺度、载荷和精确通路必须领域工具或确定性底图；
-- 数据源新增 `origin/data_origin`，模型自行生成的CSV不能冒充实验、问卷、临床、性能或统计结果；
-- 证据矩阵必须包含完整题录、支持主张、章节与访问/发表状态，不能只写 `source_id,DOI,status`；
-- 强制 `RESEARCH_STATUS`、`DELIVERY_STATUS`、`FINAL_STATUS` 三层一致；
-- 低于目标95%和重复免责声明只产生修订警告，不改变用户明确的±10%硬容差。
+历史版本细节、迁移说明和回归记录统一见 [CHANGELOG.md](CHANGELOG.md)。
 
 ## 你会得到什么
 
@@ -136,7 +44,9 @@ v0.9.1根据Grok 38篇方向回归与Antigravity 0.8.2失败样本，增加不�
 | 文档交付 | 生成并检查DOCX、PDF、目录、标题层级、题注和页码；最终文件按论文题目与时间戳命名 |
 | 公式交付 | 统一公式源稿、可编辑Word公式、PDF可见结果、符号/量纲审计与机械验收 |
 | 闭环验收 | 图表与正文/证据/文档分别机械验收，失败后返回对应阶段修复 |
-| 条件模式 | 支持单独配图、只导出文档、只审计、只做方向判断、开题报告和答辩材料 |
+| 断点续跑 | 校验提示词与阶段SHA-256，从首个未完成阶段继续 |
+| 修改稿 | 按导师/评审意见定点修改，保持未受影响证据和图表冻结 |
+| 条件模式 | 支持续跑、修改稿、单独配图、只导出、只审计、方向判断、开题和答辩 |
 
 ## 工作方式
 
@@ -563,6 +473,10 @@ aiwritepaper-academic-writing/
 ├── agents/openai.yaml
 ├── scripts/
 │   ├── compose_prompt.py   # 运行时只做确定性文件拼接
+│   ├── compose_revision.py # 合成单一修改稿执行提示词
+│   ├── prepare_resume.py   # 验证冻结阶段并生成续跑计划
+│   ├── write_skipped_report.py # 生成模式化SKIPPED报告
+│   ├── resolve_default_length.py # 解析分层默认正文长度
 │   ├── select_execution_profile.py # 选择强/引导/弱模型Profile
 │   ├── build_compiled.py   # 维护时重建19份完整提示词
 │   ├── verify_compiled.py  # 只读校验源文件、路由和版本同步
@@ -580,6 +494,9 @@ aiwritepaper-academic-writing/
 │   ├── test_verify_formula_rendering.py
 │   ├── test_verify_manuscript_delivery.py
 │   ├── test_adjudicate_status.py
+│   ├── test_resume_revision.py
+│   ├── test_write_skipped_report.py
+│   ├── test_resolve_default_length.py
 │   └── test_render_svg_layout.mjs
 ├── references/
 │   ├── compiled-prompts/    # 运行时只读取其中一个完整提示词
@@ -589,9 +506,10 @@ aiwritepaper-academic-writing/
 │   ├── profiles/            # FULL_AUTONOMY、GUIDED与WEAK_MODEL任务组织
 │   ├── schemas/             # Figure、SVG、能力、Profile、阶段与数据来源Schema
 │   ├── integrations/        # 各Agent短小能力适配文件
+│   ├── mode-checker-matrix.json # 模式与检查器运行/跳过矩阵
 │   ├── routing.md            # 唯一方向路由真源
 │   ├── topic-selection.md    # 无题目时按需读取
-│   └── deliverables/         # 开题与答辩按需附加
+│   └── deliverables/         # 开题、答辩与修改稿按需附加
 ├── install.sh
 └── install.ps1
 ```
@@ -606,7 +524,7 @@ aiwritepaper-academic-writing/
 
 ## 维护与版本
 
-- 当前版本：`1.5.0`
+- 当前版本：`1.6.0`
 - 更新记录：[CHANGELOG.md](CHANGELOG.md)
 - Skill入口：[SKILL.md](SKILL.md)
 - 历史复杂流水线版可通过Git标签`v0.3.1-runtime-gates`恢复

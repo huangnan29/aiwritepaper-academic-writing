@@ -1,5 +1,17 @@
 # 更新记录
 
+## 1.6.0 - 2026-08-29
+
+- 新增 `RESUME` 与 `prepare_resume.py`，验证原提示词、Manifest、阶段状态及SHA-256后从首个未完成阶段继续。
+- 新增 `REVISE_ONLY`、修改稿规则、影响清单Schema与确定性修改提示词合成器；未受影响证据和图表保持冻结。
+- 新增机器可读模式×检查器矩阵及 `write_skipped_report.py`；SKIPPED状态绑定模式、原因、输入和上游报告，FULL_BUILD禁止跳过。
+- 状态裁决器支持模式化RUN/UNCHANGED/NOT_APPLICABLE，并拒绝手写跳过、跨模式跳过和链式跳过。
+- 中文THESIS及无模板中文JOURNAL默认要求中英文摘要与关键词；DOCX和Markdown同时检查。
+- 默认字数按用户值、模板、论文层次和25,000兜底分层；新增 `resolve_default_length.py`，英文论文使用独立词数默认值。
+- Python入口补充 `python3`、`python`、Windows `py -3` 回退。
+- `AUTO_COMPLETE`替代面向用户的AUTO_BENCHMARK名称，旧名称保留兼容；适配器增加工具拓扑判断。
+- SKILL长段落改为检查器职责列表；README版本信息开始向CHANGELOG收敛，后续继续精简历史评测长文。
+
 ## 1.5.0 - 2026-08-29
 
 - 新增 `FULL_AUTONOMY`、`GUIDED`、`WEAK_MODEL` 三档执行Profile；公共真实性和交付标准不变，只调整任务组织与上下文负载。

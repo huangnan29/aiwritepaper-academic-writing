@@ -74,6 +74,8 @@ def main() -> int:
         "formula-verification.json", "04-evidence-verification.json",
         "14-adjudicated-status.json", "research_claim_level", "model_label", "skill_version",
         "execution_profile", "profile_selection_report", "execution_checkpoints",
+        "Abstract", "paper_level", "manuscript_language", "abstract_contract", "run_mode",
+        "00-prompt-composition.json", "00-resume-plan.json", "revision-impact.json",
     ]:
         if term not in output_contract and term not in read_source(COMMON_DIR / "autonomous-completion.md"):
             errors.append(f"输出契约缺少当前闭环字段: {term}")
@@ -191,6 +193,8 @@ def main() -> int:
         "references/profiles/guided.md",
         "references/profiles/weak-model.md",
         "references/profiles/execution-checkpoints-template.json",
+        "references/mode-checker-matrix.json",
+        "references/deliverables/revision.md",
     ]
     for reference in required_refs:
         if reference not in skill_text:
@@ -203,6 +207,8 @@ def main() -> int:
         "verify_formula_rendering.py",
         "verify_evidence_integrity.py", "adjudicate_status.py",
         "select_execution_profile.py",
+        "write_skipped_report.py", "prepare_resume.py", "compose_revision.py",
+        "resolve_default_length.py",
     ]:
         if not (SKILL_ROOT / "scripts" / script_name).is_file():
             errors.append(f"缺少脚本: scripts/{script_name}")
@@ -239,6 +245,11 @@ def main() -> int:
     for required_term in ["材料推动段落", "控制框架和清单", "句子与段落节奏", "全文只保留一份连续参考文献", "不能输出“AI率”"]:
         if required_term not in prose_rules:
             errors.append(f"学术正文质量规则缺少关键约束: {required_term}")
+
+    capability_rules = read_source(COMMON_DIR / "capability-and-runtime.md")
+    for required_term in ["RESUME", "REVISE_ONLY", "AUTO_COMPLETE", "UNDERGRADUATE", "MASTER", "DOCTORAL"]:
+        if required_term not in capability_rules:
+            errors.append(f"运行参数规则缺少v1.6契约: {required_term}")
 
     formula_rules = read_source(COMMON_DIR / "mathematical-formulas.md")
     for required_term in [
@@ -295,6 +306,22 @@ def main() -> int:
             errors.append("Execution Checkpoints Schema版本不是1.0")
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:
         errors.append(f"Execution Checkpoints Schema不可用: {exc}")
+
+    revision_schema_path = SKILL_ROOT / "references" / "schemas" / "revision-impact.schema.json"
+    try:
+        revision_schema = json.loads(revision_schema_path.read_text(encoding="utf-8"))
+        if revision_schema.get("properties", {}).get("schema_version", {}).get("const") != "1.0":
+            errors.append("Revision Impact Schema版本不是1.0")
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        errors.append(f"Revision Impact Schema不可用: {exc}")
+
+    try:
+        mode_matrix = json.loads((SKILL_ROOT / "references" / "mode-checker-matrix.json").read_text(encoding="utf-8"))
+        required_modes = {"FULL_BUILD","RESUME","REVISE_ONLY","FIGURES_ONLY","EXPORT_ONLY","AUDIT_ONLY","PROPOSAL_ONLY","DEFENSE_ONLY"}
+        if set(mode_matrix.get("modes", {})) != required_modes:
+            errors.append("模式检查器矩阵模式集合不完整")
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        errors.append(f"模式检查器矩阵不可用: {exc}")
 
     audit_text = "\n".join(
         path.read_text(encoding="utf-8")
