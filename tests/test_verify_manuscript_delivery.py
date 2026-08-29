@@ -94,6 +94,21 @@ class DeliveryTests(unittest.TestCase):
         verifier.verify_run_manifest(self.root / "run-manifest.json", self.markdown)
         return verifier
 
+    def replace_docx_and_hashes(self, document_xml: str, styles_xml: str) -> None:
+        manifest_path = self.root / "run-manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        docx = self.root / manifest["docx"]
+        with zipfile.ZipFile(docx, "w") as archive:
+            archive.writestr("word/document.xml", document_xml)
+            archive.writestr("word/styles.xml", styles_xml)
+        digest = hashlib.sha256(docx.read_bytes()).hexdigest()
+        manifest["docx_sha256"] = digest
+        manifest_path.write_text(json.dumps(manifest, ensure_ascii=False), encoding="utf-8")
+        formula_path = self.root / "equations/formula-verification.json"
+        formula = json.loads(formula_path.read_text(encoding="utf-8"))
+        formula["hashes"]["docx_sha256"] = digest
+        formula_path.write_text(json.dumps(formula, ensure_ascii=False), encoding="utf-8")
+
     def test_valid_delivery(self) -> None:
         self.assertEqual(self.verifier().errors, [])
 
@@ -129,6 +144,50 @@ class DeliveryTests(unittest.TestCase):
         manifest["tables"] = 2
         manifest_path.write_text(json.dumps(manifest, ensure_ascii=False), encoding="utf-8")
         self.assertTrue(any("DOCX_TABLE_COUNT_LOW" in item for item in self.verifier().errors))
+
+    def test_table_cell_inherits_first_line_indent_fails(self) -> None:
+        document_xml = '''<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>
+<w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>第1章</w:t></w:r></w:p>
+<w:p><w:pPr><w:pStyle w:val="Heading2"/></w:pPr><w:r><w:t>1.1</w:t></w:r></w:p>
+<w:tbl><w:tr><w:tc><w:p><w:pPr><w:pStyle w:val="Compact"/></w:pPr><w:r><w:t>表格文字</w:t></w:r></w:p></w:tc></w:tr></w:tbl>
+</w:body></w:document>'''
+        styles_xml = '''<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+<w:style w:type="paragraph" w:styleId="Normal"/>
+<w:style w:type="paragraph" w:styleId="Compact"><w:basedOn w:val="Normal"/><w:pPr><w:ind w:firstLine="420"/></w:pPr></w:style>
+</w:styles>'''
+        self.replace_docx_and_hashes(document_xml, styles_xml)
+        self.assertTrue(any(
+            "DOCX_TABLE_CELL_PARAGRAPH_INDENT" in item for item in self.verifier().errors
+        ))
+
+    def test_table_cell_explicit_zero_indent_passes(self) -> None:
+        document_xml = '''<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>
+<w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>第1章</w:t></w:r></w:p>
+<w:p><w:pPr><w:pStyle w:val="Heading2"/></w:pPr><w:r><w:t>1.1</w:t></w:r></w:p>
+<w:tbl><w:tr><w:tc><w:p><w:pPr><w:pStyle w:val="Compact"/><w:ind w:firstLine="0" w:firstLineChars="0" w:hanging="0" w:hangingChars="0"/></w:pPr><w:r><w:t>表格文字</w:t></w:r></w:p></w:tc></w:tr></w:tbl>
+</w:body></w:document>'''
+        styles_xml = '''<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+<w:style w:type="paragraph" w:styleId="Normal"/>
+<w:style w:type="paragraph" w:styleId="Compact"><w:basedOn w:val="Normal"/><w:pPr><w:ind w:firstLine="420"/></w:pPr></w:style>
+</w:styles>'''
+        self.replace_docx_and_hashes(document_xml, styles_xml)
+        self.assertFalse(any(
+            "DOCX_TABLE_CELL_PARAGRAPH_INDENT" in item for item in self.verifier().errors
+        ))
+
+    def test_undefined_table_style_falls_back_to_normal_indent(self) -> None:
+        document_xml = '''<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>
+<w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>第1章</w:t></w:r></w:p>
+<w:p><w:pPr><w:pStyle w:val="Heading2"/></w:pPr><w:r><w:t>1.1</w:t></w:r></w:p>
+<w:tbl><w:tr><w:tc><w:p><w:pPr><w:pStyle w:val="Compact"/></w:pPr><w:r><w:t>未定义样式单元格</w:t></w:r></w:p></w:tc></w:tr></w:tbl>
+</w:body></w:document>'''
+        styles_xml = '''<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:pPr><w:ind w:firstLine="420"/></w:pPr></w:style>
+</w:styles>'''
+        self.replace_docx_and_hashes(document_xml, styles_xml)
+        self.assertTrue(any(
+            "DOCX_TABLE_CELL_PARAGRAPH_INDENT" in item for item in self.verifier().errors
+        ))
 
     def test_missing_figure_verification_report_fails(self) -> None:
         (self.root / "figures/figure-verification.json").unlink()

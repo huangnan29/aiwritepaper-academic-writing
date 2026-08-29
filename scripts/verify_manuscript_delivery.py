@@ -233,9 +233,25 @@ class DeliveryVerifier:
             table_count = len(root.findall(".//w:tbl", WORD_NS))
             style_counts = {level: 0 for level in (1, 2, 3)}
             normal_size: Optional[float] = None
+            style_indents: Dict[str, Dict[str, str]] = {}
+            style_bases: Dict[str, str] = {}
+            style_ids = set()
             if styles_root is not None:
                 for style in styles_root.findall(".//w:style", WORD_NS):
                     style_id = style.get(f"{{{WORD_NS['w']}}}styleId", "")
+                    style_key = style_id.lower()
+                    if style_key:
+                        style_ids.add(style_key)
+                    indent_node = style.find("./w:pPr/w:ind", WORD_NS)
+                    if indent_node is not None:
+                        style_indents[style_key] = {
+                            key.rsplit("}", 1)[-1]: value for key, value in indent_node.attrib.items()
+                        }
+                    based_on_node = style.find("./w:basedOn", WORD_NS)
+                    if based_on_node is not None:
+                        style_bases[style_key] = based_on_node.get(
+                            f"{{{WORD_NS['w']}}}val", ""
+                        ).lower()
                     if style_id.lower() == "normal":
                         size_node = style.find("./w:rPr/w:sz", WORD_NS)
                         if size_node is not None:
@@ -243,6 +259,65 @@ class DeliveryVerifier:
                                 normal_size = float(size_node.get(f"{{{WORD_NS['w']}}}val", "")) / 2
                             except ValueError:
                                 pass
+
+            def effective_indent(paragraph: ET.Element) -> Dict[str, str]:
+                style_node = paragraph.find("./w:pPr/w:pStyle", WORD_NS)
+                style_key = (
+                    style_node.get(f"{{{WORD_NS['w']}}}val", "").lower()
+                    if style_node is not None else "normal"
+                )
+                if style_key not in style_ids:
+                    style_key = "normal"
+                chain: List[str] = []
+                seen = set()
+                while style_key and style_key not in seen:
+                    seen.add(style_key)
+                    chain.append(style_key)
+                    style_key = style_bases.get(style_key, "")
+                merged: Dict[str, str] = {}
+                for key in reversed(chain):
+                    merged.update(style_indents.get(key, {}))
+                direct_indent = paragraph.find("./w:pPr/w:ind", WORD_NS)
+                if direct_indent is not None:
+                    merged.update({
+                        key.rsplit("}", 1)[-1]: value
+                        for key, value in direct_indent.attrib.items()
+                    })
+                return merged
+
+            table_cell_paragraphs = 0
+            indented_table_cell_paragraphs = 0
+            table_indent_examples: List[str] = []
+            for paragraph in root.findall(".//w:tc/w:p", WORD_NS):
+                paragraph_text = "".join(
+                    node.text or "" for node in paragraph.findall(".//w:t", WORD_NS)
+                ).strip()
+                if not paragraph_text:
+                    continue
+                table_cell_paragraphs += 1
+                indent = effective_indent(paragraph)
+                bad_fields: List[str] = []
+                for field in ["firstLine", "firstLineChars", "hanging", "hangingChars"]:
+                    value = indent.get(field)
+                    if value is None:
+                        continue
+                    try:
+                        if int(value) != 0:
+                            bad_fields.append(f"{field}={value}")
+                    except ValueError:
+                        bad_fields.append(f"{field}={value}")
+                if bad_fields:
+                    indented_table_cell_paragraphs += 1
+                    if len(table_indent_examples) < 5:
+                        table_indent_examples.append(
+                            f"{paragraph_text[:24]} ({', '.join(bad_fields)})"
+                        )
+            if indented_table_cell_paragraphs:
+                self.error(
+                    "DOCX_TABLE_CELL_PARAGRAPH_INDENT",
+                    f"{indented_table_cell_paragraphs}/{table_cell_paragraphs}；示例: "
+                    + " | ".join(table_indent_examples),
+                )
             weighted_body_sizes: List[float] = []
             for paragraph in root.findall(".//w:p", WORD_NS):
                 style_node = paragraph.find("./w:pPr/w:pStyle", WORD_NS)
@@ -288,6 +363,8 @@ class DeliveryVerifier:
             self.metrics["docx"] = {
                 "tables": table_count, "heading_counts": style_counts,
                 "toc_field": "TOC" in field_text.upper(), "body_font_pt": body_font_pt,
+                "table_cell_paragraphs": table_cell_paragraphs,
+                "indented_table_cell_paragraphs": indented_table_cell_paragraphs,
             }
 
     def verify_pdf(self, path: Path, require_toc: bool) -> None:

@@ -4,7 +4,7 @@
 
 **从论文题目到一份完整执行提示词，再持续交付正文、配图、DOCX 与 PDF。**
 
-![Version](https://img.shields.io/badge/version-1.3.0-2563EB?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.3.1-2563EB?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-16A34A?style=flat-square)
 ![Architecture](https://img.shields.io/badge/architecture-MD--first-7C3AED?style=flat-square)
 ![Directions](https://img.shields.io/badge/paper%20directions-19-EA580C?style=flat-square)
@@ -15,6 +15,14 @@
 
 > [!NOTE]
 > 当前版本采用 **MD-first 单提示词执行 + Agent能力适配 + 确定性交付验收**。模型继续负责方向、检索、论证、写作、公式含义和配图语义；脚本只统计字数并核对公式结构、图片路由、文件、目录、表格与哈希，不生成论文内容。
+
+## v1.3.1表格文字缩进修复
+
+- 正文两字符首行缩进只用于表格外普通段落，不再继承到表格单元格；
+- Pandoc常用的 `Compact`、`Table`、`Table Text` 样式必须显式取消首行与悬挂缩进；
+- 自定义DOCX导出器需要把单元格段落的 `firstLine`、`firstLineChars`、`hanging` 和 `hangingChars` 全部清零；
+- 交付检查器按“直接格式—当前样式—basedOn父样式—无效样式ID回退Normal”计算有效缩进，避免只检查单元格XML而漏掉样式继承；
+- 对Grok Build v1.3.0九篇结果回测，准确检出3篇共424个继承 `Compact firstLine=420` 的异常单元格，另外6篇保持通过。
 
 ## v1.3.0公式渲染闭环
 
@@ -566,7 +574,7 @@ aiwritepaper-academic-writing/
 
 ## 维护与版本
 
-- 当前版本：`1.3.0`
+- 当前版本：`1.3.1`
 - 更新记录：[CHANGELOG.md](CHANGELOG.md)
 - Skill入口：[SKILL.md](SKILL.md)
 - 历史复杂流水线版可通过Git标签`v0.3.1-runtime-gates`恢复

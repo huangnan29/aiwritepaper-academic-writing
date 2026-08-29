@@ -57,7 +57,10 @@ def main() -> int:
     for tag in access_tags:
         if tag not in literature_common:
             errors.append(f"公共文献规则缺少访问标记: {tag}")
-    for term in ["GENERATED_AT_LOCAL", "YYYYMMDD-HHMMSS", "安全论文题目", "final-paper.docx", "run-manifest.json"]:
+    for term in [
+        "GENERATED_AT_LOCAL", "YYYYMMDD-HHMMSS", "安全论文题目", "final-paper.docx",
+        "run-manifest.json", "Word表格单元格缩进", "firstLineChars", "basedOn",
+    ]:
         if term not in output_contract:
             errors.append(f"输出契约缺少最终文件命名规则: {term}")
     for term in ["document_profile", "THESIS", "FINAL_STATUS", "figure-verification.json", "formula-verification.json"]:

@@ -1,5 +1,12 @@
 # 更新记录
 
+## 1.3.1 - 2026-08-28
+
+- 修复正文首行缩进被Pandoc `Compact` 或表格段落样式继承到Word单元格的问题。
+- 表格单元格普通段落强制取消首行与悬挂缩进，表头、文字型表体和数值型表体按内容分别对齐。
+- `verify_manuscript_delivery.py` 新增有效样式继承解析，沿直接格式、当前样式、`basedOn` 父样式以及无效样式ID向默认Normal回退，检查 `firstLine/firstLineChars/hanging/hangingChars`。
+- 新增继承异常与显式清零两项回归测试；对Grok Build v1.3.0九篇结果前向检查，检出3篇共424个真实异常单元格，6篇无误报。
+
 ## 1.3.0 - 2026-08-28
 
 - 新增数学公式公共规则，统一Markdown公式源稿、符号与量纲审计、Word可编辑公式和PDF可见结果要求。
