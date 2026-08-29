@@ -40,12 +40,27 @@ class EvidenceIntegrityTests(unittest.TestCase):
             encoding="utf-8",
         )
         self.manifest = {
-            "model_label": "test-model", "skill_version": "1.4.0",
+            "model_label": "test-model", "skill_version": "1.5.0",
             "citation_mode": "NUMERIC", "research_claim_level": "DESIGN_ONLY",
+            "execution_profile": "FULL_AUTONOMY",
+            "profile_selection_report": "00-profile-selection.json",
         }
         (self.root / "run-manifest.json").write_text(
             json.dumps(self.manifest, ensure_ascii=False), encoding="utf-8"
         )
+        capability_path = self.root / "00-capability-report.json"
+        capability_path.write_text(json.dumps({
+            "schema_version": "1.0", "agent_adapter": "test",
+        }), encoding="utf-8")
+        selector_script = Path(__file__).resolve().parents[1] / "scripts/select_execution_profile.py"
+        (self.root / "00-profile-selection.json").write_text(json.dumps({
+            "schema_version": "1.0", "selected_profile": "FULL_AUTONOMY",
+            "model_label": "test-model", "capability_report": "00-capability-report.json",
+            "capability_report_sha256": MODULE.sha256(capability_path),
+            "selector": {
+                "name": "select_execution_profile.py", "sha256": MODULE.sha256(selector_script),
+            },
+        }), encoding="utf-8")
         self.rows = [{
             "source_id": "S1", "title": "Example Study", "authors": "Author A",
             "year": "2024", "doi": "10.1000/example", "url": "https://example.org/fulltext",
@@ -87,6 +102,7 @@ class EvidenceIntegrityTests(unittest.TestCase):
     def run_verifier(self, resolver=None) -> MODULE.EvidenceVerifier:
         verifier = MODULE.EvidenceVerifier(self.root)
         manifest = verifier.load_manifest(self.root / "run-manifest.json")
+        verifier.verify_profile_selection(manifest)
         rows = verifier.load_matrix(self.root / "03-evidence-matrix.csv")
         verifier.verify_citations(self.markdown, rows, manifest.get("citation_mode", ""))
         with mock.patch.object(
@@ -137,6 +153,20 @@ class EvidenceIntegrityTests(unittest.TestCase):
             encoding="utf-8",
         )
         self.assertTrue(any("OBSERVED_RESULT_WITHOUT_DATA" in item for item in self.run_verifier().errors))
+
+    def test_profile_mismatch_fails(self) -> None:
+        profile_path = self.root / "00-profile-selection.json"
+        profile = json.loads(profile_path.read_text(encoding="utf-8"))
+        profile["selected_profile"] = "WEAK_MODEL"
+        profile_path.write_text(json.dumps(profile), encoding="utf-8")
+        self.assertTrue(any("PROFILE_SELECTION_MISMATCH" in item for item in self.run_verifier().errors))
+
+    def test_stale_profile_selector_fails(self) -> None:
+        profile_path = self.root / "00-profile-selection.json"
+        profile = json.loads(profile_path.read_text(encoding="utf-8"))
+        profile["selector"]["sha256"] = "0" * 64
+        profile_path.write_text(json.dumps(profile), encoding="utf-8")
+        self.assertTrue(any("PROFILE_SELECTOR_STALE" in item for item in self.run_verifier().errors))
 
 
 if __name__ == "__main__":

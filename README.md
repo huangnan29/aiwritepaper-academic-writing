@@ -4,7 +4,7 @@
 
 **从论文题目到一份完整执行提示词，再持续交付正文、配图、DOCX 与 PDF。**
 
-![Version](https://img.shields.io/badge/version-1.4.0-2563EB?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.5.0-2563EB?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-16A34A?style=flat-square)
 ![Architecture](https://img.shields.io/badge/architecture-MD--first-7C3AED?style=flat-square)
 ![Directions](https://img.shields.io/badge/paper%20directions-19-EA580C?style=flat-square)
@@ -15,6 +15,18 @@
 
 > [!NOTE]
 > 当前版本采用 **MD-first 单提示词执行 + Agent能力适配 + 外部真实性与状态裁决**。模型继续负责方向、检索、论证、写作、公式含义和配图语义；脚本只核对文献、数据来源、公式、图片、文档和状态，不生成论文内容。
+
+## v1.5.0强弱模型自适应Profile
+
+- 新增 `FULL_AUTONOMY`、`GUIDED`、`WEAK_MODEL` 三档执行Profile，学术标准完全一致，只改变任务组织和上下文负载；
+- 默认无弱信号时保持FULL_AUTONOMY，强模型最终提示词字节与旧版完全一致，不增加任务卡或中间停顿；
+- 同MODEL_LABEL历史PARTIAL自动选择GUIDED，历史FAIL自动选择WEAK_MODEL；用户显式覆盖优先，模型/客户端品牌不参与硬编码；
+- 新增 `select_execution_profile.py` 与 `00-profile-selection.json`，绑定实际能力报告、同模型历史裁决和选择器SHA-256；
+- 19份完整提示词继续保留，另由同一方向源生成19份 `*-compact.md`；完整版约84KB，紧凑版约11.6—13.0KB；
+- WEAK_MODEL只读取一个紧凑方向提示词和弱模型任务卡，不再加载完整版公共规则；
+- 真实电子电路方向前向合成中，Cursor FULL_AUTONOMY为86,561字节且与旧路径逐字节一致，Antigravity WEAK_MODEL为16,344字节，输入体积下降81.1%；
+- GUIDED/WEAK使用 `00-execution-checkpoints.json` 冻结六阶段产物和SHA-256，返修时一次只修文献、数据、图表、公式或文档中的一类问题；
+- 最终裁决器检查阶段文件与摘要，未关闭任务卡、产物被改写或Profile与Manifest不一致时不能交付PASS。
 
 ## v1.4.0真实性与权威状态裁决
 
@@ -551,6 +563,7 @@ aiwritepaper-academic-writing/
 ├── agents/openai.yaml
 ├── scripts/
 │   ├── compose_prompt.py   # 运行时只做确定性文件拼接
+│   ├── select_execution_profile.py # 选择强/引导/弱模型Profile
 │   ├── build_compiled.py   # 维护时重建19份完整提示词
 │   ├── verify_compiled.py  # 只读校验源文件、路由和版本同步
 │   ├── verify_evidence_integrity.py # 核验文献题录、引用和数据来源
@@ -561,6 +574,8 @@ aiwritepaper-academic-writing/
 │   └── render_svg_layout.mjs # 无依赖的确定性SVG布局编译器
 ├── tests/
 │   ├── test_verify_evidence_integrity.py
+│   ├── test_select_execution_profile.py
+│   ├── test_compose_prompt_profiles.py
 │   ├── test_verify_figure_package.py
 │   ├── test_verify_formula_rendering.py
 │   ├── test_verify_manuscript_delivery.py
@@ -568,9 +583,11 @@ aiwritepaper-academic-writing/
 │   └── test_render_svg_layout.mjs
 ├── references/
 │   ├── compiled-prompts/    # 运行时只读取其中一个完整提示词
+│   ├── compact-prompts/     # WEAK_MODEL只读取其中一个紧凑提示词
 │   ├── directions/          # 19个方向增量源
 │   ├── common/              # 通用规则源，含正文质量、统计图与Figure Trace
-│   ├── schemas/             # Figure、SVG、能力与数据来源Schema
+│   ├── profiles/            # FULL_AUTONOMY、GUIDED与WEAK_MODEL任务组织
+│   ├── schemas/             # Figure、SVG、能力、Profile、阶段与数据来源Schema
 │   ├── integrations/        # 各Agent短小能力适配文件
 │   ├── routing.md            # 唯一方向路由真源
 │   ├── topic-selection.md    # 无题目时按需读取
@@ -589,7 +606,7 @@ aiwritepaper-academic-writing/
 
 ## 维护与版本
 
-- 当前版本：`1.4.0`
+- 当前版本：`1.5.0`
 - 更新记录：[CHANGELOG.md](CHANGELOG.md)
 - Skill入口：[SKILL.md](SKILL.md)
 - 历史复杂流水线版可通过Git标签`v0.3.1-runtime-gates`恢复

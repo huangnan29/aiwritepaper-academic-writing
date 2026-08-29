@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""只读校验compiled prompts、路由目标和版本号同步。"""
+"""只读校验full/compact prompts、路由目标、Profile和版本号同步。"""
 
 from __future__ import annotations
 
@@ -9,12 +9,14 @@ from pathlib import Path
 from typing import List, Optional
 
 from build_compiled import (
-    COMMON_DIR,
+    COMMON_DIR, COMPACT_DIR,
     COMMON_FILES,
     COMPILED_DIR,
     SKILL_ROOT,
+    WEAK_CORE,
     direction_files,
     read_source,
+    render_compact,
     render_compiled,
 )
 
@@ -28,6 +30,7 @@ def main() -> int:
     errors: List[str] = []
     directions = direction_files()
     compiled = sorted(COMPILED_DIR.glob("*-full.md"))
+    compact = sorted(COMPACT_DIR.glob("*-compact.md"))
     access_tags = ["OPEN_API", "OPEN_WEB", "LOGIN_REQUIRED", "INSTITUTION_REQUIRED", "MANUAL_ONLY"]
     source_prefixes = ["发现与筛选", "证据与全文", "开放路线", "不宜作核心引文", "信源核验门槛"]
 
@@ -70,6 +73,7 @@ def main() -> int:
         "document_profile", "THESIS", "FINAL_STATUS", "figure-verification.json",
         "formula-verification.json", "04-evidence-verification.json",
         "14-adjudicated-status.json", "research_claim_level", "model_label", "skill_version",
+        "execution_profile", "profile_selection_report", "execution_checkpoints",
     ]:
         if term not in output_contract and term not in read_source(COMMON_DIR / "autonomous-completion.md"):
             errors.append(f"输出契约缺少当前闭环字段: {term}")
@@ -78,11 +82,20 @@ def main() -> int:
         errors.append(f"方向源文件应为19个，实际为{len(directions)}个")
     if len(compiled) != 19:
         errors.append(f"compiled prompts应为19个，实际为{len(compiled)}个")
+    if len(compact) != 19:
+        errors.append(f"compact prompts应为19个，实际为{len(compact)}个")
 
     expected_names = {f"{path.stem}-full.md" for path in directions}
     actual_names = {path.name for path in compiled}
     if expected_names != actual_names:
         errors.append(f"compiled文件集合不一致: 缺少={sorted(expected_names-actual_names)} 多出={sorted(actual_names-expected_names)}")
+    expected_compact_names = {f"{path.stem}-compact.md" for path in directions}
+    actual_compact_names = {path.name for path in compact}
+    if expected_compact_names != actual_compact_names:
+        errors.append(
+            f"compact文件集合不一致: 缺少={sorted(expected_compact_names-actual_compact_names)} "
+            f"多出={sorted(actual_compact_names-expected_compact_names)}"
+        )
 
     for direction in directions:
         direction_text = read_source(direction)
@@ -122,6 +135,27 @@ def main() -> int:
         if output_text.count(direction_text) != 1:
             errors.append(f"方向正文不是恰好一次: {output.name}")
 
+        compact_output = COMPACT_DIR / f"{direction.stem}-compact.md"
+        if compact_output.exists():
+            compact_text = compact_output.read_text(encoding="utf-8")
+            if compact_text != render_compact(direction):
+                errors.append(f"内容不同步: {compact_output.name}")
+            weak_core_text = read_source(WEAK_CORE)
+            if compact_text.count(weak_core_text) != 1:
+                errors.append(f"紧凑公共核心不是恰好一次: {compact_output.name}")
+            if compact_text.count(direction_text) != 1:
+                errors.append(f"紧凑方向正文不是恰好一次: {compact_output.name}")
+            size = len(compact_text.encode("utf-8"))
+            if size > 20000:
+                errors.append(f"紧凑提示词超过20KB: {compact_output.name} -> {size}")
+            for term in [
+                "25,000", "VERIFIED_FULLTEXT", "data/data-provenance.json", "IMAGE_GENERATION",
+                "DOMAIN_EXACT", "final_embed_file", "OMML", "DOCX", "PDF",
+                "14-adjudicated-status.json", "00-execution-checkpoints.json",
+            ]:
+                if term not in compact_text:
+                    errors.append(f"紧凑提示词缺少关键契约: {compact_output.name} -> {term}")
+
     routing = (SKILL_ROOT / "references" / "routing.md").read_text(encoding="utf-8")
     route_names = set(re.findall(r"references/compiled-prompts/([a-z0-9-]+-full\.md)", routing))
     if route_names != actual_names:
@@ -153,6 +187,10 @@ def main() -> int:
         "references/integrations/claude-cursor.md",
         "references/integrations/kimi-workbuddy.md",
         "references/integrations/universal-terminal.md",
+        "references/profiles/full-autonomy.md",
+        "references/profiles/guided.md",
+        "references/profiles/weak-model.md",
+        "references/profiles/execution-checkpoints-template.json",
     ]
     for reference in required_refs:
         if reference not in skill_text:
@@ -164,6 +202,7 @@ def main() -> int:
         "verify_figure_package.py", "verify_manuscript_delivery.py",
         "verify_formula_rendering.py",
         "verify_evidence_integrity.py", "adjudicate_status.py",
+        "select_execution_profile.py",
     ]:
         if not (SKILL_ROOT / "scripts" / script_name).is_file():
             errors.append(f"缺少脚本: scripts/{script_name}")
@@ -241,6 +280,22 @@ def main() -> int:
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:
         errors.append(f"Data Provenance Schema不可用: {exc}")
 
+    profile_schema_path = SKILL_ROOT / "references" / "schemas" / "profile-selection.schema.json"
+    try:
+        profile_schema = json.loads(profile_schema_path.read_text(encoding="utf-8"))
+        if profile_schema.get("properties", {}).get("schema_version", {}).get("const") != "1.0":
+            errors.append("Profile Selection Schema版本不是1.0")
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        errors.append(f"Profile Selection Schema不可用: {exc}")
+
+    checkpoint_schema_path = SKILL_ROOT / "references" / "schemas" / "execution-checkpoints.schema.json"
+    try:
+        checkpoint_schema = json.loads(checkpoint_schema_path.read_text(encoding="utf-8"))
+        if checkpoint_schema.get("properties", {}).get("schema_version", {}).get("const") != "1.0":
+            errors.append("Execution Checkpoints Schema版本不是1.0")
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        errors.append(f"Execution Checkpoints Schema不可用: {exc}")
+
     audit_text = "\n".join(
         path.read_text(encoding="utf-8")
         for path in [SKILL_ROOT / "SKILL.md", SKILL_ROOT / "README.md", *COMMON_DIR.glob("*.md"), *directions]
@@ -257,7 +312,7 @@ def main() -> int:
             print(f"- {error}")
         return 1
 
-    print("校验通过: 19份compiled prompts与源文件、路由和版本号全部同步")
+    print("校验通过: 19份full与19份compact prompts、源文件、路由和版本号全部同步")
     return 0
 
 

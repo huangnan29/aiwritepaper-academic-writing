@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""从公共规则与方向源文件重建19份自包含提示词。"""
+"""从公共规则与方向源文件重建19份完整版和19份紧凑版提示词。"""
 
 from __future__ import annotations
 
@@ -14,6 +14,8 @@ SKILL_ROOT = Path(__file__).resolve().parents[1]
 COMMON_DIR = SKILL_ROOT / "references" / "common"
 DIRECTIONS_DIR = SKILL_ROOT / "references" / "directions"
 COMPILED_DIR = SKILL_ROOT / "references" / "compiled-prompts"
+COMPACT_DIR = SKILL_ROOT / "references" / "compact-prompts"
+WEAK_CORE = COMMON_DIR / "weak-model-core.md"
 
 COMMON_FILES = [
     "capability-and-runtime.md",
@@ -63,6 +65,28 @@ def render_compiled(direction: Path) -> str:
     return "\n\n".join(sections) + "\n"
 
 
+def render_compact(direction: Path) -> str:
+    """由一个紧凑公共核心与同一方向源生成弱模型提示词。"""
+    prompt_id = direction.stem
+    header = (
+        "<!--\n"
+        "本文件由弱模型紧凑公共核心与当前方向源确定性合成。\n"
+        "运行时只读取本文件，不加载完整版提示词或其他公共规则。\n"
+        "公共来源：references/common/weak-model-core.md\n"
+        f"方向来源：references/directions/{direction.name}\n"
+        "-->\n\n"
+        f"# {prompt_id} 弱模型紧凑论文生成提示词\n"
+    )
+    return (
+        header.rstrip("\r\n")
+        + "\n\n<!-- 紧凑公共来源：references/common/weak-model-core.md -->\n\n"
+        + read_source(WEAK_CORE)
+        + f"\n\n<!-- 方向来源：references/directions/{direction.name} -->\n\n"
+        + read_source(direction)
+        + "\n"
+    )
+
+
 def direction_files() -> List[Path]:
     return sorted(DIRECTIONS_DIR.glob("*.md"))
 
@@ -99,13 +123,16 @@ def main() -> int:
 
     changed: List[str] = []
     for direction in directions:
-        output = COMPILED_DIR / f"{direction.stem}-full.md"
-        expected = render_compiled(direction)
-        current = output.read_text(encoding="utf-8") if output.exists() else None
-        if current != expected:
-            changed.append(output.name)
-            if not args.check:
-                atomic_write(output, expected)
+        outputs = [
+            (COMPILED_DIR / f"{direction.stem}-full.md", render_compiled(direction)),
+            (COMPACT_DIR / f"{direction.stem}-compact.md", render_compact(direction)),
+        ]
+        for output, expected in outputs:
+            current = output.read_text(encoding="utf-8") if output.exists() else None
+            if current != expected:
+                changed.append(str(output.relative_to(SKILL_ROOT)))
+                if not args.check:
+                    atomic_write(output, expected)
 
     if args.check and changed:
         print("不同步的compiled prompts:")
@@ -114,7 +141,7 @@ def main() -> int:
         return 1
 
     action = "需要重建" if args.check else "已重建"
-    print(f"{action}: {len(changed)}；方向总数: {len(directions)}")
+    print(f"{action}: {len(changed)}；方向总数: {len(directions)}；每方向full+compact")
     return 0
 
 

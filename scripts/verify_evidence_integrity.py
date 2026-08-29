@@ -21,6 +21,7 @@ import urllib.parse
 import urllib.request
 
 
+SKILL_ROOT = Path(__file__).resolve().parents[1]
 VALID_STATUSES = {"VERIFIED_FULLTEXT", "VERIFIED_METADATA", "UNVERIFIED", "REJECTED"}
 VALID_CITATION_MODES = {"NUMERIC", "AUTHOR_YEAR"}
 VALID_CLAIM_LEVELS = {"OBSERVED_STUDY", "DESIGN_ONLY", "PROTOCOL_ONLY", "REVIEW_SYNTHESIS"}
@@ -70,7 +71,7 @@ def verifier_identity() -> Dict[str, str]:
     script = Path(__file__).resolve()
     return {
         "name": script.name,
-        "version": "1.4.0",
+        "version": "1.5.0",
         "sha256": sha256(script),
         "generated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
     }
@@ -133,14 +134,61 @@ class EvidenceVerifier:
         if not isinstance(payload, dict):
             self.error("RUN_MANIFEST_SHAPE", "根对象必须为对象")
             return {}
-        for field in ["model_label", "skill_version", "citation_mode", "research_claim_level"]:
+        for field in [
+            "model_label", "skill_version", "citation_mode", "research_claim_level",
+            "execution_profile", "profile_selection_report",
+        ]:
             if not isinstance(payload.get(field), str) or not payload.get(field, "").strip():
                 self.error("RUN_MANIFEST_FIELD_MISSING", field)
         if payload.get("citation_mode") not in VALID_CITATION_MODES:
             self.error("CITATION_MODE_INVALID", str(payload.get("citation_mode")))
         if payload.get("research_claim_level") not in VALID_CLAIM_LEVELS:
             self.error("RESEARCH_CLAIM_LEVEL_INVALID", str(payload.get("research_claim_level")))
+        if payload.get("execution_profile") not in {"FULL_AUTONOMY", "GUIDED", "WEAK_MODEL"}:
+            self.error("EXECUTION_PROFILE_INVALID", str(payload.get("execution_profile")))
         return payload
+
+    def verify_profile_selection(self, manifest: Dict[str, Any]) -> List[Path]:
+        paths: List[Path] = []
+        report = resolve_under_root(self.root, manifest.get("profile_selection_report"))
+        if report is None or not report.is_file() or report.stat().st_size == 0:
+            self.error("PROFILE_SELECTION_REPORT_MISSING", str(manifest.get("profile_selection_report")))
+            return paths
+        paths.append(report)
+        try:
+            payload = json.loads(report.read_text(encoding="utf-8"))
+        except (UnicodeError, json.JSONDecodeError) as exc:
+            self.error("PROFILE_SELECTION_REPORT_INVALID", str(exc))
+            return paths
+        if not isinstance(payload, dict) or payload.get("schema_version") != "1.0":
+            self.error("PROFILE_SELECTION_SCHEMA", "当前仅接受schema_version=1.0")
+            return paths
+        if payload.get("selected_profile") != manifest.get("execution_profile"):
+            self.error("PROFILE_SELECTION_MISMATCH", str(payload.get("selected_profile")))
+        if payload.get("model_label") != manifest.get("model_label"):
+            self.error("PROFILE_MODEL_LABEL_MISMATCH", str(payload.get("model_label")))
+        selector = payload.get("selector")
+        selector_script = SKILL_ROOT / "scripts" / "select_execution_profile.py"
+        if not isinstance(selector, dict) or selector.get("name") != selector_script.name:
+            self.error("PROFILE_SELECTOR_IDENTITY_MISSING", str(selector))
+        elif selector.get("sha256") != sha256(selector_script):
+            self.error("PROFILE_SELECTOR_STALE", selector_script.name)
+        capability = Path(str(payload.get("capability_report") or "")).expanduser()
+        if not capability.is_absolute():
+            capability = (self.root / capability).resolve()
+        try:
+            capability.relative_to(self.root)
+        except ValueError:
+            self.error("PROFILE_CAPABILITY_PATH_ESCAPE", str(capability))
+            return paths
+        if not capability.is_file() or capability.stat().st_size == 0:
+            self.error("PROFILE_CAPABILITY_REPORT_MISSING", str(capability))
+        else:
+            paths.append(capability)
+            if payload.get("capability_report_sha256") != sha256(capability):
+                self.error("PROFILE_CAPABILITY_HASH_MISMATCH", str(capability))
+        self.metrics["execution_profile"] = manifest.get("execution_profile")
+        return paths
 
     def load_matrix(self, path: Path) -> List[Dict[str, str]]:
         required_exact = {
@@ -463,6 +511,7 @@ def main() -> int:
     markdown_path = rooted(root, args.markdown)
     provenance_path = rooted(root, args.provenance)
     manifest = verifier.load_manifest(manifest_path)
+    profile_input_paths = verifier.verify_profile_selection(manifest)
     rows = verifier.load_matrix(matrix_path)
     verifier.verify_citations(
         markdown_path, rows, str(manifest.get("citation_mode") or "")
@@ -479,7 +528,7 @@ def main() -> int:
     else:
         status = "EVIDENCE_OK"
     input_sha256: Dict[str, str] = {}
-    for path in [manifest_path, matrix_path, markdown_path, provenance_path]:
+    for path in [manifest_path, matrix_path, markdown_path, provenance_path, *profile_input_paths]:
         if path.is_file():
             try:
                 relative = str(path.resolve().relative_to(root))

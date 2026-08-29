@@ -146,9 +146,9 @@ arXiv、bioRxiv、ChemRxiv、SSRN、NBER工作论文可以收录，但必须在�
 
 运行开始时保留 `run-params.md`，并通过文件级确定性拼接生成 `final-execution-prompt.md`；不得由模型重新生成完整方向提示词。
 
-`FULL_BUILD` 输出：`run-params.md`、`final-execution-prompt.md`、`00-capability-report.md`、`00-capability-report.json`、`01-research-contract.md`、`02-search-log.md`、`03-evidence-matrix.csv`、`04-reference-audit.md`、`04-evidence-verification.json`、`references.bib`、`data/data-provenance.json`、`05-outline.md`、`06-argument-map.md`、`chapters/`、`figures/figure-plan.json`、`figures/figure-manifest.json`、`figures/figure-manifest.md`、`figures/figure-verification.json`、`tables/table-data-and-sources.md`、`equations/formula-audit.md`、`equations/formula-verification.json`、`07-paper-full.md`、`08-claim-citation-audit.md`、`09-peer-review.md`、`10-revision-log.md`、按下述规则命名的DOCX与PDF、可选同名TEX、`11-format-validation.md`、`12-final-qa-report.md`、`13-delivery-verification.json`、`14-adjudicated-status.json` 和 `run-manifest.json`。没有真实生成的文件不得列入完成清单。
+`FULL_BUILD` 输出：`run-params.md`、`final-execution-prompt.md`、`00-capability-report.md`、`00-capability-report.json`、`00-profile-selection.json`、GUIDED/WEAK模型使用的 `00-execution-checkpoints.json`、`01-research-contract.md`、`02-search-log.md`、`03-evidence-matrix.csv`、`04-reference-audit.md`、`04-evidence-verification.json`、`references.bib`、`data/data-provenance.json`、`05-outline.md`、`06-argument-map.md`、`chapters/`、`figures/figure-plan.json`、`figures/figure-manifest.json`、`figures/figure-manifest.md`、`figures/figure-verification.json`、`tables/table-data-and-sources.md`、`equations/formula-audit.md`、`equations/formula-verification.json`、`07-paper-full.md`、`08-claim-citation-audit.md`、`09-peer-review.md`、`10-revision-log.md`、按下述规则命名的DOCX与PDF、可选同名TEX、`11-format-validation.md`、`12-final-qa-report.md`、`13-delivery-verification.json`、`14-adjudicated-status.json` 和 `run-manifest.json`。FULL_AUTONOMY不强制创建阶段任务卡；没有真实生成的文件不得列入完成清单。
 
-`run-manifest.json` 必须记录真实 `model_label`、`skill_version`、`citation_mode`、`research_claim_level`、`document_profile`（`THESIS`、`JOURNAL`、`REPORT` 或 `CUSTOM`）、模型声明的 `research_status`、`delivery_status`、`final_status`、文献证据/图表/公式/交付/权威状态五份报告路径以及正式文档路径与摘要。字段固定为 `evidence_verification_report`、`figure_verification_report`、`formula_verification_report`、`delivery_verification_report`、`adjudicated_status_report`。模型声明只供冲突审计，最终状态以 `14-adjudicated-status.json` 为唯一真源。`THESIS`使用默认论文格式并要求PDF可见目录；`JOURNAL`和`REPORT`按对应模板/体例，不强制毕业论文目录；`CUSTOM`必须记录用户或学校模板的关键格式契约。
+`run-manifest.json` 必须记录真实 `model_label`、`skill_version`、`execution_profile`、`profile_selection_report`、GUIDED/WEAK使用的 `execution_checkpoints`、`citation_mode`、`research_claim_level`、`document_profile`（`THESIS`、`JOURNAL`、`REPORT` 或 `CUSTOM`）、模型声明的 `research_status`、`delivery_status`、`final_status`、文献证据/图表/公式/交付/权威状态五份报告路径以及正式文档路径与摘要。`execution_profile` 只能为 `FULL_AUTONOMY`、`GUIDED` 或 `WEAK_MODEL`，并与 `00-profile-selection.json` 一致。字段固定为 `evidence_verification_report`、`figure_verification_report`、`formula_verification_report`、`delivery_verification_report`、`adjudicated_status_report`。模型声明只供冲突审计，最终状态以 `14-adjudicated-status.json` 为唯一真源。`THESIS`使用默认论文格式并要求PDF可见目录；`JOURNAL`和`REPORT`按对应模板/体例，不强制毕业论文目录；`CUSTOM`必须记录用户或学校模板的关键格式契约。
 
 ## 最终文档文件名
 
@@ -520,7 +520,7 @@ figure_plan:
   "spec_sha256": "...",
   "report_file": "figures/fig-2-1-layout-report.json",
   "report_sha256": "...",
-  "renderer": "aiwritepaper-academic-writing@1.4.0/render_svg_layout.mjs",
+  "renderer": "aiwritepaper-academic-writing@1.5.0/render_svg_layout.mjs",
   "renderer_sha256": "..."
 }
 ```
@@ -620,6 +620,8 @@ SVG降级图的机械校验额外检查可解析的直线、折线与矩形节�
 
 固定主顺序为：能力检查 → 研究契约 → 检索与核验 → 证据矩阵 → 大纲与字数预算 → 分章写作 → 图表与表格 → 全文整合 → 引文审计 → 同行评审与修订 → DOCX/PDF → 最终验收。
 
+能力检查后、研究契约前先运行Profile选择器。没有用户覆盖、同模型历史失败或交付工具缺口时保持 `FULL_AUTONOMY`，不增加任务卡；同模型历史PARTIAL使用 `GUIDED`；同模型历史FAIL使用 `WEAK_MODEL`。Profile只改变执行组织方式，不改变真实性、文献、配图、公式和交付标准。GUIDED/WEAK使用阶段任务卡自动完成，不向用户逐阶段确认。
+
 `AUTO_BENCHMARK` 中不要停下来等待确认。每完成一个阶段就立即进入下一阶段，除非权限、伦理、凭证、付费或工具缺失使任务无法继续。材料不足时降低主张等级，不降低论文结构和设计论证的完成度。
 
 ## 字数与结构控制
@@ -660,6 +662,7 @@ SVG降级图的机械校验额外检查可解析的直线、折线与矩形节�
 - 主体段落由具体材料、推理和边界推动，不以大量加粗列表、空泛框架词或无证据的“显著、全面、有效”代替论证；
 - 实际字数、图、表和文献达到合同要求；
 - `00-capability-report.json` 可解析，且图片生成能力覆盖当前执行器、父代理、客户端与MCP/插件；
+- `00-profile-selection.json` 由当前选择器生成、绑定能力报告与同模型历史裁决，`execution_profile` 与Manifest一致；FULL_AUTONOMY未被无依据降级，WEAK_MODEL确实使用唯一 `*-compact.md` 与弱模型任务卡；
 - 证据矩阵包含完整题录、主张与章节映射字段；只有元数据的文献没有被用于全文级实验、参数、结果或引语主张；
 - 每条 `VERIFIED_FULLTEXT` 文献具有合法全文来源、`fulltext_locator` 与 `page_locator`；仅有Crossref、OpenAlex、索引库或题录页时不得标为全文；DOI解析后题名不存在明确错配；
 - 正文引用模式与文末列表一致，每条正式参考文献在正文出现且所有正文引用均能回到证据矩阵；
@@ -694,7 +697,7 @@ SVG降级图的机械校验额外检查可解析的直线、折线与矩形节�
 - 所有最终文件计算 SHA-256。
 - 最终DOCX与PDF文件名均为“安全论文题目_YYYYMMDD-HHMMSS”，共用同一时间戳；`run-manifest.json`记录生成时间、时区、正式路径和SHA-256，不能把 `final-paper.docx/.pdf` 列为最终交付。
 - `THESIS`文档的DOCX正文样式满足默认或学校模板的字号与行距，PDF中存在实际可见目录；`JOURNAL`、`REPORT`和`CUSTOM`按各自格式契约验收，不套用毕业论文目录门。
-- `04-evidence-verification.json`、`figures/figure-verification.json`、`equations/formula-verification.json`、`13-delivery-verification.json` 与 `14-adjudicated-status.json` 已真实写入交付包；四份底层报告同时绑定当前检查器SHA-256和本次输入文件SHA-256，检查后修改正文、证据矩阵、数据来源、图表清单或最终文档会使旧报告失效。只有模型自述或旧检查器报告不算闭环。
+- `04-evidence-verification.json`、`figures/figure-verification.json`、`equations/formula-verification.json`、`13-delivery-verification.json` 与 `14-adjudicated-status.json` 已真实写入交付包；四份底层报告同时绑定当前检查器SHA-256和本次输入文件SHA-256，检查后修改Profile、正文、证据矩阵、数据来源、图表清单或最终文档会使旧报告失效。只有模型自述或旧检查器报告不算闭环。
 
 存在Python能力时依次运行文献证据、图表、公式和总交付四个底层检查器，最后运行权威状态裁决器。分别把结果写入 `04-evidence-verification.json`、`figures/figure-verification.json`、`equations/formula-verification.json`、`13-delivery-verification.json` 与 `14-adjudicated-status.json`。底层脚本失败时返回对应阶段修复后重新运行；裁决器只计算状态，不修复论文。脚本通过不证明学术结论正确，也不能替代视觉与同行评审。
 

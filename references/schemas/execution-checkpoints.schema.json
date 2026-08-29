@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/huangnan29/aiwritepaper-academic-writing/references/schemas/execution-checkpoints.schema.json",
+  "title": "AIWritePaper Execution Checkpoints",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "execution_profile", "stages"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "execution_profile": {"enum": ["GUIDED", "WEAK_MODEL"]},
+    "stages": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["EVIDENCE", "OUTLINE", "DRAFT", "FIGURES", "DOCUMENTS", "VALIDATION"],
+      "properties": {
+        "EVIDENCE": {"$ref": "#/$defs/stage"},
+        "OUTLINE": {"$ref": "#/$defs/stage"},
+        "DRAFT": {"$ref": "#/$defs/stage"},
+        "FIGURES": {"$ref": "#/$defs/stage"},
+        "DOCUMENTS": {"$ref": "#/$defs/stage"},
+        "VALIDATION": {"$ref": "#/$defs/stage"}
+      }
+    }
+  },
+  "$defs": {
+    "stage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "summary", "errors", "outputs"],
+      "properties": {
+        "status": {"enum": ["PENDING", "IN_PROGRESS", "PASS", "PARTIAL", "FAIL"]},
+        "summary": {"type": "string"},
+        "errors": {"type": "array", "items": {"type": "string"}},
+        "outputs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["file", "sha256"],
+            "properties": {
+              "file": {"type": "string", "minLength": 1},
+              "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+            }
+          }
+        }
+      }
+    }
+  }
+}

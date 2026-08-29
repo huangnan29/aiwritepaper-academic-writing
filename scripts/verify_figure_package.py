@@ -927,7 +927,7 @@ def main() -> int:
         "warnings": verifier.warnings,
         "input_sha256": input_sha256,
         "verifier": {
-            "name": Path(__file__).name, "version": "1.4.0",
+            "name": Path(__file__).name, "version": "1.5.0",
             "sha256": verifier.sha256(Path(__file__).resolve()),
             "generated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
         },

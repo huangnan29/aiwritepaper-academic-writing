@@ -1,5 +1,18 @@
 # 更新记录
 
+## 1.5.0 - 2026-08-29
+
+- 新增 `FULL_AUTONOMY`、`GUIDED`、`WEAK_MODEL` 三档执行Profile；公共真实性和交付标准不变，只调整任务组织与上下文负载。
+- 新增 `select_execution_profile.py` 与Profile Selection Schema；用户覆盖优先，同模型历史PARTIAL进入GUIDED、历史FAIL进入WEAK_MODEL，默认保持强模型自主路径。
+- FULL_AUTONOMY的最终提示词字节与旧合成方式完全一致，不附加Profile任务卡，防止强模型退化。
+- 新增弱模型紧凑公共核心，并从同一19方向源确定性生成19份 `*-compact.md`；实际体积约11.6—13.0KB，对比完整版约84KB。
+- 真实电子电路方向前向合成验证：Cursor FULL_AUTONOMY为86,561字节且与旧路径逐字节一致；Antigravity同模型历史FAIL自动选择WEAK_MODEL，最终输入16,344字节，减少81.1%。
+- GUIDED使用完整提示词加阶段检查；WEAK_MODEL使用唯一compact提示词加弱模型任务卡，不同时加载完整版。
+- 新增 `00-execution-checkpoints.json` 与Schema，六阶段产物绑定路径和SHA-256；未关闭任务卡、文件缺失或后续改写时最终裁决失败。
+- `compose_prompt.py` 新增Profile校验，阻止WEAK_MODEL误用full、GUIDED漏任务卡或FULL_AUTONOMY被附加弱模型模板。
+- `run-manifest.json` 新增 `execution_profile`、`profile_selection_report` 与条件化 `execution_checkpoints`；权威状态报告记录实际模型、Skill版本和Profile。
+- 新增15项Profile选择、合成、身份绑定与阶段裁决测试，并把compact同步、体积上限和关键契约接入CI。
+
 ## 1.4.0 - 2026-08-29
 
 - 新增 `verify_evidence_integrity.py`，机械核对DOI题名、全文状态来源、定位信息、引用覆盖和数据来源。

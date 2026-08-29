@@ -117,6 +117,55 @@ class StatusAdjudicator:
             self.reports[name] = payload
             self.report_hashes[name] = sha256(path)
 
+    def validate_execution_checkpoints(self, manifest: Dict[str, Any]) -> None:
+        profile = manifest.get("execution_profile")
+        if profile == "FULL_AUTONOMY":
+            return
+        if profile not in {"GUIDED", "WEAK_MODEL"}:
+            self.error("EXECUTION_PROFILE_INVALID", str(profile))
+            return
+        value = manifest.get("execution_checkpoints", "00-execution-checkpoints.json")
+        path = resolve_under_root(self.root, value)
+        if path is None or not path.is_file() or path.stat().st_size == 0:
+            self.error("EXECUTION_CHECKPOINTS_MISSING", str(value))
+            return
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (UnicodeError, json.JSONDecodeError) as exc:
+            self.error("EXECUTION_CHECKPOINTS_INVALID", str(exc))
+            return
+        if not isinstance(payload, dict) or payload.get("schema_version") != "1.0":
+            self.error("EXECUTION_CHECKPOINTS_SCHEMA", "当前仅接受schema_version=1.0")
+            return
+        if payload.get("execution_profile") != profile:
+            self.error("EXECUTION_CHECKPOINTS_PROFILE_MISMATCH", str(payload.get("execution_profile")))
+        stages = payload.get("stages")
+        required = ["EVIDENCE", "OUTLINE", "DRAFT", "FIGURES", "DOCUMENTS", "VALIDATION"]
+        if not isinstance(stages, dict):
+            self.error("EXECUTION_CHECKPOINTS_STAGES", "stages必须为对象")
+            return
+        for stage_name in required:
+            stage = stages.get(stage_name)
+            if not isinstance(stage, dict):
+                self.error("EXECUTION_CHECKPOINT_STAGE_MISSING", stage_name)
+                continue
+            status = stage.get("status")
+            if status not in {"PASS", "PARTIAL"}:
+                self.error("EXECUTION_CHECKPOINT_STAGE_OPEN", f"{stage_name}: {status}")
+            outputs = stage.get("outputs")
+            if not isinstance(outputs, list) or not outputs:
+                self.error("EXECUTION_CHECKPOINT_OUTPUTS_MISSING", stage_name)
+                continue
+            for item in outputs:
+                if not isinstance(item, dict):
+                    self.error("EXECUTION_CHECKPOINT_OUTPUT_INVALID", stage_name)
+                    continue
+                output_path = resolve_under_root(self.root, item.get("file"))
+                if output_path is None or not output_path.is_file() or output_path.stat().st_size == 0:
+                    self.error("EXECUTION_CHECKPOINT_FILE_MISSING", f"{stage_name}: {item.get('file')}")
+                elif item.get("sha256") != sha256(output_path):
+                    self.error("EXECUTION_CHECKPOINT_HASH_MISMATCH", f"{stage_name}: {item.get('file')}")
+
     def derive(self, manifest: Dict[str, Any]) -> Dict[str, str]:
         evidence = self.reports.get("evidence", {})
         figure = self.reports.get("figure", {})
@@ -189,12 +238,18 @@ def main() -> int:
     adjudicator = StatusAdjudicator(root)
     manifest_path = args.run_manifest if args.run_manifest.is_absolute() else root / args.run_manifest
     manifest = adjudicator.load_manifest(manifest_path)
+    adjudicator.validate_execution_checkpoints(manifest)
     adjudicator.load_reports(manifest)
     authoritative = adjudicator.derive(manifest)
     script = Path(__file__).resolve()
     payload = {
         "schema_version": "1.0",
         "status": f"ADJUDICATED_{authoritative['final_status']}",
+        "run_identity": {
+            "model_label": manifest.get("model_label"),
+            "skill_version": manifest.get("skill_version"),
+            "execution_profile": manifest.get("execution_profile"),
+        },
         "authoritative_status": authoritative,
         "declared_status": {
             "research_status": manifest.get("research_status"),
@@ -206,7 +261,7 @@ def main() -> int:
         "warnings": adjudicator.warnings,
         "report_sha256": adjudicator.report_hashes,
         "verifier": {
-            "name": script.name, "version": "1.4.0", "sha256": sha256(script),
+            "name": script.name, "version": "1.5.0", "sha256": sha256(script),
             "generated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
         },
         "scope_note": "权威状态只裁决证据与交付门禁，不替代同行评审或学校审查",

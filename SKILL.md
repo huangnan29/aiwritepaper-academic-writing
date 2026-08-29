@@ -4,7 +4,7 @@ description: 根据题目和材料完成毕业论文、学位论文、期刊论�
 license: MIT
 metadata:
   author: huangnan29
-  version: "1.4.0"
+  version: "1.5.0"
   repository: https://github.com/huangnan29/aiwritepaper-academic-writing
 ---
 
@@ -46,29 +46,61 @@ metadata:
 
 不要按模型宣传能力推断工具。适配文件要求检查当前执行器、父代理、客户端和MCP/插件实际暴露的能力；任一层可以调用图片生成时，不能把“当前子执行器无工具”当成整个任务无工具。
 
-## 四、确定性合成最终执行提示词
+## 四、能力预检与执行Profile
+
+除 `ROUTE_ONLY` 外，先在输出目录完成真实工具检查并写入 `00-capability-report.json`，再选择执行Profile。不要根据模型品牌或产品宣传推断能力。
+
+`MODEL_LABEL` 必须记录实际模型与客户端，例如 `Grok 4.6 @ Grok Build`、`Gemini Flash @ Antigravity`；无法读取模型名时写 `UNKNOWN @ <客户端>`，不能用 `aas-1.5.0` 或目录名冒充模型。多模型测试目录名另记为 `RUN_LABEL`。
+
+使用Profile选择器生成 `00-profile-selection.json`：
+
+```bash
+python3 "<SKILL_DIR>/scripts/select_execution_profile.py" \
+  --capability-report "<OUTPUT_DIR>/00-capability-report.json" \
+  --model-label "<MODEL_LABEL>" \
+  --output "<OUTPUT_DIR>/00-profile-selection.json"
+```
+
+- 用户明确指定Profile时增加 `--requested-profile FULL_AUTONOMY|GUIDED|WEAK_MODEL`，用户覆盖优先级最高。
+- 用户授权使用同一模型、同一客户端的历史结果时，可重复增加 `--prior-adjudication "<历史14-adjudicated-status.json>"`；不得扫描或读取未授权的其他模型目录。
+- 没有弱信号时默认 `FULL_AUTONOMY`，保持强模型原执行路径；同模型历史PARTIAL选择 `GUIDED`，同模型历史FAIL选择 `WEAK_MODEL`；DOCX/PDF工具缺口选择 `GUIDED`。
+- Profile只改变任务组织与上下文负载，不改变学术标准。不得按Gemini、Grok、Claude、Codex等品牌硬编码档位。
+
+Profile定义见 [FULL_AUTONOMY](references/profiles/full-autonomy.md)、[GUIDED](references/profiles/guided.md) 与 [WEAK_MODEL](references/profiles/weak-model.md)。FULL_AUTONOMY文件只用于说明和维护，合成时不附加，以保持强模型最终提示词字节不变。
+GUIDED与WEAK_MODEL把 [阶段模板](references/profiles/execution-checkpoints-template.json) 作为额外 `--addon` 合入唯一最终提示词，再创建输出目录内的 `00-execution-checkpoints.json`。
+
+## 五、确定性合成最终执行提示词
 
 除 `ROUTE_ONLY` 和尚未选题的情况外，在用户输出目录创建 `run-params.md`，只写以下本次运行内容：
 
-1. 真实运行参数：模式、输出目录、`MODEL_LABEL`、题目、论文类型、学科、研究对象、核心问题、语言、目标正文长度、引用格式、最低文献数、图片数、表格数、模板和用户材料；
+1. 真实运行参数：模式、输出目录、`MODEL_LABEL`、`RUN_LABEL`、`EXECUTION_PROFILE`、题目、论文类型、学科、研究对象、核心问题、语言、目标正文长度、引用格式、最低文献数、图片数、表格数、模板和用户材料；
 2. 用户明确的目录、工具、真实性、格式和停止条件；
 3. 当前Agent适配文件、可能的父代理调用层、能力缺口与降级边界，不提前写研究结果。
 
-`MODEL_LABEL` 只用于多模型对比测试、运行清单和结果区分；它不进入论文署名，也不改变正文内容或学术结论。用户没有指定时使用当前工作目录名称。
+`MODEL_LABEL` 与 `RUN_LABEL` 只用于能力适配、对比测试、运行清单和结果区分；不进入论文署名，也不改变正文内容或学术结论。
 
-不要让模型重新生成、复述或复制所选 `*-full.md`。使用Skill内的确定性合成工具，把 `run-params.md`、唯一完整提示词和必要的附加交付规则按字节顺序写入 `final-execution-prompt.md`：
+不要让模型重新生成、复述或复制所选提示词。根据 `00-profile-selection.json.selected_profile` 选择唯一输入：
+
+- `FULL_AUTONOMY`：使用 `references/compiled-prompts/<PROMPT>-full.md`，不附加Profile任务卡；
+- `GUIDED`：使用同一 `*-full.md`，附加 `references/profiles/guided.md`；
+- `WEAK_MODEL`：使用同方向 `references/compact-prompts/<PROMPT>-compact.md`，附加 `references/profiles/weak-model.md`，不得同时加载完整版。
+
+使用确定性合成工具，把 `run-params.md`、唯一方向提示词、当前Agent适配与对应Profile规则按字节顺序写入 `final-execution-prompt.md`。FULL_AUTONOMY示例：
 
 ```bash
 python3 "<SKILL_DIR>/scripts/compose_prompt.py" \
   --params "<OUTPUT_DIR>/run-params.md" \
   --compiled "<SKILL_DIR>/references/compiled-prompts/<PROMPT>-full.md" \
   --addon "<SKILL_DIR>/references/integrations/<ADAPTER>.md" \
+  --profile-selection "<OUTPUT_DIR>/00-profile-selection.json" \
   --output "<OUTPUT_DIR>/final-execution-prompt.md"
 ```
 
+GUIDED增加 `--addon "<SKILL_DIR>/references/profiles/execution-checkpoints-template.json"` 与 `--profile-rules "<SKILL_DIR>/references/profiles/guided.md"`。WEAK_MODEL把 `--compiled` 改为同方向 `*-compact.md`，并增加同一个阶段模板addon与 `--profile-rules "<SKILL_DIR>/references/profiles/weak-model.md"`。
+
 - `PROPOSAL_ONLY` 或用户附加要求开题报告时，增加 `--addon "<SKILL_DIR>/references/deliverables/proposal-report.md"`。
 - `DEFENSE_ONLY` 或用户附加要求答辩材料时，增加 `--addon "<SKILL_DIR>/references/deliverables/defense-presentation.md"`。
-- `python3` 不可用时，读取 [references/prompt-composition.md](references/prompt-composition.md)，使用对应平台的原生文件拼接命令；仍不得由模型复述完整提示词。
+- `python3` 不可用时，读取 [references/prompt-composition.md](references/prompt-composition.md)，使用对应平台的原生文件拼接命令；但Profile选择和最终五项裁决无法执行时必须记录能力缺口，权威状态不能为PASS。
 
 合成工具只负责文件拼接、UTF-8校验、原文完整性和SHA-256输出，不决定方向、章节、证据、图片或最终状态。`scripts/build_compiled.py` 与 `scripts/verify_compiled.py` 仅供Skill维护，不在论文生产阶段运行。
 
@@ -76,7 +108,7 @@ python3 "<SKILL_DIR>/scripts/compose_prompt.py" \
 
 用户没有另行指定 `OUTPUT_DIR` 时使用当前工作目录。目录边界明确时，除读取Skill与用户授权材料外，只在该输出目录写入，不访问其他模型结果目录。
 
-## 五、持续执行与闭环验收
+## 六、持续执行与闭环验收
 
 按照 `final-execution-prompt.md` 直接执行。已有题目的 `FULL_BUILD` 不输出路由方案后停顿，不要求用户再次批准大纲，不把论文正文只留在聊天窗口。
 

@@ -1,0 +1,12 @@
+{
+  "schema_version": "1.0",
+  "execution_profile": "GUIDED",
+  "stages": {
+    "EVIDENCE": {"status": "PENDING", "summary": "", "errors": [], "outputs": []},
+    "OUTLINE": {"status": "PENDING", "summary": "", "errors": [], "outputs": []},
+    "DRAFT": {"status": "PENDING", "summary": "", "errors": [], "outputs": []},
+    "FIGURES": {"status": "PENDING", "summary": "", "errors": [], "outputs": []},
+    "DOCUMENTS": {"status": "PENDING", "summary": "", "errors": [], "outputs": []},
+    "VALIDATION": {"status": "PENDING", "summary": "", "errors": [], "outputs": []}
+  }
+}

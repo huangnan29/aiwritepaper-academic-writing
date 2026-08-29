@@ -27,6 +27,7 @@ class AdjudicateStatusTests(unittest.TestCase):
         (self.root / "equations").mkdir()
         self.manifest = {
             "research_claim_level": "DESIGN_ONLY",
+            "execution_profile": "FULL_AUTONOMY",
             "research_status": "PASS", "delivery_status": "PASS", "final_status": "PASS",
             "evidence_verification_report": "04-evidence-verification.json",
             "figure_verification_report": "figures/figure-verification.json",
@@ -58,7 +59,7 @@ class AdjudicateStatusTests(unittest.TestCase):
             script = MODULE.SKILL_ROOT / "scripts" / spec["script"]
             complete = dict(payload)
             complete["verifier"] = {
-                "name": spec["script"], "sha256": MODULE.sha256(script), "version": "1.4.0",
+                "name": spec["script"], "sha256": MODULE.sha256(script), "version": "1.5.0",
             }
             complete["input_sha256"] = {"artifact.txt": MODULE.sha256(self.root / "artifact.txt")}
             path = self.report_path(name)
@@ -68,6 +69,7 @@ class AdjudicateStatusTests(unittest.TestCase):
     def adjudicate(self):
         adjudicator = MODULE.StatusAdjudicator(self.root)
         manifest = adjudicator.load_manifest(self.root / "run-manifest.json")
+        adjudicator.validate_execution_checkpoints(manifest)
         adjudicator.load_reports(manifest)
         derived = adjudicator.derive(manifest)
         return adjudicator, derived
@@ -116,6 +118,35 @@ class AdjudicateStatusTests(unittest.TestCase):
         (self.root / "artifact.txt").write_text("检查后被修改", encoding="utf-8")
         adjudicator, derived = self.adjudicate()
         self.assertTrue(any("REPORT_INPUT_STALE" in item for item in adjudicator.errors))
+        self.assertEqual(derived["final_status"], "FAIL")
+
+    def test_guided_requires_closed_hashed_checkpoints(self) -> None:
+        self.manifest["execution_profile"] = "GUIDED"
+        checkpoint_output = self.root / "stage.md"
+        checkpoint_output.write_text("阶段产物", encoding="utf-8")
+        stages = {}
+        for name in ["EVIDENCE", "OUTLINE", "DRAFT", "FIGURES", "DOCUMENTS", "VALIDATION"]:
+            stages[name] = {
+                "status": "PASS", "summary": "完成", "errors": [],
+                "outputs": [{"file": "stage.md", "sha256": MODULE.sha256(checkpoint_output)}],
+            }
+        (self.root / "00-execution-checkpoints.json").write_text(json.dumps({
+            "schema_version": "1.0", "execution_profile": "GUIDED", "stages": stages,
+        }), encoding="utf-8")
+        self.write_all()
+        adjudicator, derived = self.adjudicate()
+        self.assertEqual(adjudicator.errors, [])
+        self.assertEqual(derived["delivery_status"], "PASS")
+
+    def test_open_weak_checkpoint_forces_failure(self) -> None:
+        self.manifest["execution_profile"] = "WEAK_MODEL"
+        (self.root / "00-execution-checkpoints.json").write_text(json.dumps({
+            "schema_version": "1.0", "execution_profile": "WEAK_MODEL",
+            "stages": {"EVIDENCE": {"status": "IN_PROGRESS", "outputs": []}},
+        }), encoding="utf-8")
+        self.write_all()
+        adjudicator, derived = self.adjudicate()
+        self.assertTrue(any("EXECUTION_CHECKPOINT" in item for item in adjudicator.errors))
         self.assertEqual(derived["final_status"], "FAIL")
 
 
