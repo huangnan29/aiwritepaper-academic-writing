@@ -106,6 +106,10 @@ DOCX公式必须是可编辑OMML对象，PDF不得显示LaTeX源码。表格使�
 
 不要让Python或固定模板写论文内容。脚本只做拼接、核验、数据绘图和文档导出。
 
+## 十、90分质量目标
+
+最终按证据25、内容20、结构15、配图15、文档15、自审10评分，并执行本方向附带的专业关注点与Critical清单。建立 `claim-evidence-map.json`、`15-quality-scorecard.json`、`figures/figure-semantic-audit.json` 和 `16-document-visual-audit.json`。Critical必须为0，总分至少90且各维度达到其满分80%；不满足时定点修订，不全面重写。
+
 <!-- 方向来源：references/directions/biomedical-experimental-journal.md -->
 
 # 方向提示词：生物医学实验型期刊论文
@@ -180,3 +184,19 @@ PROMPT_ID: `biomedical-experimental-journal`
 - 局限真实且不以未来工作掩盖当前缺口；
 - 方向专属伦理、安全、标准或版权要求已处理；
 - 与公共规则共同执行后才允许进入最终验收。
+
+<!-- 质量评分来源：references/quality/direction-rubrics.json -->
+
+## 当前方向90分评分卡
+
+### 专业深度关注点
+
+- 模型来源与伦理
+- 干预/对照/通路占领
+- 表型读出、活力门和统计
+
+### Critical错误
+
+- 虚构实验数据
+- 种属标志物错用
+- 缺关键对照

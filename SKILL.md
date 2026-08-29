@@ -4,7 +4,7 @@ description: 根据题目和材料完成毕业论文、学位论文、期刊论�
 license: MIT
 metadata:
   author: huangnan29
-  version: "1.6.0"
+  version: "1.9.0"
   repository: https://github.com/huangnan29/aiwritepaper-academic-writing
 ---
 
@@ -141,10 +141,13 @@ python3 "<SKILL_DIR>/scripts/compose_revision.py" \
 - `verify_formula_rendering.py`：核对公式源稿、OMML、PDF残留和摘要。
 - `verify_manuscript_delivery.py`：核对正文长度、文件名、目录、表格、DOCX/PDF和哈希。
 - `adjudicate_status.py`：读取底层报告并计算唯一权威状态。
+- `verify_quality_package.py`：核对方向评分卡、主张证据、图文语义和文档视觉覆盖。
 
 检查器不决定论文观点、公式含义或证据取舍，也不生成论文内容。
 
-按 [模式×检查器矩阵](references/mode-checker-matrix.json) 运行检查。FULL_BUILD和AUDIT_ONLY运行四个底层检查器；其他模式只运行适用项，对不适用或未变化项使用 `write_skipped_report.py` 生成绑定上游摘要的标准SKIPPED报告，不能手写“跳过”。最后始终运行裁决器。
+方向90分标准来自 [评分卡](references/quality/direction-rubrics.json)，强模型发布回归使用 [57任务基准](references/benchmarks/strong-model-benchmark.json)。评分卡只规定关注点和Critical，不规定正文句式。
+
+按 [模式×检查器矩阵](references/mode-checker-matrix.json) 运行检查。FULL_BUILD和AUDIT_ONLY运行四个底层检查器；其他模式只运行适用项，对不适用或未变化项使用标准SKIPPED报告。完整论文另运行 `verify_quality_package.py`，质量目标依据当前方向内嵌90分评分卡。最后运行裁决器。
 
 文献或数据失败时回到证据阶段；图表失败时回到配图；公式失败时回到公式或导出；文档失败时回到排版。任何失败都不能被模型自述覆盖。最终回复只读取 `14-adjudicated-status.json.authoritative_status`。
 

@@ -60,7 +60,7 @@ class AdjudicateStatusTests(unittest.TestCase):
             script = MODULE.SKILL_ROOT / "scripts" / spec["script"]
             complete = dict(payload)
             complete["verifier"] = {
-                "name": spec["script"], "sha256": MODULE.sha256(script), "version": "1.6.0",
+                "name": spec["script"], "sha256": MODULE.sha256(script), "version": "1.9.0",
             }
             complete["input_sha256"] = {"artifact.txt": MODULE.sha256(self.root / "artifact.txt")}
             path = self.report_path(name)
@@ -84,7 +84,7 @@ class AdjudicateStatusTests(unittest.TestCase):
             "input_sha256": {"artifact.txt": MODULE.sha256(self.root / "artifact.txt")},
             "verifier": {
                 "name": "write_skipped_report.py",
-                "version": "1.6.0",
+                "version": "1.9.0",
                 "sha256": MODULE.sha256(MODULE.SKILL_ROOT / "scripts/write_skipped_report.py"),
             },
         }

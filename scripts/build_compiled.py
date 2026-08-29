@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 from pathlib import Path
 import tempfile
@@ -28,7 +29,15 @@ COMMON_FILES = [
     "autonomous-completion.md",
     "final-quality-gates.md",
     "mathematical-formulas.md",
+    "quality-90.md",
 ]
+
+RUBRICS = SKILL_ROOT / "references" / "quality" / "direction-rubrics.json"
+
+def render_rubric(direction: Path) -> str:
+    payload=json.loads(RUBRICS.read_text(encoding="utf-8"));rubric=payload["directions"][direction.stem]
+    focus="\n".join(f"- {x}" for x in rubric["focus"]);critical="\n".join(f"- {x}" for x in rubric["critical"])
+    return f"## 当前方向90分评分卡\n\n### 专业深度关注点\n\n{focus}\n\n### Critical错误\n\n{critical}"
 
 
 def read_source(path: Path) -> str:
@@ -62,6 +71,7 @@ def render_compiled(direction: Path) -> str:
     sections.append(
         f"<!-- 方向来源：references/directions/{direction.name} -->\n\n{read_source(direction)}"
     )
+    sections.append(f"<!-- 质量评分来源：references/quality/direction-rubrics.json -->\n\n{render_rubric(direction)}")
     return "\n\n".join(sections) + "\n"
 
 
@@ -83,6 +93,8 @@ def render_compact(direction: Path) -> str:
         + read_source(WEAK_CORE)
         + f"\n\n<!-- 方向来源：references/directions/{direction.name} -->\n\n"
         + read_source(direction)
+        + "\n\n<!-- 质量评分来源：references/quality/direction-rubrics.json -->\n\n"
+        + render_rubric(direction)
         + "\n"
     )
 

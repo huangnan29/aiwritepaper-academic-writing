@@ -140,7 +140,7 @@ def main() -> int:
         "capability_report_sha256": sha256(capability_path),
         "matched_prior_adjudications": matched,
         "selector": {
-            "name": script.name, "version": "1.6.0", "sha256": sha256(script),
+            "name": script.name, "version": "1.9.0", "sha256": sha256(script),
             "generated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
         },
     }

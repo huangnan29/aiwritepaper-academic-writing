@@ -40,7 +40,7 @@ class EvidenceIntegrityTests(unittest.TestCase):
             encoding="utf-8",
         )
         self.manifest = {
-            "model_label": "test-model", "skill_version": "1.6.0",
+            "model_label": "test-model", "skill_version": "1.9.0",
             "citation_mode": "NUMERIC", "research_claim_level": "DESIGN_ONLY",
             "execution_profile": "FULL_AUTONOMY",
             "profile_selection_report": "00-profile-selection.json",

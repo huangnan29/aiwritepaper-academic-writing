@@ -43,7 +43,7 @@ def main() -> int:
         if not resolved.is_file() or resolved.stat().st_size == 0: raise ValueError(f"输入不存在: {item}")
         hashes[str(resolved.relative_to(root))] = sha256(resolved)
     script = Path(__file__).resolve()
-    payload = {"schema_version":"1.0","status":a.skip_status,"category":a.category,"mode":a.mode,"reason":a.reason,"inherited":inherited,"input_sha256":hashes,"verifier":{"name":script.name,"version":"1.6.0","sha256":sha256(script),"generated_at":datetime.now().astimezone().isoformat(timespec="seconds")}}
+    payload = {"schema_version":"1.0","status":a.skip_status,"category":a.category,"mode":a.mode,"reason":a.reason,"inherited":inherited,"input_sha256":hashes,"verifier":{"name":script.name,"version":"1.9.0","sha256":sha256(script),"generated_at":datetime.now().astimezone().isoformat(timespec="seconds")}}
     out = a.output if a.output.is_absolute() else root/a.output; out.resolve().relative_to(root); out.parent.mkdir(parents=True,exist_ok=True); out.write_text(json.dumps(payload,ensure_ascii=False,indent=2)+"\n",encoding="utf-8"); print(json.dumps(payload,ensure_ascii=False,indent=2)); return 0
 
 if __name__ == "__main__": sys.exit(main())

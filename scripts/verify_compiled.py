@@ -47,6 +47,7 @@ def main() -> int:
         "autonomous-completion.md": "# 公共规则八：",
         "final-quality-gates.md": "# 公共规则九：",
         "mathematical-formulas.md": "# 公共规则十：",
+        "quality-90.md": "# 公共规则十一：",
     }
     for common_name, expected_heading in expected_common_headings.items():
         if not read_source(COMMON_DIR / common_name).startswith(expected_heading):
@@ -195,6 +196,8 @@ def main() -> int:
         "references/profiles/execution-checkpoints-template.json",
         "references/mode-checker-matrix.json",
         "references/deliverables/revision.md",
+        "references/quality/direction-rubrics.json",
+        "references/benchmarks/strong-model-benchmark.json",
     ]
     for reference in required_refs:
         if reference not in skill_text:
@@ -209,6 +212,7 @@ def main() -> int:
         "select_execution_profile.py",
         "write_skipped_report.py", "prepare_resume.py", "compose_revision.py",
         "resolve_default_length.py",
+        "verify_quality_package.py", "build_benchmark_matrix.py",
     ]:
         if not (SKILL_ROOT / "scripts" / script_name).is_file():
             errors.append(f"缺少脚本: scripts/{script_name}")
@@ -322,6 +326,19 @@ def main() -> int:
             errors.append("模式检查器矩阵模式集合不完整")
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:
         errors.append(f"模式检查器矩阵不可用: {exc}")
+
+    try:
+        rubrics=json.loads((SKILL_ROOT/"references/quality/direction-rubrics.json").read_text(encoding="utf-8"))
+        if set(rubrics.get("directions",{}))!={p.stem for p in directions}: errors.append("方向评分卡未覆盖19方向")
+        if sum(rubrics.get("weights",{}).values())!=100: errors.append("方向评分权重总和不是100")
+        benchmark=json.loads((SKILL_ROOT/"references/benchmarks/strong-model-benchmark.json").read_text(encoding="utf-8"))
+        if len(benchmark.get("tasks",[]))!=57: errors.append("强模型基准任务不是57个")
+    except (OSError,UnicodeError,json.JSONDecodeError) as exc:
+        errors.append(f"质量基准不可用: {exc}")
+    try:
+        quality_schema=json.loads((SKILL_ROOT/"references/schemas/quality-scorecard.schema.json").read_text(encoding="utf-8"))
+        if quality_schema.get("properties",{}).get("schema_version",{}).get("const")!="1.0": errors.append("Quality Scorecard Schema版本不是1.0")
+    except (OSError,UnicodeError,json.JSONDecodeError) as exc: errors.append(f"Quality Scorecard Schema不可用: {exc}")
 
     audit_text = "\n".join(
         path.read_text(encoding="utf-8")

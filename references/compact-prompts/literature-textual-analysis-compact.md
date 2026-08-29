@@ -106,6 +106,10 @@ DOCX公式必须是可编辑OMML对象，PDF不得显示LaTeX源码。表格使�
 
 不要让Python或固定模板写论文内容。脚本只做拼接、核验、数据绘图和文档导出。
 
+## 十、90分质量目标
+
+最终按证据25、内容20、结构15、配图15、文档15、自审10评分，并执行本方向附带的专业关注点与Critical清单。建立 `claim-evidence-map.json`、`15-quality-scorecard.json`、`figures/figure-semantic-audit.json` 和 `16-document-visual-audit.json`。Critical必须为0，总分至少90且各维度达到其满分80%；不满足时定点修订，不全面重写。
+
 <!-- 方向来源：references/directions/literature-textual-analysis.md -->
 
 # 方向提示词：文学文本与人文阐释
@@ -179,3 +183,18 @@ PROMPT_ID: `literature-textual-analysis`
 - 局限真实且不以未来工作掩盖当前缺口；
 - 方向专属伦理、安全、标准或版权要求已处理；
 - 与公共规则共同执行后才允许进入最终验收。
+
+<!-- 质量评分来源：references/quality/direction-rubrics.json -->
+
+## 当前方向90分评分卡
+
+### 专业深度关注点
+
+- 版本与文本细读
+- 概念工具服务文本
+- 反例和解释限度
+
+### Critical错误
+
+- 虚构原文引语
+- 以理论术语替代文本证据

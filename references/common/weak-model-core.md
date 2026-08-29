@@ -94,3 +94,7 @@ DOCX公式必须是可编辑OMML对象，PDF不得显示LaTeX源码。表格使�
 - 验收：五份报告真实存在，权威状态与最终回复一致。
 
 不要让Python或固定模板写论文内容。脚本只做拼接、核验、数据绘图和文档导出。
+
+## 十、90分质量目标
+
+最终按证据25、内容20、结构15、配图15、文档15、自审10评分，并执行本方向附带的专业关注点与Critical清单。建立 `claim-evidence-map.json`、`15-quality-scorecard.json`、`figures/figure-semantic-audit.json` 和 `16-document-visual-audit.json`。Critical必须为0，总分至少90且各维度达到其满分80%；不满足时定点修订，不全面重写。

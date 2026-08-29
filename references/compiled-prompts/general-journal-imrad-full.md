@@ -11,6 +11,7 @@
 - references/common/autonomous-completion.md
 - references/common/final-quality-gates.md
 - references/common/mathematical-formulas.md
+- references/common/quality-90.md
 方向来源：
 - references/directions/general-journal-imrad.md
 来源清单结束。
@@ -151,6 +152,8 @@ arXiv、bioRxiv、ChemRxiv、SSRN、NBER工作论文可以收录，但必须在�
 `FULL_BUILD` 输出：`run-params.md`、`final-execution-prompt.md`、`00-prompt-composition.json`、`00-capability-report.md`、`00-capability-report.json`、`00-profile-selection.json`、GUIDED/WEAK模型使用的 `00-execution-checkpoints.json`、`01-research-contract.md`、`02-search-log.md`、`03-evidence-matrix.csv`、`04-reference-audit.md`、`04-evidence-verification.json`、`references.bib`、`data/data-provenance.json`、`05-outline.md`、`06-argument-map.md`、`chapters/`、`figures/figure-plan.json`、`figures/figure-manifest.json`、`figures/figure-manifest.md`、`figures/figure-verification.json`、`tables/table-data-and-sources.md`、`equations/formula-audit.md`、`equations/formula-verification.json`、`07-paper-full.md`、`08-claim-citation-audit.md`、`09-peer-review.md`、`10-revision-log.md`、按下述规则命名的DOCX与PDF、可选同名TEX、`11-format-validation.md`、`12-final-qa-report.md`、`13-delivery-verification.json`、`14-adjudicated-status.json` 和 `run-manifest.json`。FULL_AUTONOMY不强制创建阶段任务卡；没有真实生成的文件不得列入完成清单。
 
 `RESUME` 额外输出 `00-resume-plan.json`，不覆盖原提示词和冻结产物。`REVISE_ONLY` 输出 `revision-request.md`、`revision-impact.json`、`revision-execution-prompt.md`、`revision-prompt-composition.json`、`revision-log.md` 以及新时间戳DOCX/PDF，并保留修改前摘要。
+
+所有完整论文与修改稿在最终裁决前输出 `claim-evidence-map.json`、`15-quality-scorecard.json`、`figures/figure-semantic-audit.json`、`16-document-visual-audit.json` 与 `17-quality-verification.json`。这些文件用于质量上限审查，不改变研究证据状态。
 
 `run-manifest.json` 必须记录真实 `run_mode`、`model_label`、`skill_version`、`execution_profile`、`profile_selection_report`、GUIDED/WEAK使用的 `execution_checkpoints`、`paper_level`、`manuscript_language`、`abstract_contract`、`citation_mode`、`research_claim_level`、`document_profile`（`THESIS`、`JOURNAL`、`REPORT` 或 `CUSTOM`）、目标长度和容差、模型声明的三层状态、五份报告路径以及正式文档路径与摘要。Profile必须与选择报告一致；检查器运行/跳过必须符合模式矩阵。模型声明只供冲突审计，最终状态以 `14-adjudicated-status.json` 为唯一真源。
 
@@ -526,7 +529,7 @@ figure_plan:
   "spec_sha256": "...",
   "report_file": "figures/fig-2-1-layout-report.json",
   "report_sha256": "...",
-  "renderer": "aiwritepaper-academic-writing@1.6.0/render_svg_layout.mjs",
+  "renderer": "aiwritepaper-academic-writing@1.9.0/render_svg_layout.mjs",
   "renderer_sha256": "..."
 }
 ```
@@ -701,6 +704,8 @@ SVG降级图的机械校验额外检查可解析的直线、折线与矩形节�
 - Word表格内所有非空单元格段落的有效首行缩进与悬挂缩进均为0；检查必须解析直接格式、当前段落样式及其 `basedOn` 父样式，不能让 `Compact`、`Table` 或正文样式把两字符首行缩进带入表格；
 - 没有远程图片、临时路径、调试文字和模型自述；
 - 文献、数字、图表、伦理和个人信息审计通过；
+- 当前方向评分卡的Critical为0，主张—证据映射覆盖重要结论，图文语义审计和文档视觉抽查完成；90分目标只有在总分≥90且六维均达到满分80%时才成立；
+- `verify_quality_package.py` 返回 `QUALITY_OK` 后才能在最终回复声明90+质量目标达成；PARTIAL/FAIL仍可按权威研究与交付状态诚实交付。
 - 所有最终文件计算 SHA-256。
 - 最终DOCX与PDF文件名均为“安全论文题目_YYYYMMDD-HHMMSS”，共用同一时间戳；`run-manifest.json`记录生成时间、时区、正式路径和SHA-256，不能把 `final-paper.docx/.pdf` 列为最终交付。
 - `THESIS`文档的DOCX正文样式满足默认或学校模板的字号与行距，PDF中存在实际可见目录；`JOURNAL`、`REPORT`和`CUSTOM`按各自格式契约验收，不套用毕业论文目录门。
@@ -792,6 +797,22 @@ python3 "<SKILL_DIR>/scripts/verify_formula_rendering.py" \
 
 机械检查通过后仍需抽查最终DOCX与PDF的公式页面，确认分式、根号、上下标、希腊字母、矩阵、换行、编号和中文说明没有裁切、错位、缺字或乱码。至少抽查首个公式、最复杂公式、含中文/单位的公式和最后一个公式，并把结果写入 `equations/formula-audit.md`。公式报告的 `status` 必须为 `FORMULA_OK`，且其中绑定的Markdown、DOCX和PDF SHA-256与最终文件一致，完整交付才可标记 `PASS`。
 
+<!-- 公共来源：references/common/quality-90.md -->
+
+# 公共规则十一：90分质量上限与方向审稿
+
+当前方向的90分标准来自 `references/quality/direction-rubrics.json`。评分维度固定为证据25、内容20、结构15、配图15、文档15、自审10。高分不要求研究状态为PASS；设计稿、方案或综述可在诚实PARTIAL状态下获得高交付质量分。
+
+正文完成后建立 `claim-evidence-map.json`：列出重要主张、章节定位、主张状态、证据source_id、页码/章节、反例/限制和是否进入结论。重要主张没有证据或限制时必须修改，不能用多篇段尾引文掩盖。
+
+依据当前方向评分卡进行独立同行评审，写入 `15-quality-scorecard.json`。先列Critical/Important/Minor与正文定位，再定点修订；不得先给高分再补理由。任何Critical未清零、任一维度低于该维度80%、总分低于90时不能标记“90+质量目标达成”。
+
+配图另建 `figures/figure-semantic-audit.json`：每张图记录图题主张、遮住图题后的盲读摘要、正文定位、节点/箭头/数据来源一致性和PASS/PARTIAL/FAIL。可换标题复用的模板图、与正文无关曲线、错误箭头或ImageGen虚构关系不得PASS。
+
+文档另建 `16-document-visual-audit.json`，抽查封面、中文摘要、英文摘要、目录、复杂表格、复杂公式、代表性配图、参考文献及末页；记录页码、问题、修复和状态。只解析文件不等于视觉通过。
+
+正文质量审查关注重复句式、列表占比、无证据强化词、摘要—结论机械复述和边界声明密度。只报告位置和修订建议，不输出AI率，不自动重写正文。
+
 <!-- 方向来源：references/directions/general-journal-imrad.md -->
 
 # 方向提示词：通用期刊 IMRaD 论文
@@ -865,3 +886,18 @@ PROMPT_ID: `general-journal-imrad`
 - 局限真实且不以未来工作掩盖当前缺口；
 - 方向专属伦理、安全、标准或版权要求已处理；
 - 与公共规则共同执行后才允许进入最终验收。
+
+<!-- 质量评分来源：references/quality/direction-rubrics.json -->
+
+## 当前方向90分评分卡
+
+### 专业深度关注点
+
+- 研究问题与方法匹配
+- 结果证据和不确定性
+- 讨论与既有研究对话
+
+### Critical错误
+
+- 虚构样本或结果
+- 方法结果不一致

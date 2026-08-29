@@ -155,7 +155,7 @@ figure_plan:
   "spec_sha256": "...",
   "report_file": "figures/fig-2-1-layout-report.json",
   "report_sha256": "...",
-  "renderer": "aiwritepaper-academic-writing@1.6.0/render_svg_layout.mjs",
+  "renderer": "aiwritepaper-academic-writing@1.9.0/render_svg_layout.mjs",
   "renderer_sha256": "..."
 }
 ```

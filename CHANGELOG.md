@@ -1,5 +1,14 @@
 # 更新记录
 
+## 1.9.0 - 2026-08-29
+
+- 合并v1.7—v1.9路线，新增19方向90分评分卡、专业关注点与方向级Critical规则。
+- 新增 `claim-evidence-map.json`、`15-quality-scorecard.json`、`figures/figure-semantic-audit.json`、`16-document-visual-audit.json` 和 `verify_quality_package.py`。
+- 90+声明要求Critical为0、总分≥90且六维均达到满分80%；研究状态PARTIAL不阻止高质量方案获得90分。
+- 图表语义审计使用遮住图题后的盲读摘要，阻止换标题复用模板图、无关曲线和错误关系。
+- 文档视觉审计覆盖封面、双语摘要、目录、复杂表格、复杂公式、代表图、参考文献与末页。
+- 新增57任务强模型基准矩阵和非退化发布门。
+
 ## 1.6.0 - 2026-08-29
 
 - 新增 `RESUME` 与 `prepare_resume.py`，验证原提示词、Manifest、阶段状态及SHA-256后从首个未完成阶段继续。

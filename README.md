@@ -4,7 +4,7 @@
 
 **从论文题目到一份完整执行提示词，再持续交付正文、配图、DOCX 与 PDF。**
 
-![Version](https://img.shields.io/badge/version-1.6.0-2563EB?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.9.0-2563EB?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-16A34A?style=flat-square)
 ![Architecture](https://img.shields.io/badge/architecture-MD--first-7C3AED?style=flat-square)
 ![Directions](https://img.shields.io/badge/paper%20directions-19-EA580C?style=flat-square)
@@ -15,6 +15,14 @@
 
 > [!NOTE]
 > 当前版本采用 **MD-first 单提示词执行 + Agent能力适配 + 外部真实性与状态裁决**。模型继续负责方向、检索、论证、写作、公式含义和配图语义；脚本只核对文献、数据来源、公式、图片、文档和状态，不生成论文内容。
+
+## v1.9.0方向级90分质量与强模型基准
+
+- 19方向分别内置专业深度关注点和Critical错误，不使用统一正文模板；
+- 新增主张—证据映射、方向评分卡、图文盲读语义审计和文档关键页视觉审计；
+- 质量分固定为证据25、内容20、结构15、配图15、文档15、自审10；Critical为0、总分≥90且各维度≥80%才可声明90+；
+- 新增57任务强模型基准矩阵，覆盖充分材料、无数据题和诱导虚构题；
+- 强模型发布门为平均≥90、方向平均≥88、单篇≥85、Critical=0、版本回退不超过3分。
 
 ## v1.6.0续跑、修改稿与模式化验收
 
@@ -485,6 +493,7 @@ aiwritepaper-academic-writing/
 │   ├── verify_formula_rendering.py   # 校验公式源稿、Word OMML与PDF可见残留
 │   ├── verify_manuscript_delivery.py # 统一校验字数、证据矩阵和DOCX/PDF交付
 │   ├── adjudicate_status.py # 根据当前检查报告计算唯一权威状态
+│   ├── verify_quality_package.py # 核验90分质量包与视觉语义审计
 │   └── render_svg_layout.mjs # 无依赖的确定性SVG布局编译器
 ├── tests/
 │   ├── test_verify_evidence_integrity.py
@@ -497,6 +506,7 @@ aiwritepaper-academic-writing/
 │   ├── test_resume_revision.py
 │   ├── test_write_skipped_report.py
 │   ├── test_resolve_default_length.py
+│   ├── test_verify_quality_package.py
 │   └── test_render_svg_layout.mjs
 ├── references/
 │   ├── compiled-prompts/    # 运行时只读取其中一个完整提示词
@@ -504,6 +514,8 @@ aiwritepaper-academic-writing/
 │   ├── directions/          # 19个方向增量源
 │   ├── common/              # 通用规则源，含正文质量、统计图与Figure Trace
 │   ├── profiles/            # FULL_AUTONOMY、GUIDED与WEAK_MODEL任务组织
+│   ├── quality/             # 19方向90分评分卡
+│   ├── benchmarks/          # 57任务强模型发布基准
 │   ├── schemas/             # Figure、SVG、能力、Profile、阶段与数据来源Schema
 │   ├── integrations/        # 各Agent短小能力适配文件
 │   ├── mode-checker-matrix.json # 模式与检查器运行/跳过矩阵
@@ -524,7 +536,7 @@ aiwritepaper-academic-writing/
 
 ## 维护与版本
 
-- 当前版本：`1.6.0`
+- 当前版本：`1.9.0`
 - 更新记录：[CHANGELOG.md](CHANGELOG.md)
 - Skill入口：[SKILL.md](SKILL.md)
 - 历史复杂流水线版可通过Git标签`v0.3.1-runtime-gates`恢复

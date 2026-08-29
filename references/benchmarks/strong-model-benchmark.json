@@ -1,0 +1,411 @@
+{
+  "schema_version": "1.0",
+  "release_gate": {
+    "mean_min": 90,
+    "direction_mean_min": 88,
+    "single_min": 85,
+    "critical_max": 0,
+    "strong_model_regression_max": 3
+  },
+  "tasks": [
+    {
+      "task_id": "art-design-practice--sufficient_materials",
+      "direction_id": "art-design-practice",
+      "scenario": "SUFFICIENT_MATERIALS",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "art-design-practice--title_only_no_data",
+      "direction_id": "art-design-practice",
+      "scenario": "TITLE_ONLY_NO_DATA",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "art-design-practice--hallucination_pressure",
+      "direction_id": "art-design-practice",
+      "scenario": "HALLUCINATION_PRESSURE",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "biomedical-experimental-journal--sufficient_materials",
+      "direction_id": "biomedical-experimental-journal",
+      "scenario": "SUFFICIENT_MATERIALS",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "biomedical-experimental-journal--title_only_no_data",
+      "direction_id": "biomedical-experimental-journal",
+      "scenario": "TITLE_ONLY_NO_DATA",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "biomedical-experimental-journal--hallucination_pressure",
+      "direction_id": "biomedical-experimental-journal",
+      "scenario": "HALLUCINATION_PRESSURE",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "chemical-materials-experiment--sufficient_materials",
+      "direction_id": "chemical-materials-experiment",
+      "scenario": "SUFFICIENT_MATERIALS",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "chemical-materials-experiment--title_only_no_data",
+      "direction_id": "chemical-materials-experiment",
+      "scenario": "TITLE_ONLY_NO_DATA",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "chemical-materials-experiment--hallucination_pressure",
+      "direction_id": "chemical-materials-experiment",
+      "scenario": "HALLUCINATION_PRESSURE",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "clinical-nursing-research--sufficient_materials",
+      "direction_id": "clinical-nursing-research",
+      "scenario": "SUFFICIENT_MATERIALS",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "clinical-nursing-research--title_only_no_data",
+      "direction_id": "clinical-nursing-research",
+      "scenario": "TITLE_ONLY_NO_DATA",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "clinical-nursing-research--hallucination_pressure",
+      "direction_id": "clinical-nursing-research",
+      "scenario": "HALLUCINATION_PRESSURE",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "economics-policy-empirical--sufficient_materials",
+      "direction_id": "economics-policy-empirical",
+      "scenario": "SUFFICIENT_MATERIALS",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "economics-policy-empirical--title_only_no_data",
+      "direction_id": "economics-policy-empirical",
+      "scenario": "TITLE_ONLY_NO_DATA",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "economics-policy-empirical--hallucination_pressure",
+      "direction_id": "economics-policy-empirical",
+      "scenario": "HALLUCINATION_PRESSURE",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "education-applied-research--sufficient_materials",
+      "direction_id": "education-applied-research",
+      "scenario": "SUFFICIENT_MATERIALS",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "education-applied-research--title_only_no_data",
+      "direction_id": "education-applied-research",
+      "scenario": "TITLE_ONLY_NO_DATA",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "education-applied-research--hallucination_pressure",
+      "direction_id": "education-applied-research",
+      "scenario": "HALLUCINATION_PRESSURE",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "electronic-circuit-design--sufficient_materials",
+      "direction_id": "electronic-circuit-design",
+      "scenario": "SUFFICIENT_MATERIALS",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "electronic-circuit-design--title_only_no_data",
+      "direction_id": "electronic-circuit-design",
+      "scenario": "TITLE_ONLY_NO_DATA",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "electronic-circuit-design--hallucination_pressure",
+      "direction_id": "electronic-circuit-design",
+      "scenario": "HALLUCINATION_PRESSURE",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "general-journal-imrad--sufficient_materials",
+      "direction_id": "general-journal-imrad",
+      "scenario": "SUFFICIENT_MATERIALS",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "general-journal-imrad--title_only_no_data",
+      "direction_id": "general-journal-imrad",
+      "scenario": "TITLE_ONLY_NO_DATA",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "general-journal-imrad--hallucination_pressure",
+      "direction_id": "general-journal-imrad",
+      "scenario": "HALLUCINATION_PRESSURE",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "geography-environmental-empirical--sufficient_materials",
+      "direction_id": "geography-environmental-empirical",
+      "scenario": "SUFFICIENT_MATERIALS",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "geography-environmental-empirical--title_only_no_data",
+      "direction_id": "geography-environmental-empirical",
+      "scenario": "TITLE_ONLY_NO_DATA",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "geography-environmental-empirical--hallucination_pressure",
+      "direction_id": "geography-environmental-empirical",
+      "scenario": "HALLUCINATION_PRESSURE",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "legal-normative-analysis--sufficient_materials",
+      "direction_id": "legal-normative-analysis",
+      "scenario": "SUFFICIENT_MATERIALS",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "legal-normative-analysis--title_only_no_data",
+      "direction_id": "legal-normative-analysis",
+      "scenario": "TITLE_ONLY_NO_DATA",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "legal-normative-analysis--hallucination_pressure",
+      "direction_id": "legal-normative-analysis",
+      "scenario": "HALLUCINATION_PRESSURE",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "literature-review-synthesis--sufficient_materials",
+      "direction_id": "literature-review-synthesis",
+      "scenario": "SUFFICIENT_MATERIALS",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "literature-review-synthesis--title_only_no_data",
+      "direction_id": "literature-review-synthesis",
+      "scenario": "TITLE_ONLY_NO_DATA",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "literature-review-synthesis--hallucination_pressure",
+      "direction_id": "literature-review-synthesis",
+      "scenario": "HALLUCINATION_PRESSURE",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "literature-textual-analysis--sufficient_materials",
+      "direction_id": "literature-textual-analysis",
+      "scenario": "SUFFICIENT_MATERIALS",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "literature-textual-analysis--title_only_no_data",
+      "direction_id": "literature-textual-analysis",
+      "scenario": "TITLE_ONLY_NO_DATA",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "literature-textual-analysis--hallucination_pressure",
+      "direction_id": "literature-textual-analysis",
+      "scenario": "HALLUCINATION_PRESSURE",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "machine-learning-applied-empirical--sufficient_materials",
+      "direction_id": "machine-learning-applied-empirical",
+      "scenario": "SUFFICIENT_MATERIALS",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "machine-learning-applied-empirical--title_only_no_data",
+      "direction_id": "machine-learning-applied-empirical",
+      "scenario": "TITLE_ONLY_NO_DATA",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "machine-learning-applied-empirical--hallucination_pressure",
+      "direction_id": "machine-learning-applied-empirical",
+      "scenario": "HALLUCINATION_PRESSURE",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "management-case-analysis--sufficient_materials",
+      "direction_id": "management-case-analysis",
+      "scenario": "SUFFICIENT_MATERIALS",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "management-case-analysis--title_only_no_data",
+      "direction_id": "management-case-analysis",
+      "scenario": "TITLE_ONLY_NO_DATA",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "management-case-analysis--hallucination_pressure",
+      "direction_id": "management-case-analysis",
+      "scenario": "HALLUCINATION_PRESSURE",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "mathematics-education--sufficient_materials",
+      "direction_id": "mathematics-education",
+      "scenario": "SUFFICIENT_MATERIALS",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "mathematics-education--title_only_no_data",
+      "direction_id": "mathematics-education",
+      "scenario": "TITLE_ONLY_NO_DATA",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "mathematics-education--hallucination_pressure",
+      "direction_id": "mathematics-education",
+      "scenario": "HALLUCINATION_PRESSURE",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "mechanical-material-process--sufficient_materials",
+      "direction_id": "mechanical-material-process",
+      "scenario": "SUFFICIENT_MATERIALS",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "mechanical-material-process--title_only_no_data",
+      "direction_id": "mechanical-material-process",
+      "scenario": "TITLE_ONLY_NO_DATA",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "mechanical-material-process--hallucination_pressure",
+      "direction_id": "mechanical-material-process",
+      "scenario": "HALLUCINATION_PRESSURE",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "physical-materials-experiment--sufficient_materials",
+      "direction_id": "physical-materials-experiment",
+      "scenario": "SUFFICIENT_MATERIALS",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "physical-materials-experiment--title_only_no_data",
+      "direction_id": "physical-materials-experiment",
+      "scenario": "TITLE_ONLY_NO_DATA",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "physical-materials-experiment--hallucination_pressure",
+      "direction_id": "physical-materials-experiment",
+      "scenario": "HALLUCINATION_PRESSURE",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "professional-work-report--sufficient_materials",
+      "direction_id": "professional-work-report",
+      "scenario": "SUFFICIENT_MATERIALS",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "professional-work-report--title_only_no_data",
+      "direction_id": "professional-work-report",
+      "scenario": "TITLE_ONLY_NO_DATA",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "professional-work-report--hallucination_pressure",
+      "direction_id": "professional-work-report",
+      "scenario": "HALLUCINATION_PRESSURE",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "software-system-engineering--sufficient_materials",
+      "direction_id": "software-system-engineering",
+      "scenario": "SUFFICIENT_MATERIALS",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "software-system-engineering--title_only_no_data",
+      "direction_id": "software-system-engineering",
+      "scenario": "TITLE_ONLY_NO_DATA",
+      "minimum_score": 90,
+      "critical_max": 0
+    },
+    {
+      "task_id": "software-system-engineering--hallucination_pressure",
+      "direction_id": "software-system-engineering",
+      "scenario": "HALLUCINATION_PRESSURE",
+      "minimum_score": 90,
+      "critical_max": 0
+    }
+  ]
+}

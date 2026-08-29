@@ -1,0 +1,25 @@
+{
+  "schema_version":"1.0",
+  "weights":{"evidence":25,"content":20,"structure":15,"figures":15,"documents":15,"integrity":10},
+  "directions":{
+    "art-design-practice":{"focus":["设计问题与用户/场景材料","方案演化与取舍","作品证据和评价准则"],"critical":["虚构用户调研或落地效果","效果图冒充实物"]},
+    "biomedical-experimental-journal":{"focus":["模型来源与伦理","干预/对照/通路占领","表型读出、活力门和统计"],"critical":["虚构实验数据","种属标志物错用","缺关键对照"]},
+    "chemical-materials-experiment":{"focus":["配方与变量控制","表征链与结构性能关系","重复、空白和失败判据"],"critical":["虚构谱图/产率","化学结构或单位错误"]},
+    "clinical-nursing-research":{"focus":["人群、伦理与方案","结局指标与偏倚控制","临床边界和安全"],"critical":["虚构病例/伦理/疗效","诊疗建议越界"]},
+    "economics-policy-empirical":{"focus":["政策冲击与识别策略","变量口径和稳健性","机制、异质性与外推"],"critical":["虚构数据/回归","因果识别不成立却下因果结论"]},
+    "education-applied-research":{"focus":["课标与真实学情材料","任务、预期反应和理答","量规、实施保真度与边界"],"critical":["虚构班级成绩/问卷","素养只作标签"]},
+    "electronic-circuit-design":{"focus":["器件手册与电源预算","接口/时序/信号链计算","原理图、PCB、故障和验证协议"],"critical":["计算值冒充实测","电平/引脚/电源错误"]},
+    "general-journal-imrad":{"focus":["研究问题与方法匹配","结果证据和不确定性","讨论与既有研究对话"],"critical":["虚构样本或结果","方法结果不一致"]},
+    "geography-environmental-empirical":{"focus":["空间尺度与数据版本","空间方法和不确定性","地图、机制与外推边界"],"critical":["虚构坐标/遥感数据","空间尺度错配"]},
+    "legal-normative-analysis":{"focus":["法源版本与效力层级","构成要件/请求权/案例","解释路径与比较法边界"],"critical":["失效或虚构法条案例","规范层级混乱"]},
+    "literature-review-synthesis":{"focus":["检索与纳排覆盖","证据分层和主题综合","争议、空白与局限"],"critical":["题录冒充全文","声称系统综述但无双库/流程"]},
+    "literature-textual-analysis":{"focus":["版本与文本细读","概念工具服务文本","反例和解释限度"],"critical":["虚构原文引语","以理论术语替代文本证据"]},
+    "machine-learning-applied-empirical":{"focus":["数据切分与泄漏防护","基线、消融和指标","复现、误差和部署边界"],"critical":["虚构数据/性能","训练测试泄漏"]},
+    "management-case-analysis":{"focus":["企业一手/披露材料","流程机制和经营约束","方案成本、试点与验收"],"critical":["虚构企业数字/访谈","通用框架冒充案例"]},
+    "mathematics-education":{"focus":["数学概念准确性","问题链认知依赖和反例","理答、观察任务与量规"],"critical":["数学错误","虚构课堂效果"]},
+    "mechanical-material-process":{"focus":["载荷工况与材料参数","工艺窗口和失效模式","计算、标准和验证"],"critical":["虚构试验/寿命","单位、载荷或安全系数错误"]},
+    "physical-materials-experiment":{"focus":["物理机制与可观测量","样品/变量/表征闭环","器件指标口径和失败判据"],"critical":["虚构光谱/I-V","能带或性能口径错误"]},
+    "professional-work-report":{"focus":["真实岗位材料","问题诊断与责任边界","改进方案、资源和验收"],"critical":["虚构单位业绩/数据","宣传稿替代分析"]},
+    "software-system-engineering":{"focus":["需求与角色闭环","架构/数据库/API/权限决策","测试、部署和限制"],"critical":["虚构上线/性能/用户量","数据模型或权限闭环缺失"]}
+  }
+}
