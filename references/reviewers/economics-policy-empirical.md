@@ -7,9 +7,16 @@
 - 变量口径和稳健性
 - 机制、异质性与外推
 
+## 方法完成门
+- 政策时点、样本和变量口径可复现
+- 平行趋势与安慰剂检验真实运行
+- 异质处理时点采用适当估计或解释偏差
+
+数据不足时：前趋势或安慰剂失败时删除因果措辞，题目改为关联、差异或识别限制研究。
+
 ## Critical
 - 虚构数据/回归
 - 因果识别不成立却下因果结论
 
 ## 终稿输出
-在全部图片和文档完成后写入 `09-final-peer-review.json`，记录 `schema_version: 1.0`、当前 `direction_id`、`status`、`reviewer_mode: ISOLATED`、Critical/Important开放数、六项分数、总分，以及最终正文、Figure Manifest、文档视觉审计、DOCX和PDF的逐文件SHA-256。然后把完全相同的分数写入 `15-quality-scorecard.json`，并记录终稿审稿报告路径与SHA-256。每个问题包含location、evidence、fix与status。Critical或Important未清零、任一维度低于80%或总分低于90时不得给90分。
+在全部图片和文档完成后写入 `09-final-peer-review.json`，记录 `schema_version: 1.0`、当前 `direction_id`、`status`、`reviewer_mode: ISOLATED`、Critical/Important开放数、六项分数、总分，以及最终正文、Figure Manifest、文档视觉审计、DOCX和PDF的逐文件SHA-256。另记录 `alignment`：`title_supported`、`research_question_answered`、`method_result_consistent`、`abstract_conclusion_consistent` 必须均为true；否则先改题、降级或返修。然后把完全相同的分数写入 `15-quality-scorecard.json`，并记录终稿审稿报告路径与SHA-256。每个问题包含location、evidence、fix与status。Critical或Important未清零、任一维度低于80%或总分低于90时不得给90分。

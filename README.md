@@ -4,7 +4,7 @@
 
 **从论文题目到一份完整执行提示词，再持续交付正文、配图、DOCX 与 PDF。**
 
-![Version](https://img.shields.io/badge/version-1.9.2-2563EB?style=flat-square)
+![Version](https://img.shields.io/badge/version-2.0.0-2563EB?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-16A34A?style=flat-square)
 ![Architecture](https://img.shields.io/badge/architecture-MD--first-7C3AED?style=flat-square)
 ![Directions](https://img.shields.io/badge/paper%20directions-19-EA580C?style=flat-square)
@@ -15,6 +15,17 @@
 
 > [!NOTE]
 > 当前版本采用 **MD-first 单提示词执行 + Agent能力适配 + 外部真实性与状态裁决**。模型继续负责方向、检索、论证、写作、公式含义和配图语义；脚本只核对文献、数据来源、公式、图片、文档和状态，不生成论文内容。
+
+## v2.0.0终稿质量与方向方法门
+
+- 强模型继续使用原有FULL_AUTONOMY主路径，研究完成后增加不改变事实、数据和引文的独立终稿编辑；
+- 终稿编辑清除重复免责声明、运行过程旁白、无证据强化词和结论扩写；结论原则上不超过正文7%，超过10%机械失败；
+- 19方向分别加入方法完成门和数据不足时的改题/降级规则，防止用“局限”掩盖核心研究问题未完成；
+- 终稿隔离审稿新增题目—研究问题—方法—结果—摘要—结论一致性裁决，不一致时不能给出QUALITY_OK；
+- 语义结构图在图片能力可用时不得把`imagegen_eligible`批量设为false，普通流程、框架和组织图继续优先真实生图；
+- THESIS默认封面独立成页，摘要、Abstract和目录分别新页开始；目录与封面挤在第一页会被交付检查器拒绝。
+
+实测依据：Grok Build v1.9.1完成19方向，独立均分约87.2，主要短板是正文重复、目标中心字数、方法完成度与统一排版；Antigravity六篇虽表面自评分96—100，但随机/硬编码数据、假回执和假仿真使独立均分仅约43.7。v1.9.2负责拦截伪证据，v2.0.0负责提高可信稿件的正文与方法上限。
 
 ## v1.9.2可信验收修复
 
@@ -546,7 +557,7 @@ aiwritepaper-academic-writing/
 
 ## 维护与版本
 
-- 当前版本：`1.9.2`
+- 当前版本：`2.0.0`
 - 更新记录：[CHANGELOG.md](CHANGELOG.md)
 - Skill入口：[SKILL.md](SKILL.md)
 - 历史复杂流水线版可通过Git标签`v0.3.1-runtime-gates`恢复

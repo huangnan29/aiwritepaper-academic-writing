@@ -30,8 +30,12 @@ class QualityTests(unittest.TestCase):
             "checked_file": "checked.png", "checked_file_sha256": digest(self.root / "checked.png"),
             "visual_receipt": "receipt.txt", "visual_receipt_sha256": digest(self.root / "receipt.txt"),
         }
-        manifest = {"direction_id": "electronic-circuit-design", "docx": "paper.docx", "pdf": "paper.pdf"}
+        manifest = {
+            "direction_id": "electronic-circuit-design", "docx": "paper.docx", "pdf": "paper.pdf",
+            "delivery_verification_report": "13-delivery-verification.json",
+        }
         (self.root / "run-manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+        (self.root / "13-delivery-verification.json").write_text(json.dumps({"status": "DELIVERY_OK", "warnings": []}), encoding="utf-8")
         (self.root / "claim-evidence-map.json").write_text(json.dumps({
             "claims": [{"location": "结论", "importance": "CONCLUSION", "evidence_ids": ["S1"]}],
         }, ensure_ascii=False), encoding="utf-8")
@@ -53,6 +57,10 @@ class QualityTests(unittest.TestCase):
             "schema_version": "1.0", "direction_id": "electronic-circuit-design",
             "status": "PASS", "reviewer_mode": "ISOLATED",
             "issues": {"critical_open": 0, "important_open": 0},
+            "alignment": {
+                "title_supported": True, "research_question_answered": True,
+                "method_result_consistent": True, "abstract_conclusion_consistent": True,
+            },
             "scores": self.scores, "total": 92, "reviewed_artifacts": reviewed,
         }
         (self.root / "09-final-peer-review.json").write_text(json.dumps(review), encoding="utf-8")
@@ -117,6 +125,43 @@ class QualityTests(unittest.TestCase):
         path.write_text(json.dumps(payload))
         self.assertNotEqual(self.run_quality().returncode, 0)
         self.assertIn("FINAL_PEER_REVIEW_SCORE_MISMATCH", self.report()["errors"])
+
+    def test_alignment_failure_blocks_quality(self):
+        review_path = self.root / "09-final-peer-review.json"
+        review = json.loads(review_path.read_text())
+        review["alignment"]["title_supported"] = False
+        review_path.write_text(json.dumps(review))
+        score_path = self.root / "15-quality-scorecard.json"
+        score = json.loads(score_path.read_text())
+        score["reviewer_report_sha256"] = digest(review_path)
+        score_path.write_text(json.dumps(score))
+        self.assertNotEqual(self.run_quality().returncode, 0)
+        self.assertIn("FINAL_PEER_REVIEW_ALIGNMENT_FAIL", self.report()["errors"])
+
+    def test_target_undershoot_caps_quality_at_partial(self):
+        delivery_path = self.root / "13-delivery-verification.json"
+        delivery_path.write_text(json.dumps({
+            "status": "DELIVERY_OK", "warnings": ["BODY_TARGET_UNDERSHOOT: 实际18000，建议19000"],
+        }), encoding="utf-8")
+        self.assertEqual(self.run_quality().returncode, 0)
+        self.assertEqual(self.report()["status"], "QUALITY_PARTIAL")
+
+    def test_excessive_conclusion_ratio_fails(self):
+        paper = self.root / "07-paper-full.md"
+        paper.write_text(
+            "# 第1章 绪论\n" + "正文论证。" * 60 + "\n# 第7章 结论\n" + "重复结论。" * 80,
+            encoding="utf-8",
+        )
+        review_path = self.root / "09-final-peer-review.json"
+        review = json.loads(review_path.read_text())
+        review["reviewed_artifacts"]["07-paper-full.md"] = digest(paper)
+        review_path.write_text(json.dumps(review))
+        score_path = self.root / "15-quality-scorecard.json"
+        score = json.loads(score_path.read_text())
+        score["reviewer_report_sha256"] = digest(review_path)
+        score_path.write_text(json.dumps(score))
+        self.assertNotEqual(self.run_quality().returncode, 0)
+        self.assertIn("CONCLUSION_RATIO_EXCESSIVE", self.report()["errors"])
 
 
 if __name__ == "__main__":

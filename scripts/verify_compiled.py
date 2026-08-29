@@ -12,12 +12,14 @@ from build_compiled import (
     COMMON_DIR, COMPACT_DIR,
     COMMON_FILES,
     COMPILED_DIR,
+    METHOD_GATES,
     SKILL_ROOT,
     WEAK_CORE,
     direction_files,
     read_source,
     render_compact,
     render_compiled,
+    render_method_gates,
 )
 
 
@@ -87,6 +89,16 @@ def main() -> int:
         errors.append(f"compiled prompts应为19个，实际为{len(compiled)}个")
     if len(compact) != 19:
         errors.append(f"compact prompts应为19个，实际为{len(compact)}个")
+    method_gates = json.loads(METHOD_GATES.read_text(encoding="utf-8"))
+    method_ids = set(method_gates.get("directions", {}))
+    direction_ids = {path.stem for path in directions}
+    if method_ids != direction_ids:
+        errors.append(f"方向方法门集合不一致: 缺少={sorted(direction_ids-method_ids)} 多出={sorted(method_ids-direction_ids)}")
+    for direction_id, gate in method_gates.get("directions", {}).items():
+        if not isinstance(gate.get("completion_gates"), list) or len(gate["completion_gates"]) < 3:
+            errors.append(f"方向方法门不足3项: {direction_id}")
+        if not isinstance(gate.get("retitle_or_downgrade"), str) or not gate["retitle_or_downgrade"].strip():
+            errors.append(f"方向降级规则缺失: {direction_id}")
 
     expected_names = {f"{path.stem}-full.md" for path in directions}
     actual_names = {path.name for path in compiled}
@@ -137,6 +149,9 @@ def main() -> int:
             errors.append(f"方向标记不是恰好一次: {output.name}")
         if output_text.count(direction_text) != 1:
             errors.append(f"方向正文不是恰好一次: {output.name}")
+        method_marker = "<!-- 方法门来源：references/quality/direction-method-gates.json -->"
+        if output_text.count(method_marker) != 1 or output_text.count(render_method_gates(direction)) != 1:
+            errors.append(f"方向方法门不是恰好一次: {output.name}")
 
         compact_output = COMPACT_DIR / f"{direction.stem}-compact.md"
         if compact_output.exists():
@@ -148,6 +163,8 @@ def main() -> int:
                 errors.append(f"紧凑公共核心不是恰好一次: {compact_output.name}")
             if compact_text.count(direction_text) != 1:
                 errors.append(f"紧凑方向正文不是恰好一次: {compact_output.name}")
+            if compact_text.count(render_method_gates(direction)) != 1:
+                errors.append(f"紧凑方向方法门不是恰好一次: {compact_output.name}")
             size = len(compact_text.encode("utf-8"))
             if size > 20000:
                 errors.append(f"紧凑提示词超过20KB: {compact_output.name} -> {size}")
@@ -197,6 +214,7 @@ def main() -> int:
         "references/mode-checker-matrix.json",
         "references/deliverables/revision.md",
         "references/quality/direction-rubrics.json",
+        "references/quality/direction-method-gates.json",
         "references/benchmarks/strong-model-benchmark.json",
     ]
     for reference in required_refs:
@@ -246,7 +264,7 @@ def main() -> int:
             errors.append(f"图表公共规则缺少关键契约: {required_term}")
 
     prose_rules = read_source(COMMON_DIR / "academic-prose-quality.md")
-    for required_term in ["材料推动段落", "控制框架和清单", "句子与段落节奏", "全文只保留一份连续参考文献", "不能输出“AI率”"]:
+    for required_term in ["材料推动段落", "控制框架和清单", "句子与段落节奏", "全文只保留一份连续参考文献", "不能输出“AI率”", "终稿编辑阶段", "结论原则上不超过主体正文的7%"]:
         if required_term not in prose_rules:
             errors.append(f"学术正文质量规则缺少关键约束: {required_term}")
 
@@ -341,6 +359,10 @@ def main() -> int:
         quality_schema=json.loads((SKILL_ROOT/"references/schemas/quality-scorecard.schema.json").read_text(encoding="utf-8"))
         if quality_schema.get("properties",{}).get("schema_version",{}).get("const")!="1.0": errors.append("Quality Scorecard Schema版本不是1.0")
     except (OSError,UnicodeError,json.JSONDecodeError) as exc: errors.append(f"Quality Scorecard Schema不可用: {exc}")
+    try:
+        review_schema=json.loads((SKILL_ROOT/"references/schemas/final-peer-review.schema.json").read_text(encoding="utf-8"))
+        if review_schema.get("properties",{}).get("schema_version",{}).get("const")!="1.0": errors.append("Final Peer Review Schema版本不是1.0")
+    except (OSError,UnicodeError,json.JSONDecodeError) as exc: errors.append(f"Final Peer Review Schema不可用: {exc}")
 
     audit_text = "\n".join(
         path.read_text(encoding="utf-8")

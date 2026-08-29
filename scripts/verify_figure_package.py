@@ -30,7 +30,7 @@ TEXT_RENDER_STRATEGIES = {"DIRECT_IMAGE_TEXT", "DETERMINISTIC_OVERLAY", "DOMAIN_
 LANGUAGE_CHECK_STATUSES = {"PASS", "PASS_WITH_NOTES", "NEEDS_REVIEW", "SKIPPED"}
 DATA_ORIGINS = {
     "USER_PROVIDED", "OFFICIAL_DOWNLOAD", "AUTHOR_OBSERVED", "FORMAL_SIMULATION",
-    "MODEL_SYNTHETIC", "MANUSCRIPT_CONTEXT",
+    "CALCULATED", "MODEL_SYNTHETIC", "SYNTHETIC_DEMO", "MANUSCRIPT_CONTEXT",
 }
 EXACTNESS_TITLE_TERMS = [
     "电路", "接线", "引脚", "原理图", "化学结构", "晶体结构", "能带",
@@ -209,11 +209,30 @@ class FigureVerifier:
             exemption = figure.get("route_exemption")
             if exemption not in ROUTE_EXEMPTIONS:
                 self.error("ROUTE_EXEMPTION_INVALID", f"{figure_id}: {exemption}")
+            if exemption in {"USER_REQUESTED_VECTOR", "PUBLICATION_RESTRICTION"}:
+                exemption_evidence = figure.get("route_exemption_evidence")
+                expected_source = "USER_REQUEST" if exemption == "USER_REQUESTED_VECTOR" else "PUBLICATION_RULE"
+                if (
+                    not isinstance(exemption_evidence, dict)
+                    or exemption_evidence.get("source") != expected_source
+                    or not isinstance(exemption_evidence.get("quote"), str)
+                    or not exemption_evidence.get("quote", "").strip()
+                    or not isinstance(exemption_evidence.get("locator"), str)
+                    or not exemption_evidence.get("locator", "").strip()
+                ):
+                    self.error("ROUTE_EXEMPTION_EVIDENCE_MISSING", figure_id)
             if imagegen_eligible is True and self.image_generation_available is True and route != "IMAGE_GENERATION":
                 if exemption not in {"USER_REQUESTED_VECTOR", "PUBLICATION_RESTRICTION"}:
                     self.error("IMAGEGEN_BYPASSED", f"{figure_id}: 图片工具可用但路线为{route}")
             if exemption == "IMAGE_TOOL_UNAVAILABLE" and self.image_generation_available is True:
                 self.error("FALSE_IMAGE_TOOL_GAP", figure_id)
+            if (
+                exactness_class == "SEMANTIC_STRUCTURE"
+                and self.image_generation_available is True
+                and imagegen_eligible is not True
+                and exemption not in {"USER_REQUESTED_VECTOR", "PUBLICATION_RESTRICTION"}
+            ):
+                self.error("SEMANTIC_IMAGEGEN_ELIGIBILITY_FALSE", figure_id)
             if exactness_class == "DOMAIN_EXACT":
                 if route == "IMAGE_GENERATION" or imagegen_eligible is not False:
                     self.error("DOMAIN_EXACT_IMAGEGEN_FORBIDDEN", figure_id)
@@ -223,6 +242,8 @@ class FigureVerifier:
                 self.error("DATA_GRAPH_ROUTE_INVALID", figure_id)
             elif exactness_class == "EVIDENCE_IMAGE" and route != "EVIDENCE_FILE":
                 self.error("EVIDENCE_IMAGE_ROUTE_INVALID", figure_id)
+            if figure.get("figure_type") in {"ARCHITECTURE", "PROCESS", "ER_UML"} and exactness_class == "DATA_GRAPH":
+                self.error("FIGURE_TYPE_EXACTNESS_MISMATCH", figure_id)
             if exactness_class == "SEMANTIC_STRUCTURE" and isinstance(figure.get("title"), str):
                 if any(term in figure["title"] for term in EXACTNESS_TITLE_TERMS):
                     self.warning("EXACTNESS_CLASS_REVIEW", f"{figure_id}: {figure['title']}")
@@ -270,7 +291,7 @@ class FigureVerifier:
                 origin = source.get("origin") if isinstance(source, dict) else None
                 if origin not in DATA_ORIGINS:
                     self.error("SOURCE_DATA_ORIGIN_INVALID", f"{figure_id}[{pos}]: {origin}")
-                if origin == "MODEL_SYNTHETIC" and (route == "DATA_CODE" or figure.get("claim_bearing")):
+                if origin in {"MODEL_SYNTHETIC", "SYNTHETIC_DEMO"} and (route == "DATA_CODE" or figure.get("claim_bearing")):
                     self.error("MODEL_SYNTHETIC_RESULT_FORBIDDEN", f"{figure_id}[{pos}]")
                 if origin == "OFFICIAL_DOWNLOAD":
                     receipt = source.get("acquisition_receipt")
@@ -927,7 +948,7 @@ def main() -> int:
         "warnings": verifier.warnings,
         "input_sha256": input_sha256,
         "verifier": {
-            "name": Path(__file__).name, "version": "1.9.0",
+            "name": Path(__file__).name, "version": "2.0.0",
             "sha256": verifier.sha256(Path(__file__).resolve()),
             "generated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
         },

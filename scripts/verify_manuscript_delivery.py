@@ -416,13 +416,20 @@ class DeliveryVerifier:
             from pypdf import PdfReader
             reader = PdfReader(str(path))
             pages = len(reader.pages)
-            visible_text = "\n".join((page.extract_text() or "") for page in reader.pages)
+            page_texts = [(page.extract_text() or "") for page in reader.pages]
+            visible_text = "\n".join(page_texts)
             visible_toc = bool(re.search(r"(^|\n)目\s*录\s*(\n|$)", visible_text))
-            self.metrics["pdf"] = {"pages": pages, "visible_toc": visible_toc}
+            toc_page = next(
+                (index + 1 for index, text in enumerate(page_texts) if re.search(r"(^|\n)目\s*录\s*(\n|$)", text)),
+                None,
+            )
+            self.metrics["pdf"] = {"pages": pages, "visible_toc": visible_toc, "toc_page": toc_page}
             if pages == 0:
                 self.error("PDF_NO_PAGES", str(path))
             if require_toc and not visible_toc:
                 self.error("PDF_VISIBLE_TOC_MISSING", str(path))
+            if require_toc and toc_page == 1:
+                self.error("THESIS_COVER_TOC_SAME_PAGE", str(path))
         except ImportError:
             if require_toc:
                 self.error("PDF_TOC_CHECK_UNAVAILABLE", "THESIS目录核验需要pypdf")
@@ -629,7 +636,7 @@ def main() -> int:
         "metrics": verifier.metrics,
         "input_sha256": input_sha256,
         "verifier": {
-            "name": Path(__file__).name, "version": "1.9.2",
+            "name": Path(__file__).name, "version": "2.0.0",
             "sha256": verifier.sha256(Path(__file__).resolve()),
             "generated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
         },

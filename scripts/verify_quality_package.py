@@ -7,6 +7,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+import re
 from typing import Any, Dict, List, Optional
 
 
@@ -16,6 +17,9 @@ RUBRICS = json.loads((ROOT / "references/quality/direction-rubrics.json").read_t
 VALID_DIRECTIONS = set(RUBRICS["directions"])
 RESOLVED_IMPORTANT = {"RESOLVED", "FIXED", "CLOSED", "ADDRESSED"}
 IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".webp"}
+BOUNDARY_TERMS = ["不得", "不能", "未执行", "未验证", "主张层级", "能力缺口", "不报告"]
+PROCESS_TERMS = ["门禁", "回执", "哈希", "脚本路径", "run-manifest", "DESIGN_ONLY", "OBSERVED_STUDY", "REVIEW_SYNTHESIS"]
+PROMOTIONAL_TERMS = ["首次", "首创", "攻克", "彻底解决", "卓越", "领先优势", "精准预测", "完美达标", "重大突破"]
 
 
 def sha256(path: Path) -> str:
@@ -82,6 +86,13 @@ def check_review(root: Path, manifest: Dict[str, Any], score: Dict[str, Any], er
         errors.append("FINAL_PEER_REVIEW_DIRECTION")
     if review.get("status") != "PASS" or review.get("reviewer_mode") != "ISOLATED":
         errors.append("FINAL_PEER_REVIEW_NOT_PASS")
+    alignment = review.get("alignment")
+    alignment_fields = {
+        "title_supported", "research_question_answered", "method_result_consistent",
+        "abstract_conclusion_consistent",
+    }
+    if not isinstance(alignment, dict) or any(alignment.get(field) is not True for field in alignment_fields):
+        errors.append("FINAL_PEER_REVIEW_ALIGNMENT_FAIL")
     issues = review.get("issues")
     if not isinstance(issues, dict) or issues.get("critical_open") != 0 or issues.get("important_open") != 0:
         errors.append("FINAL_PEER_REVIEW_ISSUES_OPEN")
@@ -102,6 +113,55 @@ def check_review(root: Path, manifest: Dict[str, Any], score: Dict[str, Any], er
         if path is None or not path.is_file() or reviewed.get(relative) != sha256(path):
             errors.append(f"FINAL_PEER_REVIEW_ARTIFACT_STALE:{relative}")
     return review_path
+
+
+def count_units(text: str) -> int:
+    return len(re.findall(r"[\u3400-\u9fff]", text)) + len(re.findall(r"\b[A-Za-z]+(?:[-'][A-Za-z]+)*\b", text))
+
+
+def check_prose(markdown: Path, errors: List[str], warnings: List[str]) -> Dict[str, Any]:
+    text = markdown.read_text(encoding="utf-8", errors="replace")
+    reference = re.search(r"^#{1,6}\s*(?:参考文献|References)\s*$", text, re.MULTILINE | re.IGNORECASE)
+    main = text[:reference.start()] if reference else text
+    first_chapter = re.search(r"^#{1,3}\s*(?:第\s*1\s*章|1(?:\.0)?[.、]?\s+)", main, re.MULTILINE)
+    body = main[first_chapter.start():] if first_chapter else main
+    conclusion_matches = list(re.finditer(r"^#{1,3}\s*.*(?:结论|总结).*?$", body, re.MULTILINE))
+    conclusion = body[conclusion_matches[-1].start():] if conclusion_matches else ""
+    body_units = count_units(body)
+    conclusion_units = count_units(conclusion)
+    ratio = conclusion_units / max(body_units, 1)
+    boundary_density = sum(body.count(term) for term in BOUNDARY_TERMS) / max(body_units, 1) * 10000
+    process_density = sum(body.count(term) for term in PROCESS_TERMS) / max(body_units, 1) * 10000
+    promotional_density = sum(body.count(term) for term in PROMOTIONAL_TERMS) / max(body_units, 1) * 10000
+    sentences = [re.sub(r"\s+", "", item) for item in re.split(r"[。！？!?]", body)]
+    counts: Dict[str, int] = {}
+    for sentence in sentences:
+        if len(sentence) >= 24:
+            counts[sentence] = counts.get(sentence, 0) + 1
+    duplicate_sentences = sum(value - 1 for value in counts.values() if value > 1)
+    if ratio > 0.10:
+        errors.append("CONCLUSION_RATIO_EXCESSIVE")
+    elif ratio > 0.07:
+        warnings.append("CONCLUSION_RATIO_HIGH")
+    if boundary_density > 80:
+        errors.append("BOUNDARY_LANGUAGE_EXCESSIVE")
+    elif boundary_density > 55:
+        warnings.append("BOUNDARY_LANGUAGE_HIGH")
+    if process_density > 20:
+        warnings.append("PROCESS_LANGUAGE_LEAKAGE")
+    if promotional_density > 20:
+        warnings.append("PROMOTIONAL_LANGUAGE_HIGH")
+    if duplicate_sentences > 3:
+        warnings.append("DUPLICATE_SENTENCES_HIGH")
+    return {
+        "body_units": body_units,
+        "conclusion_units": conclusion_units,
+        "conclusion_ratio": round(ratio, 4),
+        "boundary_terms_per_10000": round(boundary_density, 2),
+        "process_terms_per_10000": round(process_density, 2),
+        "promotional_terms_per_10000": round(promotional_density, 2),
+        "duplicate_sentences": duplicate_sentences,
+    }
 
 
 def main() -> int:
@@ -157,6 +217,15 @@ def main() -> int:
                 errors.append("IMPORTANT_NOT_RESOLVED")
 
     review_path = check_review(root, manifest, score, errors)
+    prose_metrics = check_prose(root / "07-paper-full.md", errors, warnings)
+    delivery_report = resolve(root, manifest.get("delivery_verification_report", "13-delivery-verification.json"))
+    if delivery_report is None or not delivery_report.is_file():
+        errors.append("DELIVERY_REPORT_MISSING")
+    else:
+        delivery_payload = load(delivery_report)
+        for warning in delivery_payload.get("warnings", []) if isinstance(delivery_payload, dict) else []:
+            if isinstance(warning, str) and warning.startswith("BODY_TARGET_UNDERSHOOT"):
+                warnings.append("BODY_TARGET_UNDERSHOOT")
 
     claim_rows = claims.get("claims", [])
     if not claim_rows or any(
@@ -195,12 +264,15 @@ def main() -> int:
     ]
     if review_path:
         inputs.append(review_path)
+    if delivery_report and delivery_report.is_file():
+        inputs.append(delivery_report)
     input_hashes = {str(path.relative_to(root)): sha256(path) for path in inputs if path.is_file()}
     script = Path(__file__).resolve()
     payload = {
         "schema_version": "1.0", "status": status, "total": calculated,
-        "errors": errors, "warnings": warnings, "input_sha256": input_hashes,
-        "verifier": {"name": script.name, "version": "1.9.2", "sha256": sha256(script)},
+        "errors": errors, "warnings": warnings, "metrics": {"prose": prose_metrics},
+        "input_sha256": input_hashes,
+        "verifier": {"name": script.name, "version": "2.0.0", "sha256": sha256(script)},
     }
     output = args.report if args.report.is_absolute() else root / args.report
     try:

@@ -32,6 +32,14 @@
         "exactness_class": {"enum": ["SEMANTIC_STRUCTURE", "DOMAIN_EXACT", "DATA_GRAPH", "EVIDENCE_IMAGE"]},
         "imagegen_eligible": {"type": "boolean"},
         "route_exemption": {"type": ["string", "null"], "enum": ["USER_REQUESTED_VECTOR", "PUBLICATION_RESTRICTION", "IMAGE_TOOL_UNAVAILABLE", "DOMAIN_EXACTNESS", "EVIDENCE_REQUIRED", null]},
+        "route_exemption_evidence": {
+          "type": ["object", "null"],
+          "properties": {
+            "source": {"enum": ["USER_REQUEST", "PUBLICATION_RULE"]},
+            "quote": {"type": "string"},
+            "locator": {"type": "string"}
+          }
+        },
         "claim_bearing": {"type": "boolean"},
         "generation_route": {"enum": ["IMAGE_GENERATION", "DATA_CODE", "DOMAIN_TOOL", "EVIDENCE_FILE", "SVG_FALLBACK"]},
         "data_status": {"enum": ["OBSERVED", "VERIFIED_EXTERNAL", "SIMULATED_RESEARCH", "NOT_APPLICABLE"]},
@@ -46,7 +54,7 @@
             "properties": {
               "file": {"type": "string", "minLength": 1},
               "sha256": {"type": "string", "pattern": "^[0-9a-fA-F]{64}$"},
-              "origin": {"enum": ["USER_PROVIDED", "OFFICIAL_DOWNLOAD", "AUTHOR_OBSERVED", "FORMAL_SIMULATION", "MODEL_SYNTHETIC", "MANUSCRIPT_CONTEXT"]},
+              "origin": {"enum": ["USER_PROVIDED", "OFFICIAL_DOWNLOAD", "AUTHOR_OBSERVED", "FORMAL_SIMULATION", "CALCULATED", "MODEL_SYNTHETIC", "SYNTHETIC_DEMO", "MANUSCRIPT_CONTEXT"]},
               "acquisition_receipt": {"type": ["object", "null"]}
             }
           }

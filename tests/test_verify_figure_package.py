@@ -235,6 +235,32 @@ class FigurePackageTests(unittest.TestCase):
         self.assertTrue(any("IMAGEGEN_BYPASSED" in item for item in errors))
         self.assertTrue(any("FALSE_IMAGE_TOOL_GAP" in item for item in errors))
 
+    def test_semantic_structure_cannot_disable_imagegen_eligibility(self) -> None:
+        figure = self.manifest["figures"][0]
+        figure.update({
+            "figure_type": "PROCESS", "exactness_class": "SEMANTIC_STRUCTURE",
+            "imagegen_eligible": False, "route_exemption": None,
+        })
+        self.write_manifest()
+        errors = self.verify().errors
+        self.assertTrue(any("SEMANTIC_IMAGEGEN_ELIGIBILITY_FALSE" in item for item in errors))
+
+    def test_user_vector_exemption_requires_user_request_evidence(self) -> None:
+        figure = self.manifest["figures"][0]
+        figure.update({
+            "figure_type": "PROCESS", "exactness_class": "SEMANTIC_STRUCTURE",
+            "imagegen_eligible": False, "route_exemption": "USER_REQUESTED_VECTOR",
+        })
+        self.write_manifest()
+        self.assertTrue(any("ROUTE_EXEMPTION_EVIDENCE_MISSING" in item for item in self.verify().errors))
+
+    def test_process_cannot_be_mislabeled_as_data_graph(self) -> None:
+        figure = self.manifest["figures"][0]
+        figure["figure_type"] = "PROCESS"
+        figure["exactness_class"] = "DATA_GRAPH"
+        self.write_manifest()
+        self.assertTrue(any("FIGURE_TYPE_EXACTNESS_MISMATCH" in item for item in self.verify().errors))
+
     def test_valid_image_generation_embeds_generated_file(self) -> None:
         figure = self.manifest["figures"][0]
         (self.root / "figures/prompt.md").write_text("逐字标签：实验组、对照组", encoding="utf-8")

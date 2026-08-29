@@ -121,6 +121,8 @@ python3 "<SKILL_DIR>/scripts/verify_figure_package.py" \
 
 精确流程图和关系图的生图Prompt必须列出：用途、画布比例、阅读方向、节点总数、每个节点的逐字标签与形状、分组和层级、每条箭头的起点终点、分支条件、主次路径、配色、字体、禁止新增或遗漏内容以及逐项验收清单。先要求图片模型直接生成；文字或箭头局部错误时优先使用图片编辑工具修正，必要时增加确定性标签覆盖层，但不得用纯SVG替代真实图片调用。
 
+普通语义结构图优先控制在6—10个核心节点，每个中文节点标签通常2—8个汉字；解释性长句、证据边界和方法细节移到图注。必须超过10个节点时先评估拆成主图与子图。图片模型负责构图、图标、材质和视觉层次；逐字中文、公式、数值和精确箭头不稳定时使用 `DETERMINISTIC_OVERLAY`，但底图仍保留本次真实图片生成结果。
+
 ## 父子代理图片任务交接
 
 详细大纲完成后，先建立完整 `figures/figure-plan.json`。每张图至少包含 `figure_id`、`display_number`、用途、类型、逐字标题、事实与结构清单、`exactness_class`、`imagegen_eligible`、计划路线、正文位置和Prompt文件。适合生图的普通语义结构图必须先全部进入任务单，再由实际拥有图片工具的调用层逐张执行；不能先让子执行器批量生成SVG，最后由父代理只补第一张概念图。
@@ -130,6 +132,8 @@ python3 "<SKILL_DIR>/scripts/verify_figure_package.py" \
 ## 通用质量门
 
 每张图在权威 `figures/figure-manifest.json` 记录机器可读路由，在 `figures/figure-manifest.md` 提供供人阅读的摘要。图片能力Agent的每张适合生图的图必须设置 `imagegen_eligible=true`，并有独立Prompt与真实PNG/JPEG/WebP；不能用SVG、HTML截图、占位PNG或图片理解能力冒充。只有用户明确要求可编辑矢量、出版规则禁止或整个调用链真实无图片工具时才记录 `route_exemption`。
+
+`USER_REQUESTED_VECTOR` 必须记录用户原话与请求定位，`PUBLICATION_RESTRICTION` 必须记录出版规则原文与定位；只有模型自述的豁免无效。`ARCHITECTURE`、`PROCESS`、`ER_UML` 不能为了绕开图片生成被登记为 `DATA_GRAPH`。流程图中即使含少量计数或比例，只要主要任务是表达节点关系，仍属于 `SEMANTIC_STRUCTURE`。
 
 `imagegen_eligible` 不能只由“图是否好看”决定。电路接线、引脚、化学键、晶体连接、公式、尺度、载荷位置、焊接接头、电极体系和精确生物通路统一标记为 `DOMAIN_EXACT`，使用领域工具、确定性矢量或证据底图；ImageGen只能在不改变精确核心的前提下做配色、材质、图标和版式合成。普通研究框架、组织关系、责任分工和不承载精确连接的流程才标记为 `SEMANTIC_STRUCTURE`。
 

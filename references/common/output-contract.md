@@ -2,6 +2,8 @@
 
 按“研究契约 → 检索 → 证据矩阵 → 大纲 → 论证地图 → 分章写作 → 图表 → 全文整合 → 引用审计 → 同行评审 → 修订 → DOCX/PDF → 最终验收”执行。
 
+在初稿审查与定点修订之后、最终DOCX/PDF之前执行终稿编辑：冻结事实、数值、引用、公式和图表语义，只清除重复、过程旁白、无证据强化词和不合理章节比例。终稿编辑后重新导出、视觉核验并进行终稿隔离审稿。
+
 运行开始时保留 `run-params.md`，并通过文件级确定性拼接生成 `final-execution-prompt.md`；不得由模型重新生成完整方向提示词。
 
 `FULL_BUILD` 输出：`run-params.md`、`final-execution-prompt.md`、`00-prompt-composition.json`、`00-capability-report.md`、`00-capability-report.json`、`00-profile-selection.json`、GUIDED/WEAK模型使用的 `00-execution-checkpoints.json`、`01-research-contract.md`、`02-search-log.md`、`03-evidence-matrix.csv`、`04-reference-audit.md`、`04-evidence-verification.json`、`references.bib`、`data/data-provenance.json`、`05-outline.md`、`06-argument-map.md`、`chapters/`、`figures/figure-plan.json`、`figures/figure-manifest.json`、`figures/figure-manifest.md`、`figures/figure-verification.json`、`tables/table-data-and-sources.md`、`equations/formula-audit.md`、`equations/formula-verification.json`、`07-paper-full.md`、`08-claim-citation-audit.md`、`09-peer-review.md`、终稿后的 `09-final-peer-review.json`、`10-revision-log.md`、按下述规则命名的DOCX与PDF、可选同名TEX、`11-format-validation.md`、`12-final-qa-report.md`、`13-delivery-verification.json`、`14-adjudicated-status.json` 和 `run-manifest.json`。FULL_AUTONOMY不强制创建阶段任务卡；没有真实生成的文件不得列入完成清单。
@@ -42,6 +44,7 @@ DOCX与PDF必须使用同一文件名主体和同一时间戳。`final-paper.doc
 - 中文THESIS默认包含中文摘要、中文关键词、英文 `Abstract` 与英文 `Keywords`；两种摘要的研究对象、方法、结果性质与限制必须一致。中文JOURNAL无模板时同样使用双语摘要；REPORT、PROPOSAL和DEFENSE默认按主语言单语，学校或期刊模板优先；
 
 - 页面为A4；上、下页边距2.54cm，左3.0cm，右2.5cm；
+- THESIS默认封面独立成页；中文摘要、英文摘要与目录分别从新页开始，目录不得与封面标题挤在同一页。JOURNAL和REPORT不强制使用论文封面；
 - 论文主标题居中、黑体或等价中文无衬线字体、22pt、加粗；
 - 中文正文使用宋体、SimSun或Songti SC，12pt；英文与数字使用Times New Roman，12pt；两端对齐，首行缩进2字符，1.5倍行距，段前段后0；该首行缩进只适用于表格外的普通正文段落，不能继承到表格单元格、题注、目录或公式段落；
 - 一级标题使用内置 `Heading 1`，16pt黑体；二级标题使用 `Heading 2`，14pt黑体；三级标题使用 `Heading 3`，12pt黑体；标题与下一段保持同页，不用普通加粗段落冒充标题；

@@ -7,9 +7,16 @@
 - 证据分层和主题综合
 - 争议、空白与局限
 
+## 方法完成门
+- 系统/范围综述至少双库并保存完整检索式
+- 去重、纳排和全文数量可复算
+- 题录层与全文层综合严格分开
+
+数据不足时：单库、分页截断或无筛选流程时不得使用系统综述名称，改为范围性梳理或叙述综述。
+
 ## Critical
 - 题录冒充全文
 - 声称系统综述但无双库/流程
 
 ## 终稿输出
-在全部图片和文档完成后写入 `09-final-peer-review.json`，记录 `schema_version: 1.0`、当前 `direction_id`、`status`、`reviewer_mode: ISOLATED`、Critical/Important开放数、六项分数、总分，以及最终正文、Figure Manifest、文档视觉审计、DOCX和PDF的逐文件SHA-256。然后把完全相同的分数写入 `15-quality-scorecard.json`，并记录终稿审稿报告路径与SHA-256。每个问题包含location、evidence、fix与status。Critical或Important未清零、任一维度低于80%或总分低于90时不得给90分。
+在全部图片和文档完成后写入 `09-final-peer-review.json`，记录 `schema_version: 1.0`、当前 `direction_id`、`status`、`reviewer_mode: ISOLATED`、Critical/Important开放数、六项分数、总分，以及最终正文、Figure Manifest、文档视觉审计、DOCX和PDF的逐文件SHA-256。另记录 `alignment`：`title_supported`、`research_question_answered`、`method_result_consistent`、`abstract_conclusion_consistent` 必须均为true；否则先改题、降级或返修。然后把完全相同的分数写入 `15-quality-scorecard.json`，并记录终稿审稿报告路径与SHA-256。每个问题包含location、evidence、fix与status。Critical或Important未清零、任一维度低于80%或总分低于90时不得给90分。

@@ -33,11 +33,24 @@ COMMON_FILES = [
 ]
 
 RUBRICS = SKILL_ROOT / "references" / "quality" / "direction-rubrics.json"
+METHOD_GATES = SKILL_ROOT / "references" / "quality" / "direction-method-gates.json"
 
 def render_rubric(direction: Path) -> str:
     payload=json.loads(RUBRICS.read_text(encoding="utf-8"));rubric=payload["directions"][direction.stem]
     focus="\n".join(f"- {x}" for x in rubric["focus"]);critical="\n".join(f"- {x}" for x in rubric["critical"])
     return f"## 当前方向90分评分卡\n\n### 专业深度关注点\n\n{focus}\n\n### Critical错误\n\n{critical}"
+
+
+def render_method_gates(direction: Path) -> str:
+    payload = json.loads(METHOD_GATES.read_text(encoding="utf-8"))
+    gate = payload["directions"][direction.stem]
+    items = "\n".join(f"- {item}" for item in gate["completion_gates"])
+    return (
+        "## 当前方向方法完成门\n\n"
+        f"{items}\n\n"
+        "### 数据不足时的题目与主张处理\n\n"
+        f"{gate['retitle_or_downgrade']}"
+    )
 
 
 def read_source(path: Path) -> str:
@@ -72,6 +85,7 @@ def render_compiled(direction: Path) -> str:
         f"<!-- 方向来源：references/directions/{direction.name} -->\n\n{read_source(direction)}"
     )
     sections.append(f"<!-- 质量评分来源：references/quality/direction-rubrics.json -->\n\n{render_rubric(direction)}")
+    sections.append(f"<!-- 方法门来源：references/quality/direction-method-gates.json -->\n\n{render_method_gates(direction)}")
     return "\n\n".join(sections) + "\n"
 
 
@@ -95,6 +109,8 @@ def render_compact(direction: Path) -> str:
         + read_source(direction)
         + "\n\n<!-- 质量评分来源：references/quality/direction-rubrics.json -->\n\n"
         + render_rubric(direction)
+        + "\n\n<!-- 方法门来源：references/quality/direction-method-gates.json -->\n\n"
+        + render_method_gates(direction)
         + "\n"
     )
 

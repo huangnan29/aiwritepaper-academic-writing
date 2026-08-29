@@ -1,0 +1,81 @@
+{
+  "schema_version": "1.0",
+  "directions": {
+    "art-design-practice": {
+      "completion_gates": ["区分公开材料推导角色与真实访谈角色", "设计迭代记录说明每次取舍", "无真实用户测试时只交付评价方案"],
+      "retitle_or_downgrade": "没有伦理与用户测试数据时不得声称可用性、满意度或任务完成率已经改善。"
+    },
+    "biomedical-experimental-journal": {
+      "completion_gates": ["队列原始文件与下载回执真实存在", "特征选择与评价分离并报告乐观偏差", "外部验证缺失时不得称临床标志物已验证"],
+      "retitle_or_downgrade": "只有模拟、随机或内部重用数据时降为方案；无外部队列时标题与结论使用内部再分析。"
+    },
+    "chemical-materials-experiment": {
+      "completion_gates": ["原始谱图或文献数值可定位", "电极构型、电解液、载量和归一化口径分池", "跨论文比较报告不可比项"],
+      "retitle_or_downgrade": "无作者实验原始文件时改为公开数据再分析或综述，不写合成、测试和性能突破。"
+    },
+    "clinical-nursing-research": {
+      "completion_gates": ["病例研究具有伦理和去标识材料", "证据综合至少覆盖指南与两类研究设计", "护理执行边界与处方权分离"],
+      "retitle_or_downgrade": "没有伦理病例与实施数据时保持证据综合或方案，不报告本院发生率和疗效。"
+    },
+    "economics-policy-empirical": {
+      "completion_gates": ["政策时点、样本和变量口径可复现", "平行趋势与安慰剂检验真实运行", "异质处理时点采用适当估计或解释偏差"],
+      "retitle_or_downgrade": "前趋势或安慰剂失败时删除因果措辞，题目改为关联、差异或识别限制研究。"
+    },
+    "education-applied-research": {
+      "completion_gates": ["真实课堂数据具有伦理、样本和工具", "设计任务与预期反应逐项对齐", "量规和实施保真度能够被观察"],
+      "retitle_or_downgrade": "无课堂原始材料时保持教学设计，不生成班级成绩、问卷或满意度。"
+    },
+    "electronic-circuit-design": {
+      "completion_gates": ["器件参数回到对应版本数据手册", "电源、电平、引脚和时序逐项校核", "仿真结果具有真实网表、引擎命令和原始输出"],
+      "retitle_or_downgrade": "未实际运行SPICE或制板时保持设计与验证方案，不报告仿真通过、样机指标或认证。"
+    },
+    "general-journal-imrad": {
+      "completion_gates": ["研究问题、方法、结果和讨论逐项同构", "每个结果均有原始数据或全文证据", "不确定性和失败结果进入讨论"],
+      "retitle_or_downgrade": "核心结果未取得时收窄题目或改为协议/综述，不用局限段掩盖研究问题未完成。"
+    },
+    "geography-environmental-empirical": {
+      "completion_gates": ["保存原始栅格/矢量、版本、许可和下载回执", "空间单元、投影、分辨率和面积口径一致", "地图与统计使用同一处理结果"],
+      "retitle_or_downgrade": "无法处理原始空间数据时改用明确的已发布统计产品，不手绘面积、坐标和变化率。"
+    },
+    "legal-normative-analysis": {
+      "completion_gates": ["法源版本、效力层级和生效状态可核", "案例主张定位到裁判文书具体理由", "比较法只作说理来源"],
+      "retitle_or_downgrade": "无法取得裁判或法条原文时降低为学说综述，不把新闻转述写成裁判规则。"
+    },
+    "literature-review-synthesis": {
+      "completion_gates": ["系统/范围综述至少双库并保存完整检索式", "去重、纳排和全文数量可复算", "题录层与全文层综合严格分开"],
+      "retitle_or_downgrade": "单库、分页截断或无筛选流程时不得使用系统综述名称，改为范围性梳理或叙述综述。"
+    },
+    "literature-textual-analysis": {
+      "completion_gates": ["核心文本版本与页码明确", "引语逐字核对且不由生成图替代", "每个理论判断回到具体句群并处理反例"],
+      "retitle_or_downgrade": "未目验核心版本时只做研究述评，不生成原文引语、页码和异文判断。"
+    },
+    "machine-learning-applied-empirical": {
+      "completion_gates": ["原始数据与许可真实存在", "预处理和选择仅在训练折内完成", "独立/嵌套评价、校准、误差和子群结果齐全"],
+      "retitle_or_downgrade": "随机或演示数据只能用于教程；无真实运行日志时降为建模协议，不报告AUC、准确率和部署价值。"
+    },
+    "management-case-analysis": {
+      "completion_gates": ["企业事实来自披露、授权材料或可核报道", "机制解释区分公司口径与研究推论", "成本、失败和边界与成功案例同等分析"],
+      "retitle_or_downgrade": "没有一手或公开案例材料时改为通用方案，不虚构企业、访谈、KPI和实施成效。"
+    },
+    "mathematics-education": {
+      "completion_gates": ["数学定义、反例与图象无错误", "问题链遵守认知依赖而非只列活动", "课堂数据具有原始答卷、样本与伦理边界"],
+      "retitle_or_downgrade": "无真实课堂材料时保持教学设计，不生成N值、检出率、课堂实录和心理访谈。"
+    },
+    "mechanical-material-process": {
+      "completion_gates": ["载荷、几何、材料状态和标准版本冻结", "工艺窗口区分标准值、文献值与设计值", "FEA具有模型、网格、边界、求解器和原始结果"],
+      "retitle_or_downgrade": "未运行求解器和试验时保持材料/工艺设计与校核方案，不报告实测硬度、残余应力和安全系数已验证。"
+    },
+    "physical-materials-experiment": {
+      "completion_gates": ["数据库原始下载字节与材料ID可核", "计算层级、实验口径和激子/带隙定义分开", "光谱、相图和I-V来自真实输出"],
+      "retitle_or_downgrade": "无原始计算或实验文件时降为文献数据再分析；模型曲线不得称数据库下载或实验观测。"
+    },
+    "professional-work-report": {
+      "completion_gates": ["岗位、单位和业务事实来自用户授权材料", "改进前后指标具有原始台账和同口径定义", "实施角色、成本、风险和验收可追踪"],
+      "retitle_or_downgrade": "没有真实单位材料时改为工作方案，不虚构公司、审批人、供应商数量、台账、ROI和提升比例。"
+    },
+    "software-system-engineering": {
+      "completion_gates": ["需求角色、权限、数据模型和接口互相追踪", "实现声明具有源码版本与构建记录", "性能和测试结论具有环境、用例和日志"],
+      "retitle_or_downgrade": "无源码、部署和测试日志时保持架构设计与验证方案，不报告已上线、并发性能和用户量。"
+    }
+  }
+}

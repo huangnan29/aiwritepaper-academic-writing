@@ -7,6 +7,7 @@ import csv
 import importlib.util
 import json
 from pathlib import Path
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -162,6 +163,39 @@ class EvidenceIntegrityTests(unittest.TestCase):
         self.write_provenance()
         errors = self.run_verifier().errors
         self.assertTrue(any("REGISTER_RECEIPT_INVALID" in item for item in errors))
+
+    def test_captured_observed_raw_source_passes(self) -> None:
+        raw_dir = self.root / "data/raw"
+        raw_dir.mkdir()
+        data = raw_dir / "observations.csv"
+        data.write_text("group,value\nA,12\n", encoding="utf-8")
+        receipt = self.root / "data/observation.json"
+        capture = Path(__file__).resolve().parents[1] / "scripts/capture_provenance.py"
+        result = subprocess.run([
+            sys.executable, str(capture), "register", "--root", str(self.root),
+            "--source", "data/raw/observations.csv", "--origin", "AUTHOR_OBSERVED",
+            "--collection-method", "授权仪器导出", "--collector", "researcher",
+            "--receipt", "data/observation.json",
+        ], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.manifest["research_claim_level"] = "OBSERVED_STUDY"
+        (self.root / "run-manifest.json").write_text(json.dumps(self.manifest), encoding="utf-8")
+        self.provenance = {
+            "schema_version": "1.0", "research_claim_level": "OBSERVED_STUDY",
+            "datasets": [{
+                "dataset_id": "D1", "origin": "AUTHOR_OBSERVED", "claim_role": "RESULT",
+                "file": "data/raw/observations.csv", "sha256": MODULE.sha256(data),
+                "supports_claims": ["观察结果"],
+                "source_artifacts": [{
+                    "file": "data/raw/observations.csv", "sha256": MODULE.sha256(data),
+                    "origin": "AUTHOR_OBSERVED",
+                }],
+                "observation_receipt": "data/observation.json",
+                "observation_receipt_sha256": MODULE.sha256(receipt),
+            }],
+        }
+        self.write_provenance()
+        self.assertEqual(self.run_verifier().errors, [])
 
     def test_invalid_direction_fails(self) -> None:
         self.manifest["direction_id"] = "invented-direction"

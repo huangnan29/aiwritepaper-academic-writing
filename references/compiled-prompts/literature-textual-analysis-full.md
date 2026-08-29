@@ -155,6 +155,8 @@ arXiv、bioRxiv、ChemRxiv、SSRN、NBER工作论文可以收录，但必须在�
 
 按“研究契约 → 检索 → 证据矩阵 → 大纲 → 论证地图 → 分章写作 → 图表 → 全文整合 → 引用审计 → 同行评审 → 修订 → DOCX/PDF → 最终验收”执行。
 
+在初稿审查与定点修订之后、最终DOCX/PDF之前执行终稿编辑：冻结事实、数值、引用、公式和图表语义，只清除重复、过程旁白、无证据强化词和不合理章节比例。终稿编辑后重新导出、视觉核验并进行终稿隔离审稿。
+
 运行开始时保留 `run-params.md`，并通过文件级确定性拼接生成 `final-execution-prompt.md`；不得由模型重新生成完整方向提示词。
 
 `FULL_BUILD` 输出：`run-params.md`、`final-execution-prompt.md`、`00-prompt-composition.json`、`00-capability-report.md`、`00-capability-report.json`、`00-profile-selection.json`、GUIDED/WEAK模型使用的 `00-execution-checkpoints.json`、`01-research-contract.md`、`02-search-log.md`、`03-evidence-matrix.csv`、`04-reference-audit.md`、`04-evidence-verification.json`、`references.bib`、`data/data-provenance.json`、`05-outline.md`、`06-argument-map.md`、`chapters/`、`figures/figure-plan.json`、`figures/figure-manifest.json`、`figures/figure-manifest.md`、`figures/figure-verification.json`、`tables/table-data-and-sources.md`、`equations/formula-audit.md`、`equations/formula-verification.json`、`07-paper-full.md`、`08-claim-citation-audit.md`、`09-peer-review.md`、终稿后的 `09-final-peer-review.json`、`10-revision-log.md`、按下述规则命名的DOCX与PDF、可选同名TEX、`11-format-validation.md`、`12-final-qa-report.md`、`13-delivery-verification.json`、`14-adjudicated-status.json` 和 `run-manifest.json`。FULL_AUTONOMY不强制创建阶段任务卡；没有真实生成的文件不得列入完成清单。
@@ -195,6 +197,7 @@ DOCX与PDF必须使用同一文件名主体和同一时间戳。`final-paper.doc
 - 中文THESIS默认包含中文摘要、中文关键词、英文 `Abstract` 与英文 `Keywords`；两种摘要的研究对象、方法、结果性质与限制必须一致。中文JOURNAL无模板时同样使用双语摘要；REPORT、PROPOSAL和DEFENSE默认按主语言单语，学校或期刊模板优先；
 
 - 页面为A4；上、下页边距2.54cm，左3.0cm，右2.5cm；
+- THESIS默认封面独立成页；中文摘要、英文摘要与目录分别从新页开始，目录不得与封面标题挤在同一页。JOURNAL和REPORT不强制使用论文封面；
 - 论文主标题居中、黑体或等价中文无衬线字体、22pt、加粗；
 - 中文正文使用宋体、SimSun或Songti SC，12pt；英文与数字使用Times New Roman，12pt；两端对齐，首行缩进2字符，1.5倍行距，段前段后0；该首行缩进只适用于表格外的普通正文段落，不能继承到表格单元格、题注、目录或公式段落；
 - 一级标题使用内置 `Heading 1`，16pt黑体；二级标题使用 `Heading 2`，14pt黑体；三级标题使用 `Heading 3`，12pt黑体；标题与下一段保持同页，不用普通加粗段落冒充标题；
@@ -350,6 +353,8 @@ python3 "<SKILL_DIR>/scripts/verify_figure_package.py" \
 
 精确流程图和关系图的生图Prompt必须列出：用途、画布比例、阅读方向、节点总数、每个节点的逐字标签与形状、分组和层级、每条箭头的起点终点、分支条件、主次路径、配色、字体、禁止新增或遗漏内容以及逐项验收清单。先要求图片模型直接生成；文字或箭头局部错误时优先使用图片编辑工具修正，必要时增加确定性标签覆盖层，但不得用纯SVG替代真实图片调用。
 
+普通语义结构图优先控制在6—10个核心节点，每个中文节点标签通常2—8个汉字；解释性长句、证据边界和方法细节移到图注。必须超过10个节点时先评估拆成主图与子图。图片模型负责构图、图标、材质和视觉层次；逐字中文、公式、数值和精确箭头不稳定时使用 `DETERMINISTIC_OVERLAY`，但底图仍保留本次真实图片生成结果。
+
 ## 父子代理图片任务交接
 
 详细大纲完成后，先建立完整 `figures/figure-plan.json`。每张图至少包含 `figure_id`、`display_number`、用途、类型、逐字标题、事实与结构清单、`exactness_class`、`imagegen_eligible`、计划路线、正文位置和Prompt文件。适合生图的普通语义结构图必须先全部进入任务单，再由实际拥有图片工具的调用层逐张执行；不能先让子执行器批量生成SVG，最后由父代理只补第一张概念图。
@@ -359,6 +364,8 @@ python3 "<SKILL_DIR>/scripts/verify_figure_package.py" \
 ## 通用质量门
 
 每张图在权威 `figures/figure-manifest.json` 记录机器可读路由，在 `figures/figure-manifest.md` 提供供人阅读的摘要。图片能力Agent的每张适合生图的图必须设置 `imagegen_eligible=true`，并有独立Prompt与真实PNG/JPEG/WebP；不能用SVG、HTML截图、占位PNG或图片理解能力冒充。只有用户明确要求可编辑矢量、出版规则禁止或整个调用链真实无图片工具时才记录 `route_exemption`。
+
+`USER_REQUESTED_VECTOR` 必须记录用户原话与请求定位，`PUBLICATION_RESTRICTION` 必须记录出版规则原文与定位；只有模型自述的豁免无效。`ARCHITECTURE`、`PROCESS`、`ER_UML` 不能为了绕开图片生成被登记为 `DATA_GRAPH`。流程图中即使含少量计数或比例，只要主要任务是表达节点关系，仍属于 `SEMANTIC_STRUCTURE`。
 
 `imagegen_eligible` 不能只由“图是否好看”决定。电路接线、引脚、化学键、晶体连接、公式、尺度、载荷位置、焊接接头、电极体系和精确生物通路统一标记为 `DOMAIN_EXACT`，使用领域工具、确定性矢量或证据底图；ImageGen只能在不改变精确核心的前提下做配色、材质、图标和版式合成。普通研究框架、组织关系、责任分工和不承载精确连接的流程才标记为 `SEMANTIC_STRUCTURE`。
 
@@ -626,6 +633,20 @@ SVG降级图的机械校验额外检查可解析的直线、折线与矩形节�
 - 局限必须具体说明缺少什么数据、哪种口径不能比较、哪些结论只适用于当前案例；不能只写“样本有限、未来扩大研究”。
 - 完稿后从摘要、每章首尾和结论各抽查一段：若删除企业、数据、来源和研究对象后仍可套用到多数管理学题目，说明段落过于模板化，应补入真实材料或删除。
 - 语言自审只用于提高可读性和论证质量，不能输出“AI率”“人类率”或承诺通过检测。真实性问题先修正，结构问题其次，最后才做措辞润色。
+
+## 终稿编辑阶段
+
+证据、数据、正文结构、图片和引用稳定后，进入一次独立终稿编辑。该阶段冻结研究问题、数据文件、数值、引文、公式含义、图片关系和研究状态，只处理表达与篇章；不得借“润色”新增来源、结果、实验、机制或结论。
+
+- 删除运行过程泄漏：`主张层级`、Profile、门禁、回执、哈希、脚本路径和检查器名称留在研究契约或审计文件，不作为普通正文反复出现。正文只保留读者理解研究边界所必需的学术表述。
+- 合并重复限制与重复结论。同一共同限制在摘要、方法边界、局限和结论中分别承担不同功能，不能逐章复制同一句话。
+- 删除“回到核心问题、可以压缩成三句话、读者若、审稿人若、本文若有价值”等对写作过程的旁白，直接陈述判断与依据。
+- 结论原则上不超过主体正文的7%；超过7%必须说明必要性，超过10%必须压缩。结论只回答研究问题、列出主要发现、具体限制和后续验证，不重复下载、脚本、制图、格式和全文分类。
+- 摘要、结果和结论逐项核对数字、样本、时间、产品/数据版本和主张等级；没有被正文结果回答的标题词必须删除、改题或回到研究阶段补证据。
+- 正文不足目标中心时回到证据薄弱或论证薄弱的小节补充材料比较、反例和方法解释；禁止扩张结论、致谢、局限或执行流程补字数。
+- 对“首次、首创、攻克、彻底解决、卓越、领先、精准、强效、重大突破”等词逐项寻找直接证据；没有正式优先权检索、比较基线和不确定性时删除或降级。
+
+终稿编辑完成后记录受影响章节、删除的重复、未改变的冻结事实和编辑后正文长度。随后重新导出DOCX/PDF、重新视觉检查并执行终稿隔离审稿；旧审稿分数不能直接沿用。
 
 <!-- 公共来源：references/common/autonomous-completion.md -->
 
@@ -913,3 +934,15 @@ PROMPT_ID: `literature-textual-analysis`
 
 - 虚构原文引语
 - 以理论术语替代文本证据
+
+<!-- 方法门来源：references/quality/direction-method-gates.json -->
+
+## 当前方向方法完成门
+
+- 核心文本版本与页码明确
+- 引语逐字核对且不由生成图替代
+- 每个理论判断回到具体句群并处理反例
+
+### 数据不足时的题目与主张处理
+
+未目验核心版本时只做研究述评，不生成原文引语、页码和异文判断。
