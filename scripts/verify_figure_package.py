@@ -885,10 +885,10 @@ def main() -> int:
     verifier.verify_markdown(markdown)
     docx_value = args.docx
     pdf_value = args.pdf
+    run_manifest_path = args.run_manifest if args.run_manifest.is_absolute() else root / args.run_manifest
     if not args.skip_documents and (docx_value is None or pdf_value is None):
-        run_manifest = args.run_manifest if args.run_manifest.is_absolute() else root / args.run_manifest
         try:
-            run_payload = json.loads(run_manifest.read_text(encoding="utf-8"))
+            run_payload = json.loads(run_manifest_path.read_text(encoding="utf-8"))
             if docx_value is None and isinstance(run_payload.get("docx"), str):
                 docx_value = Path(run_payload["docx"])
             if pdf_value is None and isinstance(run_payload.get("pdf"), str):
@@ -905,13 +905,32 @@ def main() -> int:
         else:
             verifier.verify_pdf(pdf_value if pdf_value.is_absolute() else root / pdf_value)
 
+    input_paths = [capability_report, manifest, summary, markdown, run_manifest_path]
+    if docx_value is not None:
+        input_paths.append(docx_value if docx_value.is_absolute() else root / docx_value)
+    if pdf_value is not None:
+        input_paths.append(pdf_value if pdf_value.is_absolute() else root / pdf_value)
+    input_sha256: Dict[str, str] = {}
+    for path in input_paths:
+        if path.is_file():
+            try:
+                input_sha256[str(path.resolve().relative_to(root))] = verifier.sha256(path)
+            except ValueError:
+                pass
     payload = {
+        "schema_version": "1.0",
         "status": "STRUCTURE_OK" if not verifier.errors else "STRUCTURE_FAIL",
         "mechanical_status": "PASS" if not verifier.errors else "FAIL",
         "visual_status": verifier.visual_status if not verifier.errors else "FAIL",
         "figures_checked": len(verifier.final_files),
         "errors": verifier.errors,
         "warnings": verifier.warnings,
+        "input_sha256": input_sha256,
+        "verifier": {
+            "name": Path(__file__).name, "version": "1.4.0",
+            "sha256": verifier.sha256(Path(__file__).resolve()),
+            "generated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
+        },
         "scope_note": "结构通过不代表图表的学术结论正确",
     }
     rendered = json.dumps(payload, ensure_ascii=False, indent=2)

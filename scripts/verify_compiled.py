@@ -51,7 +51,10 @@ def main() -> int:
     for heading in ["发现层", "证据层", "核验层"]:
         if heading not in literature_common:
             errors.append(f"公共文献规则缺少信源层级: {heading}")
-    for field in ["evidence_role", "access_mode", "publication_status"]:
+    for field in [
+        "evidence_role", "access_mode", "publication_status", "fulltext_locator",
+        "page_locator", "citation_mode",
+    ]:
         if field not in literature_common:
             errors.append(f"公共文献规则缺少证据矩阵字段: {field}")
     for tag in access_tags:
@@ -63,7 +66,11 @@ def main() -> int:
     ]:
         if term not in output_contract:
             errors.append(f"输出契约缺少最终文件命名规则: {term}")
-    for term in ["document_profile", "THESIS", "FINAL_STATUS", "figure-verification.json", "formula-verification.json"]:
+    for term in [
+        "document_profile", "THESIS", "FINAL_STATUS", "figure-verification.json",
+        "formula-verification.json", "04-evidence-verification.json",
+        "14-adjudicated-status.json", "research_claim_level", "model_label", "skill_version",
+    ]:
         if term not in output_contract and term not in read_source(COMMON_DIR / "autonomous-completion.md"):
             errors.append(f"输出契约缺少当前闭环字段: {term}")
 
@@ -156,6 +163,7 @@ def main() -> int:
         "compose_prompt.py", "build_compiled.py", "verify_compiled.py",
         "verify_figure_package.py", "verify_manuscript_delivery.py",
         "verify_formula_rendering.py",
+        "verify_evidence_integrity.py", "adjudicate_status.py",
     ]:
         if not (SKILL_ROOT / "scripts" / script_name).is_file():
             errors.append(f"缺少脚本: scripts/{script_name}")
@@ -224,6 +232,14 @@ def main() -> int:
             errors.append("SVG Layout Spec Schema版本不是1.0")
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:
         errors.append(f"SVG Layout Spec Schema不可用: {exc}")
+
+    provenance_schema_path = SKILL_ROOT / "references" / "schemas" / "data-provenance.schema.json"
+    try:
+        provenance_schema = json.loads(provenance_schema_path.read_text(encoding="utf-8"))
+        if provenance_schema.get("properties", {}).get("schema_version", {}).get("const") != "1.0":
+            errors.append("Data Provenance Schema版本不是1.0")
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        errors.append(f"Data Provenance Schema不可用: {exc}")
 
     audit_text = "\n".join(
         path.read_text(encoding="utf-8")

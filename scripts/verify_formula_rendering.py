@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+from datetime import datetime
 import hashlib
 import json
 import re
@@ -46,6 +47,14 @@ def sha256(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def verifier_identity() -> Dict[str, str]:
+    script = Path(__file__).resolve()
+    return {
+        "name": script.name, "version": "1.4.0", "sha256": sha256(script),
+        "generated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
+    }
 
 
 def strip_code_fences(text: str) -> str:
@@ -273,6 +282,8 @@ class FormulaVerifier:
             "delimiters": {name: sum(item.delimiter == name for item in formulas) for name in ["$", "$$", r"\(", r"\["]},
         }
         self.hashes["markdown_sha256"] = sha256(markdown)
+        if run_manifest.is_file():
+            self.hashes["run_manifest_sha256"] = sha256(run_manifest)
 
         source_without_math = MATH_HINT.sub("", strip_code_fences(source))
         outside_hits = raw_tex_hits(source_without_math)
@@ -347,16 +358,35 @@ def main() -> int:
     args = parse_args()
     root = args.root.resolve()
     verifier = FormulaVerifier(root)
-    verifier.verify(
-        rooted(root, args.markdown), rooted(root, args.run_manifest), rooted(root, args.audit)
-    )
+    markdown_path = rooted(root, args.markdown)
+    manifest_path = rooted(root, args.run_manifest)
+    audit_path = rooted(root, args.audit)
+    verifier.verify(markdown_path, manifest_path, audit_path)
+    input_sha256: Dict[str, str] = {}
+    for path in [markdown_path, manifest_path, audit_path]:
+        if path.is_file():
+            try:
+                input_sha256[str(path.resolve().relative_to(root))] = sha256(path)
+            except ValueError:
+                pass
+    for field, manifest_field in [("docx", "docx"), ("pdf", "pdf")]:
+        try:
+            run_payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+            value = run_payload.get(manifest_field)
+            candidate = resolve_under_root(root, value, manifest_field)[0] if value else None
+            if candidate:
+                input_sha256[str(candidate.relative_to(root))] = sha256(candidate)
+        except (OSError, UnicodeError, json.JSONDecodeError):
+            pass
     payload = {
         "schema_version": "1.0",
         "status": "FORMULA_OK" if not verifier.errors else "FORMULA_FAIL",
         "errors": verifier.errors,
         "warnings": verifier.warnings,
         "hashes": verifier.hashes,
+        "input_sha256": input_sha256,
         "metrics": verifier.metrics,
+        "verifier": verifier_identity(),
         "scope_note": "机械通过不代表公式推导、符号含义或学术结论正确",
     }
     rendered = json.dumps(payload, ensure_ascii=False, indent=2)

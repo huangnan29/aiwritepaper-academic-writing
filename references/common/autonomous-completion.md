@@ -1,6 +1,6 @@
 # 公共规则八：弱模型友好的持续完成机制
 
-本流程由模型自主决策。Skill内 `compose_prompt.py` 仅做运行参数、唯一完整提示词与条件附加规则的确定性文件拼接；`verify_figure_package.py`、`verify_formula_rendering.py` 与 `verify_manuscript_delivery.py` 只做图表、公式渲染和文档交付的机械一致性检查。不得调用任何Skill脚本控制方向、章节、证据、公式含义、整合、学术判断或最终状态。工具和项目专用临时代码只在当前论文确有需要时使用，并写入本次输出目录。
+本流程由模型自主决策。Skill内 `compose_prompt.py` 仅做运行参数、唯一完整提示词与条件附加规则的确定性文件拼接；四个底层检查器只核验文献/数据、图表、公式和文档，`adjudicate_status.py` 只根据真实报告计算权威状态。任何脚本都不得控制方向、章节、证据取舍、公式含义、整合或学术观点。工具和项目专用临时代码只在当前论文确有需要时使用，并写入本次输出目录。
 
 ## 执行顺序
 
@@ -26,4 +26,4 @@
 
 ## 状态原则
 
-最终状态拆成三层：`RESEARCH_STATUS` 表示数据、实验、源码、病例、伦理和全文证据是否足以支撑题目主张；`DELIVERY_STATUS` 表示正文、文献、图表、DOCX/PDF和Manifest的交付完整性，可为 `PASS`、`PARTIAL` 或 `FAIL`；`FINAL_STATUS` 是统一结论。缺少独立视觉核验、使用允许的降级路线或存在不阻断使用的格式能力缺口时，文件仍可交付但 `DELIVERY_STATUS=PARTIAL`。机械损坏、字数越界、目录/图题/表格/路径/哈希或路由错误为 `FAIL`。只有研究与交付都为 `PASS` 时 `FINAL_STATUS=PASS`；交付失败时为 `FAIL`；其他情况统一为 `PARTIAL`。
+最终状态拆成三层：`RESEARCH_STATUS` 表示数据、实验、源码、病例、伦理和全文证据是否足以支撑题目主张；`DELIVERY_STATUS` 表示正文、文献、图表、DOCX/PDF和Manifest的交付完整性；`FINAL_STATUS` 是统一结论。模型先在Manifest中提交声明，随后由 `adjudicate_status.py` 读取当前版本且绑定脚本SHA-256的四份报告，写入 `14-adjudicated-status.json`。设计稿与实验方案即使写作质量很高，研究状态也通常为 `PARTIAL`；这不妨碍成稿达到高质量评分。底层报告失败时权威状态不能被模型改回PASS；Manifest声明与权威值冲突时保留冲突记录并采用权威值。

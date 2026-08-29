@@ -14,6 +14,17 @@
 
 AIWritePaper 范文仅提供结构观察，不是事实来源。不得复制范文正文、引用其未核验数字，或继承其“已完成”表述。
 
-凡涉及定量结果或“系统已实现/已运行”的主张，必须能够回到用户材料、数据文件、源码版本、执行命令、原始日志、公开数据集或已核验来源。需要时可在输出目录建立 `evidence-manifest.json`，区分 `OBSERVED_REAL_SYSTEM`、`SIMULATED`、`SYNTHETIC_DATA`、`HARDCODED_EXAMPLE`、`VERIFIED_EXTERNAL` 和 `PLANNED`，但不得为了满足固定格式而编造执行记录。Python局部变量、随机休眠、手写JSON或模拟请求不是真实数据库、Web服务、GPU或硬件实验。
+凡涉及定量结果或“系统已实现/已运行”的主张，必须能够回到用户材料、数据文件、源码版本、执行命令、原始日志、公开数据集或已核验来源。`FULL_BUILD` 必须建立 `data/data-provenance.json`，根对象记录 `schema_version: 1.0`、与Manifest一致的 `research_claim_level` 和 `datasets[]`。每个真实数据集记录 `dataset_id`、文件、SHA-256、`origin`、`claim_role` 与 `supports_claims`。
+
+`origin` 只能为 `USER_PROVIDED`、`AUTHOR_OBSERVED`、`OFFICIAL_DOWNLOAD`、`FORMAL_SIMULATION`、`CALCULATED`、`MODEL_SYNTHETIC` 或 `MANUSCRIPT_CONTEXT`；`claim_role` 只能为 `RESULT`、`SIMULATION_RESULT`、`DESIGN_CALCULATION`、`ILLUSTRATION` 或 `CONTEXT_ONLY`。每个登记数据集必须有真实文件和SHA-256。`MODEL_SYNTHETIC` 不能支撑结果、仿真结果或正式设计计算；`CALCULATED` 不能冒充观察结果。`USER_PROVIDED` 与 `AUTHOR_OBSERVED` 绑定观察回执，`OFFICIAL_DOWNLOAD` 绑定获取回执，`FORMAL_SIMULATION` 与承担设计计算的 `CALCULATED` 绑定执行回执；回执文件本身也记录SHA-256。Python局部变量、随机休眠、手写JSON或模拟请求不是真实数据库、Web服务、GPU、课堂、问卷或硬件实验。
+
+`run-manifest.json` 的 `research_claim_level` 只能为：
+
+- `OBSERVED_STUDY`：存在可核验的本研究原始数据与观察回执；
+- `DESIGN_ONLY`：系统、电路、管理或教学设计，未实施验证；
+- `PROTOCOL_ONLY`：实验或研究方案，尚未产生本研究结果；
+- `REVIEW_SYNTHESIS`：以已核验外部证据完成综述综合。
+
+设计或方案论文出现“本系统实测”“实验班提升”“p<0.05”“满意度达到”“通过某项测试”等本研究结果表述，而数据清单没有真实观察材料时，属于Critical错误，不得进入最终正文。
 
 真实性判断由模型结合材料语义完成，不以某个脚本返回码代替。发现证据不足时，应降低表述强度、改写为设计方案或验证协议，并继续完成能够诚实交付的章节；不得用“材料不足”作为把整篇论文缩短到目标一半的理由。

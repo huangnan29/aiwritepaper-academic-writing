@@ -70,7 +70,18 @@
 
 AIWritePaper 范文仅提供结构观察，不是事实来源。不得复制范文正文、引用其未核验数字，或继承其“已完成”表述。
 
-凡涉及定量结果或“系统已实现/已运行”的主张，必须能够回到用户材料、数据文件、源码版本、执行命令、原始日志、公开数据集或已核验来源。需要时可在输出目录建立 `evidence-manifest.json`，区分 `OBSERVED_REAL_SYSTEM`、`SIMULATED`、`SYNTHETIC_DATA`、`HARDCODED_EXAMPLE`、`VERIFIED_EXTERNAL` 和 `PLANNED`，但不得为了满足固定格式而编造执行记录。Python局部变量、随机休眠、手写JSON或模拟请求不是真实数据库、Web服务、GPU或硬件实验。
+凡涉及定量结果或“系统已实现/已运行”的主张，必须能够回到用户材料、数据文件、源码版本、执行命令、原始日志、公开数据集或已核验来源。`FULL_BUILD` 必须建立 `data/data-provenance.json`，根对象记录 `schema_version: 1.0`、与Manifest一致的 `research_claim_level` 和 `datasets[]`。每个真实数据集记录 `dataset_id`、文件、SHA-256、`origin`、`claim_role` 与 `supports_claims`。
+
+`origin` 只能为 `USER_PROVIDED`、`AUTHOR_OBSERVED`、`OFFICIAL_DOWNLOAD`、`FORMAL_SIMULATION`、`CALCULATED`、`MODEL_SYNTHETIC` 或 `MANUSCRIPT_CONTEXT`；`claim_role` 只能为 `RESULT`、`SIMULATION_RESULT`、`DESIGN_CALCULATION`、`ILLUSTRATION` 或 `CONTEXT_ONLY`。每个登记数据集必须有真实文件和SHA-256。`MODEL_SYNTHETIC` 不能支撑结果、仿真结果或正式设计计算；`CALCULATED` 不能冒充观察结果。`USER_PROVIDED` 与 `AUTHOR_OBSERVED` 绑定观察回执，`OFFICIAL_DOWNLOAD` 绑定获取回执，`FORMAL_SIMULATION` 与承担设计计算的 `CALCULATED` 绑定执行回执；回执文件本身也记录SHA-256。Python局部变量、随机休眠、手写JSON或模拟请求不是真实数据库、Web服务、GPU、课堂、问卷或硬件实验。
+
+`run-manifest.json` 的 `research_claim_level` 只能为：
+
+- `OBSERVED_STUDY`：存在可核验的本研究原始数据与观察回执；
+- `DESIGN_ONLY`：系统、电路、管理或教学设计，未实施验证；
+- `PROTOCOL_ONLY`：实验或研究方案，尚未产生本研究结果；
+- `REVIEW_SYNTHESIS`：以已核验外部证据完成综述综合。
+
+设计或方案论文出现“本系统实测”“实验班提升”“p<0.05”“满意度达到”“通过某项测试”等本研究结果表述，而数据清单没有真实观察材料时，属于Critical错误，不得进入最终正文。
 
 真实性判断由模型结合材料语义完成，不以某个脚本返回码代替。发现证据不足时，应降低表述强度、改写为设计方案或验证协议，并继续完成能够诚实交付的章节；不得用“材料不足”作为把整篇论文缩短到目标一半的理由。
 
@@ -104,7 +115,7 @@ arXiv、bioRxiv、ChemRxiv、SSRN、NBER工作论文可以收录，但必须在�
 
 ## 检索与证据记录
 
-在 `02-search-log.md` 记录数据库、实际访问路径、检索式、日期、筛选步骤和访问限制。在 `03-evidence-matrix.csv` 记录 source_id、题名、作者、年份、类型、来源、卷期页、DOI、URL、访问日期、核验来源、支持主张、章节、状态、evidence_role、access_mode、publication_status 和备注。
+在 `02-search-log.md` 记录数据库、实际访问路径、检索式、日期、筛选步骤和访问限制。在 `03-evidence-matrix.csv` 记录 source_id、题名、作者、年份、类型、来源、卷期页、DOI、URL、访问日期、核验来源、支持主张、章节、状态、evidence_role、access_mode、publication_status、备注、`fulltext_locator` 与 `page_locator`；使用本地来源文件时另记 `source_file` 与 `source_sha256`。作者—年份制另加唯一 `citation_token`。
 
 上述字段是最低证据契约，不是可选示例。只包含 `source_id,DOI,status` 或缺少题名、作者、年份、支持主张、章节和访问/发表状态的极简表不属于完整证据矩阵，不能通过最终交付验收。
 
@@ -119,6 +130,10 @@ arXiv、bioRxiv、ChemRxiv、SSRN、NBER工作论文可以收录，但必须在�
 
 核心论点只能由已阅读且匹配的来源支持。每条文内引用必须匹配参考文献，每条参考文献必须在正文出现。无法访问全文时降低表述强度，不得假装读过。输出 `references.bib` 与 `04-reference-audit.md`。
 
+`run-manifest.json` 必须显式记录 `citation_mode` 为 `NUMERIC` 或 `AUTHOR_YEAR`。`NUMERIC` 的正文和文末都使用同一套编号；`AUTHOR_YEAR` 的文末不得继续保留编号列表，证据矩阵的每条可用来源必须给出正文实际出现的唯一 `citation_token`。不得让正文使用作者—年份、文末却使用 `[1]` 编号列表。
+
+正式验收使用 `scripts/verify_evidence_integrity.py` 解析DOI与题名、全文核验来源、定位信息、引用覆盖和数据来源。Crossref未收录不自动等于虚构，但DOI解析后题名明确对应另一篇文献时为Critical错误。网络无法执行DOI核验时记录 `CAPABILITY_GAP` 并将证据状态降为 `PARTIAL`，不能虚报完全通过。
+
 `VERIFIED_METADATA` 不得用于转述全文实验参数、样本、定量结果、详细方法或原文引语；正式摘要能够直接确认的研究范围须明确写成摘要层。支撑全文级主张时使用 `VERIFIED_FULLTEXT` 并保留定位。法条、标准、案例数字和技术手册参数分别记录法源版本/条款、标准号/范围页、来源文件/页码/期间/计算和手册版本/页码。
 
 最低参考文献数量是生产目标，不是最后才检查的备注。检索和核验应持续到达到 `MIN_REFERENCES`，或已经穷尽当前可用来源与工具。未达到最低数量时不得标记 `PASS`；但应先扩大同义词、英文关键词、相关方法、标准和官方文档检索，不得只用少量来源反复支撑全文。
@@ -131,9 +146,9 @@ arXiv、bioRxiv、ChemRxiv、SSRN、NBER工作论文可以收录，但必须在�
 
 运行开始时保留 `run-params.md`，并通过文件级确定性拼接生成 `final-execution-prompt.md`；不得由模型重新生成完整方向提示词。
 
-`FULL_BUILD` 输出：`run-params.md`、`final-execution-prompt.md`、`00-capability-report.md`、`00-capability-report.json`、`01-research-contract.md`、`02-search-log.md`、`03-evidence-matrix.csv`、`04-reference-audit.md`、`references.bib`、`05-outline.md`、`06-argument-map.md`、`chapters/`、`figures/figure-plan.json`、`figures/figure-manifest.json`、`figures/figure-manifest.md`、`figures/figure-verification.json`、`tables/table-data-and-sources.md`、`equations/formula-audit.md`、`equations/formula-verification.json`、`07-paper-full.md`、`08-claim-citation-audit.md`、`09-peer-review.md`、`10-revision-log.md`、按下述规则命名的DOCX与PDF、可选同名TEX、`11-format-validation.md`、`12-final-qa-report.md`、`13-delivery-verification.json` 和 `run-manifest.json`。没有真实生成的文件不得列入完成清单。
+`FULL_BUILD` 输出：`run-params.md`、`final-execution-prompt.md`、`00-capability-report.md`、`00-capability-report.json`、`01-research-contract.md`、`02-search-log.md`、`03-evidence-matrix.csv`、`04-reference-audit.md`、`04-evidence-verification.json`、`references.bib`、`data/data-provenance.json`、`05-outline.md`、`06-argument-map.md`、`chapters/`、`figures/figure-plan.json`、`figures/figure-manifest.json`、`figures/figure-manifest.md`、`figures/figure-verification.json`、`tables/table-data-and-sources.md`、`equations/formula-audit.md`、`equations/formula-verification.json`、`07-paper-full.md`、`08-claim-citation-audit.md`、`09-peer-review.md`、`10-revision-log.md`、按下述规则命名的DOCX与PDF、可选同名TEX、`11-format-validation.md`、`12-final-qa-report.md`、`13-delivery-verification.json`、`14-adjudicated-status.json` 和 `run-manifest.json`。没有真实生成的文件不得列入完成清单。
 
-`run-manifest.json` 必须记录 `document_profile`（`THESIS`、`JOURNAL`、`REPORT` 或 `CUSTOM`）、`research_status`、`delivery_status`、`final_status`、图表、公式和交付三份验收报告路径以及正式文档路径与摘要。公式报告字段固定为 `formula_verification_report`，默认值为 `equations/formula-verification.json`。`THESIS`使用默认论文格式并要求PDF可见目录；`JOURNAL`和`REPORT`按对应模板/体例，不强制毕业论文目录；`CUSTOM`必须记录用户或学校模板的关键格式契约。
+`run-manifest.json` 必须记录真实 `model_label`、`skill_version`、`citation_mode`、`research_claim_level`、`document_profile`（`THESIS`、`JOURNAL`、`REPORT` 或 `CUSTOM`）、模型声明的 `research_status`、`delivery_status`、`final_status`、文献证据/图表/公式/交付/权威状态五份报告路径以及正式文档路径与摘要。字段固定为 `evidence_verification_report`、`figure_verification_report`、`formula_verification_report`、`delivery_verification_report`、`adjudicated_status_report`。模型声明只供冲突审计，最终状态以 `14-adjudicated-status.json` 为唯一真源。`THESIS`使用默认论文格式并要求PDF可见目录；`JOURNAL`和`REPORT`按对应模板/体例，不强制毕业论文目录；`CUSTOM`必须记录用户或学校模板的关键格式契约。
 
 ## 最终文档文件名
 
@@ -156,7 +171,7 @@ DOCX与PDF必须使用同一文件名主体和同一时间戳。`final-paper.doc
 
 全文整合时，`07-paper-full.md`中的每个图片链接必须逐项等于权威 `figures/figure-manifest.json` 对应图号的 `final_embed_file`。`figure-manifest.md` 只供人阅读。禁止使用目录通配、同名文件优先级或“优先SVG”逻辑自动选图。图片工具已成功生成位图时，Markdown不得继续引用其旧SVG版本。
 
-提供学校模板时模板优先。没有模板时只能标记为通用草稿格式。DOCX与PDF必须来自同一份 `07-paper-full.md` 和同一结构映射；优先先生成并验证DOCX，再由该定稿转换PDF。图片实际嵌入，公式转换为可编辑OMML对象，标题使用真实样式，目录、页码、题注和交叉引用可更新。不得分别从互不一致的Markdown和HTML版本生成Word与PDF。自定义Word排版程序不得以读取整段纯文本再重建段落的方式破坏既有公式对象。根据当前环境自主选择文档工具；只有确实需要时才在本次输出目录创建项目专用脚本。Skill内 `compose_prompt.py` 只允许用于确定性合成最终提示词；三个验收脚本只做机械检查；维护脚本与其他Skill脚本不得参与论文内容和证据决策。
+提供学校模板时模板优先。没有模板时只能标记为通用草稿格式。DOCX与PDF必须来自同一份 `07-paper-full.md` 和同一结构映射；优先先生成并验证DOCX，再由该定稿转换PDF。图片实际嵌入，公式转换为可编辑OMML对象，标题使用真实样式，目录、页码、题注和交叉引用可更新。不得分别从互不一致的Markdown和HTML版本生成Word与PDF。自定义Word排版程序不得以读取整段纯文本再重建段落的方式破坏既有公式对象。根据当前环境自主选择文档工具；只有确实需要时才在本次输出目录创建项目专用脚本。Skill内 `compose_prompt.py` 只允许用于确定性合成最终提示词；四个底层检查器和状态裁决器只做核验与状态计算；维护脚本与其他Skill脚本不得参与论文内容和证据决策。
 
 ## 默认学术论文排版
 
@@ -505,7 +520,7 @@ figure_plan:
   "spec_sha256": "...",
   "report_file": "figures/fig-2-1-layout-report.json",
   "report_sha256": "...",
-  "renderer": "aiwritepaper-academic-writing@1.3.1/render_svg_layout.mjs",
+  "renderer": "aiwritepaper-academic-writing@1.4.0/render_svg_layout.mjs",
   "renderer_sha256": "..."
 }
 ```
@@ -553,7 +568,7 @@ figure_plan:
 
 主张型图表必须能追溯到数据或上下文、转换过程、图题主张、正文使用位置和已知限制。每条 `supported_manuscript_claims` 必须在正文真实引用该图；正文所有实质性用图主张也必须反向出现在Manifest中。空 `limitations: []` 只表示未声明限制，不等于系统确认没有限制。
 
-机械校验只能验证字段、文件、哈希和路由一致性，不能证明图表在学术上正确。最终状态仍由模型结合真实数据、渲染结果、DOCX/PDF和用户要求判断。
+机械校验只能验证字段、文件、哈希和路由一致性，不能证明图表在学术上正确。模型负责结合真实数据、渲染结果和正文进行视觉与学术判断；最终权威状态由 `adjudicate_status.py` 读取真实报告后计算，模型不能覆盖。
 
 SVG降级图的机械校验额外检查可解析的直线、折线与矩形节点：非共享端点交叉或连线横穿节点时失败。复杂贝塞尔 `path`、曲线箭头、文字边界和视觉拥挤仍必须通过VLM或人工检查，静态几何检查不得宣称覆盖全部SVG布局。
 
@@ -599,7 +614,7 @@ SVG降级图的机械校验额外检查可解析的直线、折线与矩形节�
 
 # 公共规则八：弱模型友好的持续完成机制
 
-本流程由模型自主决策。Skill内 `compose_prompt.py` 仅做运行参数、唯一完整提示词与条件附加规则的确定性文件拼接；`verify_figure_package.py`、`verify_formula_rendering.py` 与 `verify_manuscript_delivery.py` 只做图表、公式渲染和文档交付的机械一致性检查。不得调用任何Skill脚本控制方向、章节、证据、公式含义、整合、学术判断或最终状态。工具和项目专用临时代码只在当前论文确有需要时使用，并写入本次输出目录。
+本流程由模型自主决策。Skill内 `compose_prompt.py` 仅做运行参数、唯一完整提示词与条件附加规则的确定性文件拼接；四个底层检查器只核验文献/数据、图表、公式和文档，`adjudicate_status.py` 只根据真实报告计算权威状态。任何脚本都不得控制方向、章节、证据取舍、公式含义、整合或学术观点。工具和项目专用临时代码只在当前论文确有需要时使用，并写入本次输出目录。
 
 ## 执行顺序
 
@@ -625,7 +640,7 @@ SVG降级图的机械校验额外检查可解析的直线、折线与矩形节�
 
 ## 状态原则
 
-最终状态拆成三层：`RESEARCH_STATUS` 表示数据、实验、源码、病例、伦理和全文证据是否足以支撑题目主张；`DELIVERY_STATUS` 表示正文、文献、图表、DOCX/PDF和Manifest的交付完整性，可为 `PASS`、`PARTIAL` 或 `FAIL`；`FINAL_STATUS` 是统一结论。缺少独立视觉核验、使用允许的降级路线或存在不阻断使用的格式能力缺口时，文件仍可交付但 `DELIVERY_STATUS=PARTIAL`。机械损坏、字数越界、目录/图题/表格/路径/哈希或路由错误为 `FAIL`。只有研究与交付都为 `PASS` 时 `FINAL_STATUS=PASS`；交付失败时为 `FAIL`；其他情况统一为 `PARTIAL`。
+最终状态拆成三层：`RESEARCH_STATUS` 表示数据、实验、源码、病例、伦理和全文证据是否足以支撑题目主张；`DELIVERY_STATUS` 表示正文、文献、图表、DOCX/PDF和Manifest的交付完整性；`FINAL_STATUS` 是统一结论。模型先在Manifest中提交声明，随后由 `adjudicate_status.py` 读取当前版本且绑定脚本SHA-256的四份报告，写入 `14-adjudicated-status.json`。设计稿与实验方案即使写作质量很高，研究状态也通常为 `PARTIAL`；这不妨碍成稿达到高质量评分。底层报告失败时权威状态不能被模型改回PASS；Manifest声明与权威值冲突时保留冲突记录并采用权威值。
 
 <!-- 公共来源：references/common/final-quality-gates.md -->
 
@@ -646,6 +661,9 @@ SVG降级图的机械校验额外检查可解析的直线、折线与矩形节�
 - 实际字数、图、表和文献达到合同要求；
 - `00-capability-report.json` 可解析，且图片生成能力覆盖当前执行器、父代理、客户端与MCP/插件；
 - 证据矩阵包含完整题录、主张与章节映射字段；只有元数据的文献没有被用于全文级实验、参数、结果或引语主张；
+- 每条 `VERIFIED_FULLTEXT` 文献具有合法全文来源、`fulltext_locator` 与 `page_locator`；仅有Crossref、OpenAlex、索引库或题录页时不得标为全文；DOI解析后题名不存在明确错配；
+- 正文引用模式与文末列表一致，每条正式参考文献在正文出现且所有正文引用均能回到证据矩阵；
+- `data/data-provenance.json` 可解析，研究主张等级、数据来源、文件摘要、观察回执和支持主张一致；模型合成数据或普通计算没有冒充实验、问卷、业务、临床或性能结果；
 - 图表不裁切、不越界，表格宽度合理；
 - 详细大纲包含 `figure_plan[]`，每张实际图片均能回到计划中的目的、来源、路线和位置；
 - 权威 `figures/figure-manifest.json` 可解析、图号唯一、条件字段完整，Markdown摘要没有覆盖JSON路由；
@@ -676,11 +694,15 @@ SVG降级图的机械校验额外检查可解析的直线、折线与矩形节�
 - 所有最终文件计算 SHA-256。
 - 最终DOCX与PDF文件名均为“安全论文题目_YYYYMMDD-HHMMSS”，共用同一时间戳；`run-manifest.json`记录生成时间、时区、正式路径和SHA-256，不能把 `final-paper.docx/.pdf` 列为最终交付。
 - `THESIS`文档的DOCX正文样式满足默认或学校模板的字号与行距，PDF中存在实际可见目录；`JOURNAL`、`REPORT`和`CUSTOM`按各自格式契约验收，不套用毕业论文目录门。
-- `figures/figure-verification.json`、`equations/formula-verification.json` 与 `13-delivery-verification.json` 已真实写入交付包；只在终端显示通过但未保存报告不算闭环。
+- `04-evidence-verification.json`、`figures/figure-verification.json`、`equations/formula-verification.json`、`13-delivery-verification.json` 与 `14-adjudicated-status.json` 已真实写入交付包；四份底层报告同时绑定当前检查器SHA-256和本次输入文件SHA-256，检查后修改正文、证据矩阵、数据来源、图表清单或最终文档会使旧报告失效。只有模型自述或旧检查器报告不算闭环。
 
-存在Python能力时依次运行 `scripts/verify_figure_package.py`、`scripts/verify_formula_rendering.py` 与 `scripts/verify_manuscript_delivery.py`，分别把结果写入 `figures/figure-verification.json`、`equations/formula-verification.json` 和 `13-delivery-verification.json`。第一个检查能力与路由、DOCX图片/图题和PDF基础状态；第二个检查公式源稿、Word OMML、PDF可见残留与文件摘要；第三个统一统计正文、检查证据矩阵、正式文件名、三份报告、路径、哈希、Word表格/目录和PDF。任一脚本失败时 `DELIVERY_STATUS=FAIL`，返回对应阶段修复后重新运行；脚本通过不证明学术结论正确，也不能替代视觉与学术判断。
+存在Python能力时依次运行文献证据、图表、公式和总交付四个底层检查器，最后运行权威状态裁决器。分别把结果写入 `04-evidence-verification.json`、`figures/figure-verification.json`、`equations/formula-verification.json`、`13-delivery-verification.json` 与 `14-adjudicated-status.json`。底层脚本失败时返回对应阶段修复后重新运行；裁决器只计算状态，不修复论文。脚本通过不证明学术结论正确，也不能替代视觉与同行评审。
 
 ```bash
+python3 "<SKILL_DIR>/scripts/verify_evidence_integrity.py" \
+  --root "<OUTPUT_DIR>" \
+  --report "04-evidence-verification.json"
+
 python3 "<SKILL_DIR>/scripts/verify_figure_package.py" \
   --root "<OUTPUT_DIR>" \
   --report "figures/figure-verification.json"
@@ -695,11 +717,15 @@ python3 "<SKILL_DIR>/scripts/verify_manuscript_delivery.py" \
   --minimum "<MIN_LENGTH>" \
   --maximum "<MAX_LENGTH>" \
   --report "13-delivery-verification.json"
+
+python3 "<SKILL_DIR>/scripts/adjudicate_status.py" \
+  --root "<OUTPUT_DIR>" \
+  --report "14-adjudicated-status.json"
 ```
 
 `FIGURES_ONLY` 且用户没有要求重新导出文档时，第一个命令增加 `--skip-documents`；`FULL_BUILD` 不得跳过文档检查。检查器默认从 `run-manifest.json` 读取正式DOCX/PDF路径，避免模型传入另一个临时文件规避验收。
 
-把实际值和目标值写入 `12-final-qa-report.md` 与 `run-manifest.json`：正文长度及目标区间、文献数、图片数、表格数、公式数与公式渲染状态、DOCX/PDF状态、Critical/Important数量、能力缺口、`RESEARCH_STATUS`、`DELIVERY_STATUS`、`FINAL_STATUS`和三份验收报告路径。总状态只能为：
+把实际值和目标值写入 `12-final-qa-report.md` 与 `run-manifest.json`：正文长度及目标区间、文献数、图片数、表格数、公式数与公式渲染状态、DOCX/PDF状态、Critical/Important数量、能力缺口、模型声明状态和五份报告路径。最终答复中的 `RESEARCH_STATUS`、`DELIVERY_STATUS`、`FINAL_STATUS`只读取 `14-adjudicated-status.json.authoritative_status`。总状态只能为：
 
 - `PASS`：所有用户硬目标和真实性边界均满足；
 - `PARTIAL`：核心初稿可用，但存在明确能力、材料、模板、数量或格式缺口；

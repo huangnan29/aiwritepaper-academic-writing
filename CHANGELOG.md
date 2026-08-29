@@ -1,5 +1,16 @@
 # 更新记录
 
+## 1.4.0 - 2026-08-29
+
+- 新增 `verify_evidence_integrity.py`，机械核对DOI题名、全文状态来源、定位信息、引用覆盖和数据来源。
+- 证据矩阵新增 `fulltext_locator`、`page_locator`，本地全文可绑定 `source_file/source_sha256`；作者—年份制新增唯一 `citation_token`。
+- `run-manifest.json` 新增真实 `model_label`、`skill_version`、`citation_mode` 与 `research_claim_level`，禁止用目录名代替模型身份。
+- 新增Data Provenance Schema与 `data/data-provenance.json`，模型合成数据不得支撑结果、仿真结果或正式设计计算。
+- 设计稿和实验方案没有观察数据却声称实测、显著提升、P值、满意度或通过测试时返回Critical错误。
+- 图表、公式、文献和总交付四份报告新增当前检查器名称、版本、检查器SHA-256与输入文件SHA-256，旧报告、检查后修改或模型手写报告不能通过最终裁决。
+- 新增 `adjudicate_status.py` 与 `14-adjudicated-status.json`；最终权威状态由报告计算，Manifest声明冲突被保留但不能覆盖结果。
+- `DESIGN_ONLY` 与 `PROTOCOL_ONLY` 的研究状态自动封顶为PARTIAL，不影响交付质量评分；底层报告FAIL时最终状态强制FAIL。
+
 ## 1.3.1 - 2026-08-28
 
 - 修复正文首行缩进被Pandoc `Compact` 或表格段落样式继承到Word单元格的问题。

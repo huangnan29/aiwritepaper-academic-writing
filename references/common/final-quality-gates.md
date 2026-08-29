@@ -15,6 +15,9 @@
 - 实际字数、图、表和文献达到合同要求；
 - `00-capability-report.json` 可解析，且图片生成能力覆盖当前执行器、父代理、客户端与MCP/插件；
 - 证据矩阵包含完整题录、主张与章节映射字段；只有元数据的文献没有被用于全文级实验、参数、结果或引语主张；
+- 每条 `VERIFIED_FULLTEXT` 文献具有合法全文来源、`fulltext_locator` 与 `page_locator`；仅有Crossref、OpenAlex、索引库或题录页时不得标为全文；DOI解析后题名不存在明确错配；
+- 正文引用模式与文末列表一致，每条正式参考文献在正文出现且所有正文引用均能回到证据矩阵；
+- `data/data-provenance.json` 可解析，研究主张等级、数据来源、文件摘要、观察回执和支持主张一致；模型合成数据或普通计算没有冒充实验、问卷、业务、临床或性能结果；
 - 图表不裁切、不越界，表格宽度合理；
 - 详细大纲包含 `figure_plan[]`，每张实际图片均能回到计划中的目的、来源、路线和位置；
 - 权威 `figures/figure-manifest.json` 可解析、图号唯一、条件字段完整，Markdown摘要没有覆盖JSON路由；
@@ -45,11 +48,15 @@
 - 所有最终文件计算 SHA-256。
 - 最终DOCX与PDF文件名均为“安全论文题目_YYYYMMDD-HHMMSS”，共用同一时间戳；`run-manifest.json`记录生成时间、时区、正式路径和SHA-256，不能把 `final-paper.docx/.pdf` 列为最终交付。
 - `THESIS`文档的DOCX正文样式满足默认或学校模板的字号与行距，PDF中存在实际可见目录；`JOURNAL`、`REPORT`和`CUSTOM`按各自格式契约验收，不套用毕业论文目录门。
-- `figures/figure-verification.json`、`equations/formula-verification.json` 与 `13-delivery-verification.json` 已真实写入交付包；只在终端显示通过但未保存报告不算闭环。
+- `04-evidence-verification.json`、`figures/figure-verification.json`、`equations/formula-verification.json`、`13-delivery-verification.json` 与 `14-adjudicated-status.json` 已真实写入交付包；四份底层报告同时绑定当前检查器SHA-256和本次输入文件SHA-256，检查后修改正文、证据矩阵、数据来源、图表清单或最终文档会使旧报告失效。只有模型自述或旧检查器报告不算闭环。
 
-存在Python能力时依次运行 `scripts/verify_figure_package.py`、`scripts/verify_formula_rendering.py` 与 `scripts/verify_manuscript_delivery.py`，分别把结果写入 `figures/figure-verification.json`、`equations/formula-verification.json` 和 `13-delivery-verification.json`。第一个检查能力与路由、DOCX图片/图题和PDF基础状态；第二个检查公式源稿、Word OMML、PDF可见残留与文件摘要；第三个统一统计正文、检查证据矩阵、正式文件名、三份报告、路径、哈希、Word表格/目录和PDF。任一脚本失败时 `DELIVERY_STATUS=FAIL`，返回对应阶段修复后重新运行；脚本通过不证明学术结论正确，也不能替代视觉与学术判断。
+存在Python能力时依次运行文献证据、图表、公式和总交付四个底层检查器，最后运行权威状态裁决器。分别把结果写入 `04-evidence-verification.json`、`figures/figure-verification.json`、`equations/formula-verification.json`、`13-delivery-verification.json` 与 `14-adjudicated-status.json`。底层脚本失败时返回对应阶段修复后重新运行；裁决器只计算状态，不修复论文。脚本通过不证明学术结论正确，也不能替代视觉与同行评审。
 
 ```bash
+python3 "<SKILL_DIR>/scripts/verify_evidence_integrity.py" \
+  --root "<OUTPUT_DIR>" \
+  --report "04-evidence-verification.json"
+
 python3 "<SKILL_DIR>/scripts/verify_figure_package.py" \
   --root "<OUTPUT_DIR>" \
   --report "figures/figure-verification.json"
@@ -64,11 +71,15 @@ python3 "<SKILL_DIR>/scripts/verify_manuscript_delivery.py" \
   --minimum "<MIN_LENGTH>" \
   --maximum "<MAX_LENGTH>" \
   --report "13-delivery-verification.json"
+
+python3 "<SKILL_DIR>/scripts/adjudicate_status.py" \
+  --root "<OUTPUT_DIR>" \
+  --report "14-adjudicated-status.json"
 ```
 
 `FIGURES_ONLY` 且用户没有要求重新导出文档时，第一个命令增加 `--skip-documents`；`FULL_BUILD` 不得跳过文档检查。检查器默认从 `run-manifest.json` 读取正式DOCX/PDF路径，避免模型传入另一个临时文件规避验收。
 
-把实际值和目标值写入 `12-final-qa-report.md` 与 `run-manifest.json`：正文长度及目标区间、文献数、图片数、表格数、公式数与公式渲染状态、DOCX/PDF状态、Critical/Important数量、能力缺口、`RESEARCH_STATUS`、`DELIVERY_STATUS`、`FINAL_STATUS`和三份验收报告路径。总状态只能为：
+把实际值和目标值写入 `12-final-qa-report.md` 与 `run-manifest.json`：正文长度及目标区间、文献数、图片数、表格数、公式数与公式渲染状态、DOCX/PDF状态、Critical/Important数量、能力缺口、模型声明状态和五份报告路径。最终答复中的 `RESEARCH_STATUS`、`DELIVERY_STATUS`、`FINAL_STATUS`只读取 `14-adjudicated-status.json.authoritative_status`。总状态只能为：
 
 - `PASS`：所有用户硬目标和真实性边界均满足；
 - `PARTIAL`：核心初稿可用，但存在明确能力、材料、模板、数量或格式缺口；

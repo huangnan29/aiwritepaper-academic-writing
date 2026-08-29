@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/huangnan29/aiwritepaper-academic-writing/references/schemas/data-provenance.schema.json",
+  "title": "AIWritePaper Data Provenance",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "research_claim_level", "datasets"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "research_claim_level": {
+      "enum": ["OBSERVED_STUDY", "DESIGN_ONLY", "PROTOCOL_ONLY", "REVIEW_SYNTHESIS"]
+    },
+    "datasets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "dataset_id", "origin", "claim_role", "file", "sha256", "supports_claims"
+        ],
+        "properties": {
+          "dataset_id": {"type": "string", "minLength": 1},
+          "origin": {
+            "enum": [
+              "USER_PROVIDED", "AUTHOR_OBSERVED", "OFFICIAL_DOWNLOAD", "FORMAL_SIMULATION",
+              "CALCULATED", "MODEL_SYNTHETIC", "MANUSCRIPT_CONTEXT"
+            ]
+          },
+          "claim_role": {
+            "enum": [
+              "RESULT", "SIMULATION_RESULT", "DESIGN_CALCULATION", "ILLUSTRATION", "CONTEXT_ONLY"
+            ]
+          },
+          "file": {"type": "string", "minLength": 1},
+          "sha256": {"type": "string", "pattern": "^[0-9a-fA-F]{64}$"},
+          "supports_claims": {
+            "type": "array",
+            "items": {"type": "string", "minLength": 1}
+          },
+          "observation_receipt": {"type": ["string", "null"]},
+          "observation_receipt_sha256": {
+            "type": ["string", "null"], "pattern": "^[0-9a-fA-F]{64}$"
+          },
+          "acquisition_receipt": {"type": ["string", "null"]},
+          "acquisition_receipt_sha256": {
+            "type": ["string", "null"], "pattern": "^[0-9a-fA-F]{64}$"
+          },
+          "execution_receipt": {"type": ["string", "null"]},
+          "execution_receipt_sha256": {
+            "type": ["string", "null"], "pattern": "^[0-9a-fA-F]{64}$"
+          },
+          "notes": {"type": ["string", "null"]}
+        }
+      }
+    }
+  }
+}

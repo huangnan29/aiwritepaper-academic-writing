@@ -155,7 +155,7 @@ figure_plan:
   "spec_sha256": "...",
   "report_file": "figures/fig-2-1-layout-report.json",
   "report_sha256": "...",
-  "renderer": "aiwritepaper-academic-writing@1.3.1/render_svg_layout.mjs",
+  "renderer": "aiwritepaper-academic-writing@1.4.0/render_svg_layout.mjs",
   "renderer_sha256": "..."
 }
 ```
@@ -203,6 +203,6 @@ figure_plan:
 
 主张型图表必须能追溯到数据或上下文、转换过程、图题主张、正文使用位置和已知限制。每条 `supported_manuscript_claims` 必须在正文真实引用该图；正文所有实质性用图主张也必须反向出现在Manifest中。空 `limitations: []` 只表示未声明限制，不等于系统确认没有限制。
 
-机械校验只能验证字段、文件、哈希和路由一致性，不能证明图表在学术上正确。最终状态仍由模型结合真实数据、渲染结果、DOCX/PDF和用户要求判断。
+机械校验只能验证字段、文件、哈希和路由一致性，不能证明图表在学术上正确。模型负责结合真实数据、渲染结果和正文进行视觉与学术判断；最终权威状态由 `adjudicate_status.py` 读取真实报告后计算，模型不能覆盖。
 
 SVG降级图的机械校验额外检查可解析的直线、折线与矩形节点：非共享端点交叉或连线横穿节点时失败。复杂贝塞尔 `path`、曲线箭头、文字边界和视觉拥挤仍必须通过VLM或人工检查，静态几何检查不得宣称覆盖全部SVG布局。

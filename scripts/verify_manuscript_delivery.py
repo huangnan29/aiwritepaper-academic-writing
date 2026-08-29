@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+from datetime import datetime
 import hashlib
 import json
 import re
@@ -540,16 +541,46 @@ def main() -> int:
     root = args.root.resolve()
     verifier = DeliveryVerifier(root, args.minimum, args.maximum, args.target)
     markdown = rooted(root, args.markdown)
+    matrix_path = rooted(root, args.evidence_matrix)
+    bibliography_path = rooted(root, args.bibliography)
+    manifest_path = rooted(root, args.run_manifest)
     verifier.verify_body_length(markdown)
     verifier.verify_evidence_matrix(
-        rooted(root, args.evidence_matrix), markdown, rooted(root, args.bibliography)
+        matrix_path, markdown, bibliography_path
     )
-    verifier.verify_run_manifest(rooted(root, args.run_manifest), markdown)
+    verifier.verify_run_manifest(manifest_path, markdown)
+    input_sha256: Dict[str, str] = {}
+    input_paths = [markdown, matrix_path, bibliography_path, manifest_path]
+    try:
+        run_payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+        for field, default in [
+            ("figure_verification_report", "figures/figure-verification.json"),
+            ("formula_verification_report", "equations/formula-verification.json"),
+            ("docx", None), ("pdf", None),
+        ]:
+            value = run_payload.get(field, default)
+            if isinstance(value, str):
+                input_paths.append(root / value)
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        pass
+    for path in input_paths:
+        if path.is_file():
+            try:
+                input_sha256[str(path.resolve().relative_to(root))] = verifier.sha256(path)
+            except ValueError:
+                pass
     payload = {
+        "schema_version": "1.0",
         "status": "DELIVERY_OK" if not verifier.errors else "DELIVERY_FAIL",
         "errors": verifier.errors,
         "warnings": verifier.warnings,
         "metrics": verifier.metrics,
+        "input_sha256": input_sha256,
+        "verifier": {
+            "name": Path(__file__).name, "version": "1.4.0",
+            "sha256": verifier.sha256(Path(__file__).resolve()),
+            "generated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
+        },
         "scope_note": "交付通过不代表研究数据、实验或学术结论已经完成",
     }
     rendered = json.dumps(payload, ensure_ascii=False, indent=2)

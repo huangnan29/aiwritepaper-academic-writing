@@ -4,7 +4,7 @@ description: 根据题目和材料完成毕业论文、学位论文、期刊论�
 license: MIT
 metadata:
   author: huangnan29
-  version: "1.3.1"
+  version: "1.4.0"
   repository: https://github.com/huangnan29/aiwritepaper-academic-writing
 ---
 
@@ -82,10 +82,10 @@ python3 "<SKILL_DIR>/scripts/compose_prompt.py" \
 
 执行模型自主选择当前可用工具。只有数据统计图、DOCX/PDF导出或本次任务确实需要时，才在输出目录创建项目专用代码；不得调用Skill维护脚本决定正文、证据、章节状态或 `PASS`。
 
-`scripts/verify_figure_package.py` 只允许检查能力报告与配图路由、图表Manifest、图片/VLM回执、文件摘要、Markdown路由、DOCX嵌图与标题/目录/题注结构以及基础PDF解析；`scripts/verify_formula_rendering.py` 只允许检查Markdown公式语法、Word OMML对象、PDF可见TeX残留和文件摘要；`scripts/verify_manuscript_delivery.py` 只允许统一统计正文、检查证据矩阵结构、正式文件名、路径、三份报告、哈希、Word表格/目录和PDF基础状态。三个检查器都不决定论文观点、公式含义、证据取舍或研究完成度。
+`scripts/verify_evidence_integrity.py` 只允许核对题录、引用覆盖、全文状态证据和数据来源；`scripts/verify_figure_package.py` 只允许检查能力报告与配图路由、图表Manifest、图片/VLM回执、文件摘要、Markdown路由、DOCX嵌图与标题/目录/题注结构以及基础PDF解析；`scripts/verify_formula_rendering.py` 只允许检查Markdown公式语法、Word OMML对象、PDF可见TeX残留和文件摘要；`scripts/verify_manuscript_delivery.py` 只允许统一统计正文、检查证据矩阵结构、正式文件名、路径、验收报告、哈希、Word表格/目录和PDF基础状态；`scripts/adjudicate_status.py` 只读取上述报告并计算唯一权威状态。这些检查器都不决定论文观点、公式含义或证据取舍，也不生成论文内容。
 
-最终交付前必须依次运行图表、公式和总交付三个检查器并把报告保存到约定路径。图表检查失败时回到配图阶段；公式检查失败时回到公式源稿或文档导出阶段；正文、文献或文档检查失败时回到对应阶段。任何检查失败都不得写 `DELIVERY_STATUS: PASS`。图片机械通过但视觉核验缺失时使用 `DELIVERY_STATUS: PARTIAL`，不是整体失败；公式无法解析或Word中不是可编辑公式对象时属于交付失败。脚本通过只表示机械交付一致，不证明学术结论正确。
+最终交付前必须依次运行文献证据、图表、公式、总交付四个检查器，再运行状态裁决器，并把五份报告保存到约定路径。文献或数据失败时回到检索、证据矩阵或结果章节；图表失败时回到配图阶段；公式失败时回到公式源稿或文档导出阶段；正文或文档失败时回到对应阶段。任何底层检查失败都不能被模型自述覆盖。图片机械通过但视觉核验缺失时权威交付状态为 `PARTIAL`；公式无法解析或Word中不是可编辑公式对象时为 `FAIL`。最终回复和任何评分只能读取 `14-adjudicated-status.json` 的 `authoritative_status`，不能读取模型在Manifest中自行声明的状态。
 
 图片工具已经成功生成某图时，正文、DOCX和PDF必须插入该生成图或由它合成的最终PNG；同名SVG只能作为备用或修正源。最终嵌入路径以图表清单中的 `final_embed_file` 为唯一依据，不能按文件名或扩展名自行改选SVG。
 
-最终答复只报告真实完成内容、论文题目、实际正文长度、文献/图片/表格数量、按“安全论文题目_YYYYMMDD-HHMMSS”生成且共用同一时间戳的DOCX/PDF路径、QA路径、能力缺口以及 `RESEARCH_STATUS`、`DELIVERY_STATUS`、`FINAL_STATUS`。任何硬目标未满足时不得标记 `PASS`。
+最终答复只报告真实完成内容、论文题目、实际正文长度、文献/图片/表格数量、按“安全论文题目_YYYYMMDD-HHMMSS”生成且共用同一时间戳的DOCX/PDF路径、QA路径、能力缺口以及权威 `RESEARCH_STATUS`、`DELIVERY_STATUS`、`FINAL_STATUS`。三个状态必须来自 `14-adjudicated-status.json`；Manifest声明与权威值冲突时报告冲突并采用权威值。任何硬目标未满足时不得标记 `PASS`。

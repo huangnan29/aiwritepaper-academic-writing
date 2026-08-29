@@ -4,7 +4,7 @@
 
 **从论文题目到一份完整执行提示词，再持续交付正文、配图、DOCX 与 PDF。**
 
-![Version](https://img.shields.io/badge/version-1.3.1-2563EB?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.4.0-2563EB?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-16A34A?style=flat-square)
 ![Architecture](https://img.shields.io/badge/architecture-MD--first-7C3AED?style=flat-square)
 ![Directions](https://img.shields.io/badge/paper%20directions-19-EA580C?style=flat-square)
@@ -14,7 +14,18 @@
 </div>
 
 > [!NOTE]
-> 当前版本采用 **MD-first 单提示词执行 + Agent能力适配 + 确定性交付验收**。模型继续负责方向、检索、论证、写作、公式含义和配图语义；脚本只统计字数并核对公式结构、图片路由、文件、目录、表格与哈希，不生成论文内容。
+> 当前版本采用 **MD-first 单提示词执行 + Agent能力适配 + 外部真实性与状态裁决**。模型继续负责方向、检索、论证、写作、公式含义和配图语义；脚本只核对文献、数据来源、公式、图片、文档和状态，不生成论文内容。
+
+## v1.4.0真实性与权威状态裁决
+
+- 新增 `verify_evidence_integrity.py`，核对DOI与题名、全文状态来源、页码/章节定位、引用覆盖和数据来源；
+- `VERIFIED_FULLTEXT`不能再只写Crossref、OpenAlex或题录页，必须提供合法全文定位与页码/章节；
+- 新增 `data/data-provenance.json`，区分用户数据、作者观察、官方下载、正式仿真、设计计算和模型合成数据；
+- 设计稿、实验方案没有真实观察数据时，出现“本系统实测”“实验班提升”“p<0.05”等结果型主张会机械失败；
+- 图表、公式、文献和交付报告绑定当前检查器与输入文件SHA-256，旧报告、检查后修改或手写PASS不能冒充新版验收；
+- 新增 `adjudicate_status.py`，在四个底层检查器之后生成 `14-adjudicated-status.json`；
+- 最终回复只读取权威状态，Manifest中的模型自报PASS只作为冲突证据保留；
+- 设计与方案论文可以保持高质量交付，但研究状态自动封顶为PARTIAL，不再被错误标为研究完成。
 
 ## v1.3.1表格文字缩进修复
 
@@ -542,20 +553,24 @@ aiwritepaper-academic-writing/
 │   ├── compose_prompt.py   # 运行时只做确定性文件拼接
 │   ├── build_compiled.py   # 维护时重建19份完整提示词
 │   ├── verify_compiled.py  # 只读校验源文件、路由和版本同步
+│   ├── verify_evidence_integrity.py # 核验文献题录、引用和数据来源
 │   ├── verify_figure_package.py # 机械校验图表包、哈希与嵌图路由
 │   ├── verify_formula_rendering.py   # 校验公式源稿、Word OMML与PDF可见残留
 │   ├── verify_manuscript_delivery.py # 统一校验字数、证据矩阵和DOCX/PDF交付
+│   ├── adjudicate_status.py # 根据当前检查报告计算唯一权威状态
 │   └── render_svg_layout.mjs # 无依赖的确定性SVG布局编译器
 ├── tests/
+│   ├── test_verify_evidence_integrity.py
 │   ├── test_verify_figure_package.py
 │   ├── test_verify_formula_rendering.py
 │   ├── test_verify_manuscript_delivery.py
+│   ├── test_adjudicate_status.py
 │   └── test_render_svg_layout.mjs
 ├── references/
 │   ├── compiled-prompts/    # 运行时只读取其中一个完整提示词
 │   ├── directions/          # 19个方向增量源
 │   ├── common/              # 通用规则源，含正文质量、统计图与Figure Trace
-│   ├── schemas/             # Figure Manifest与SVG Layout Spec
+│   ├── schemas/             # Figure、SVG、能力与数据来源Schema
 │   ├── integrations/        # 各Agent短小能力适配文件
 │   ├── routing.md            # 唯一方向路由真源
 │   ├── topic-selection.md    # 无题目时按需读取
@@ -574,7 +589,7 @@ aiwritepaper-academic-writing/
 
 ## 维护与版本
 
-- 当前版本：`1.3.1`
+- 当前版本：`1.4.0`
 - 更新记录：[CHANGELOG.md](CHANGELOG.md)
 - Skill入口：[SKILL.md](SKILL.md)
 - 历史复杂流水线版可通过Git标签`v0.3.1-runtime-gates`恢复

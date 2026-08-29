@@ -26,7 +26,7 @@ arXiv、bioRxiv、ChemRxiv、SSRN、NBER工作论文可以收录，但必须在�
 
 ## 检索与证据记录
 
-在 `02-search-log.md` 记录数据库、实际访问路径、检索式、日期、筛选步骤和访问限制。在 `03-evidence-matrix.csv` 记录 source_id、题名、作者、年份、类型、来源、卷期页、DOI、URL、访问日期、核验来源、支持主张、章节、状态、evidence_role、access_mode、publication_status 和备注。
+在 `02-search-log.md` 记录数据库、实际访问路径、检索式、日期、筛选步骤和访问限制。在 `03-evidence-matrix.csv` 记录 source_id、题名、作者、年份、类型、来源、卷期页、DOI、URL、访问日期、核验来源、支持主张、章节、状态、evidence_role、access_mode、publication_status、备注、`fulltext_locator` 与 `page_locator`；使用本地来源文件时另记 `source_file` 与 `source_sha256`。作者—年份制另加唯一 `citation_token`。
 
 上述字段是最低证据契约，不是可选示例。只包含 `source_id,DOI,status` 或缺少题名、作者、年份、支持主张、章节和访问/发表状态的极简表不属于完整证据矩阵，不能通过最终交付验收。
 
@@ -40,6 +40,10 @@ arXiv、bioRxiv、ChemRxiv、SSRN、NBER工作论文可以收录，但必须在�
 - `REJECTED`：重复、低质量或不匹配。
 
 核心论点只能由已阅读且匹配的来源支持。每条文内引用必须匹配参考文献，每条参考文献必须在正文出现。无法访问全文时降低表述强度，不得假装读过。输出 `references.bib` 与 `04-reference-audit.md`。
+
+`run-manifest.json` 必须显式记录 `citation_mode` 为 `NUMERIC` 或 `AUTHOR_YEAR`。`NUMERIC` 的正文和文末都使用同一套编号；`AUTHOR_YEAR` 的文末不得继续保留编号列表，证据矩阵的每条可用来源必须给出正文实际出现的唯一 `citation_token`。不得让正文使用作者—年份、文末却使用 `[1]` 编号列表。
+
+正式验收使用 `scripts/verify_evidence_integrity.py` 解析DOI与题名、全文核验来源、定位信息、引用覆盖和数据来源。Crossref未收录不自动等于虚构，但DOI解析后题名明确对应另一篇文献时为Critical错误。网络无法执行DOI核验时记录 `CAPABILITY_GAP` 并将证据状态降为 `PARTIAL`，不能虚报完全通过。
 
 `VERIFIED_METADATA` 不得用于转述全文实验参数、样本、定量结果、详细方法或原文引语；正式摘要能够直接确认的研究范围须明确写成摘要层。支撑全文级主张时使用 `VERIFIED_FULLTEXT` 并保留定位。法条、标准、案例数字和技术手册参数分别记录法源版本/条款、标准号/范围页、来源文件/页码/期间/计算和手册版本/页码。
 
