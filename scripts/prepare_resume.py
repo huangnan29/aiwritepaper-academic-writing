@@ -13,9 +13,11 @@ def sha256(p: Path) -> str:
     return h.hexdigest()
 def main() -> int:
     ap=argparse.ArgumentParser(description="生成AIWritePaper RESUME续跑计划");ap.add_argument("--root",type=Path,default=Path.cwd());ap.add_argument("--output",type=Path,default=Path("00-resume-plan.json"));a=ap.parse_args();root=a.root.resolve();errors=[];warnings=[];frozen=[];invalid=[]
-    manifest_path=root/"run-manifest.json"; prompt=root/"final-execution-prompt.md"; composition=root/"00-prompt-composition.json"
+    manifest_path=root/"run-manifest.json"
     try:m=json.loads(manifest_path.read_text(encoding="utf-8"))
     except Exception as e:m={};errors.append(f"RUN_MANIFEST_INVALID: {e}")
+    prompt=root/str(m.get("active_prompt") or "final-execution-prompt.md")
+    composition=root/str(m.get("active_prompt_composition") or "00-prompt-composition.json")
     try:c=json.loads(composition.read_text(encoding="utf-8"))
     except Exception as e:c={};errors.append(f"PROMPT_COMPOSITION_INVALID: {e}")
     if not prompt.is_file() or not c or c.get("sha256")!=sha256(prompt): errors.append("FINAL_PROMPT_HASH_MISMATCH")

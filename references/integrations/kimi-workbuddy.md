@@ -1,11 +1,3 @@
-# Agent适配：Kimi Code / WorkBuddy / MiniMax客户端
+# 适配：Kimi Code / WorkBuddy / MiniMax客户端
 
-本附加规则只依据当前客户端真实工具映射能力，不依据底层模型品牌推断。
-
-- `AGENT_ADAPTER` 固定记录为 `kimi-workbuddy`。
-- Profile不按Kimi、MiniMax或WorkBuddy品牌推断；用户覆盖和同MODEL_LABEL历史裁决优先，没有弱信号时保持FULL_AUTONOMY。
-- 检查当前执行器、父代理和客户端是否真实暴露图片生成工具。MiniMax、Kimi或其他模型在产品层支持图片，不代表当前终端会话已经获得调用权限。
-- 真实可调用时逐张完成全部适合生图的结构图；父代理代调时必须处理完整任务单，不能只补一张概念图。
-- 无图片工具时允许SVG单向降级，并记录实际检查过的调用层、缺失工具和替代路径。
-- 能力较弱模型使用 `COMPILED` SVG前仍需检查论文实际显示尺寸；画布过窄、字号过小或留白过大不得通过。
-- DOCX/PDF导出、视觉检查与最终验收均以真实工具和文件为准，模型自述无效。
+记录`AGENT_ADAPTER=kimi-workbuddy`。图片、视觉和文档能力只按当前执行器、父层或客户端真实工具填写。任一层可生图即遍历全部适合任务；无工具或真实失败才SVG降级。COMPILED SVG仍须按论文尺寸检查字号、留白、交叉和中文。Kimi正文与WorkBuddy/K3收尾应分别记录MODEL_LABEL与实际调用层，不能合并成同一模型成绩。

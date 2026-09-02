@@ -8,12 +8,33 @@
     "documents": ["output-contract"]
   },
   "always": ["capability-and-runtime", "integrity-and-evidence", "autonomous-completion", "final-quality-gates"],
+  "direction_defaults": {
+    "art-design-practice": ["figures", "documents"],
+    "biomedical-experimental-journal": ["figures", "statistics", "formulas", "documents"],
+    "chemical-materials-experiment": ["figures", "statistics", "formulas", "documents"],
+    "clinical-nursing-research": ["figures", "statistics", "formulas", "documents"],
+    "economics-policy-empirical": ["figures", "statistics", "formulas", "documents"],
+    "education-applied-research": ["figures", "statistics", "documents"],
+    "electronic-circuit-design": ["figures", "svg", "formulas", "documents"],
+    "general-journal-imrad": ["figures", "statistics", "formulas", "documents"],
+    "geography-environmental-empirical": ["figures", "statistics", "documents"],
+    "legal-normative-analysis": ["figures", "documents"],
+    "literature-review-synthesis": ["figures", "statistics", "documents"],
+    "literature-textual-analysis": ["figures", "documents"],
+    "machine-learning-applied-empirical": ["figures", "statistics", "formulas", "documents"],
+    "management-case-analysis": ["figures", "statistics", "documents"],
+    "mathematics-education": ["figures", "svg", "formulas", "documents"],
+    "mechanical-material-process": ["figures", "svg", "formulas", "documents"],
+    "physical-materials-experiment": ["figures", "statistics", "formulas", "documents"],
+    "professional-work-report": ["figures", "statistics", "documents"],
+    "software-system-engineering": ["figures", "svg", "documents"]
+  },
   "modes": {
-    "FULL_BUILD": ["literature-and-citation", "output-contract", "academic-prose-quality", "quality-90", "direction", "rubric", "method"],
+    "FULL_BUILD": ["literature-and-citation", "output-contract", "academic-prose-quality", "direction", "method"],
     "PROPOSAL_ONLY": ["literature-and-citation", "output-contract", "academic-prose-quality", "direction", "method"],
     "DEFENSE_ONLY": ["output-contract", "academic-prose-quality"],
     "FIGURES_ONLY": ["academic-figures"],
     "EXPORT_ONLY": ["output-contract"],
-    "AUDIT_ONLY": ["literature-and-citation", "output-contract", "academic-figures", "quality-90", "direction", "rubric", "method"]
+    "AUDIT_ONLY": ["literature-and-citation", "output-contract", "academic-figures", "direction", "method"]
   }
 }

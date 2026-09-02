@@ -53,6 +53,14 @@ class PaperEntryTests(unittest.TestCase):
             command.append("--preview")
         return subprocess.run(command, cwd=ROOT, text=True, capture_output=True)
 
+    def run_amend(self, payload: dict) -> subprocess.CompletedProcess[str]:
+        path = self.root / "prompt-amendment.json"
+        path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+        return subprocess.run([
+            "uv", "run", "python", str(SCRIPT), "prepare", "--amend",
+            "--root", str(self.root), "--request", str(path),
+        ], cwd=ROOT, text=True, capture_output=True)
+
     def result(self, **changes) -> dict:
         self.write_request(**changes)
         completed = self.run_cli()
@@ -66,14 +74,15 @@ class PaperEntryTests(unittest.TestCase):
         manifest = json.loads((self.root / "run-manifest.json").read_text(encoding="utf-8"))
         self.assertEqual(manifest["preparation_status"], "PREPARED_NOT_EXECUTED")
 
-    def test_missing_observation_is_blocked_without_fake_capability(self) -> None:
+    def test_missing_observation_remains_unknown_without_fake_gap(self) -> None:
         self.write_request()
         payload = json.loads(self.request.read_text(encoding="utf-8"))
         del payload["capabilities"]
         self.request.write_text(json.dumps(payload), encoding="utf-8")
         completed = self.run_cli()
-        self.assertEqual(completed.returncode, 2)
-        self.assertFalse((self.root / "00-capability-report.json").exists())
+        self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
+        capability = json.loads((self.root / "00-capability-report.json").read_text())
+        self.assertIsNone(capability["image_generation"]["available"])
 
     def test_invalid_direction_is_blocked(self) -> None:
         completed = self.run_after_request(direction_id="not-a-real-direction")
@@ -93,7 +102,7 @@ class PaperEntryTests(unittest.TestCase):
         schema = json.loads((ROOT / "references/schemas/profile-selection.schema.json").read_text())
         self.assertTrue(set(schema["required"]).issubset(profile))
         self.assertTrue(set(schema["properties"]["selector"]["required"]).issubset(profile["selector"]))
-        self.assertEqual(profile["selector"]["version"], "2.1.0-dev")
+        self.assertEqual(profile["selector"]["version"], "2.1.0-rc.1")
         manifest = json.loads((self.root / "run-manifest.json").read_text())
         self.assertEqual(manifest["state_contract"], "DERIVED_ONLY")
         self.assertFalse({"research_status", "delivery_status", "final_status"} & set(manifest))
@@ -128,10 +137,22 @@ class PaperEntryTests(unittest.TestCase):
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertEqual({path.name for path in self.root.iterdir()}, before)
 
-    def test_capability_callers_retain_current_and_parent(self) -> None:
+    def test_legacy_capability_is_normalized_to_one_caller(self) -> None:
         self.result()
         capability = json.loads((self.root / "00-capability-report.json").read_text(encoding="utf-8"))
-        self.assertEqual(capability["image_generation"]["callers"], ["CURRENT_AGENT", "PARENT_AGENT"])
+        self.assertEqual(capability["image_generation"]["caller"], "CURRENT_AGENT")
+
+    def test_direction_default_features_apply_without_model_list(self) -> None:
+        self.write_request()
+        payload = json.loads(self.request.read_text())
+        payload.pop("features")
+        payload.pop("target_figures")
+        self.request.write_text(json.dumps(payload), encoding="utf-8")
+        completed = self.run_cli()
+        self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
+        selection = json.loads((self.root / "task-selection.json").read_text())
+        self.assertIn("documents", selection["features"])
+        self.assertEqual(selection["feature_source"], "DIRECTION_DEFAULT_WITH_OVERRIDE")
 
     def test_full_profile_has_no_stage_card(self) -> None:
         self.result()
@@ -163,6 +184,33 @@ class PaperEntryTests(unittest.TestCase):
     def test_empty_features_are_blocked_when_target_figures_positive(self) -> None:
         completed = self.run_after_request(features=[])
         self.assertEqual(completed.returncode, 2)
+
+    def test_amend_adds_module_without_overwriting_original_prompt(self) -> None:
+        self.result(features=["figures"])
+        original = (self.root / "final-execution-prompt.md").read_bytes()
+        result = self.run_amend({"schema_version": "1.0", "reason": "正文出现公式",
+                                 "add_features": ["formulas"], "remove_features": []})
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual((self.root / "final-execution-prompt.md").read_bytes(), original)
+        self.assertTrue((self.root / "final-execution-prompt.v2.md").is_file())
+        manifest = json.loads((self.root / "run-manifest.json").read_text())
+        self.assertEqual(manifest["active_prompt"], "final-execution-prompt.v2.md")
+
+    def test_amend_cannot_remove_module_with_existing_artifact(self) -> None:
+        self.result(features=["figures", "documents"])
+        (self.root / "figures").mkdir()
+        (self.root / "figures/figure-manifest.json").write_text("{}")
+        result = self.run_amend({"schema_version": "1.0", "reason": "错误尝试",
+                                 "add_features": [], "remove_features": ["figures"]})
+        self.assertEqual(result.returncode, 2)
+
+    def test_title_ask_requires_explicit_authorization(self) -> None:
+        self.result(features=["figures"], title_policy="ASK")
+        result = self.run_amend({"schema_version": "1.0", "reason": "证据不足",
+                                 "title_change": {"final_title": "测试论文设计方案",
+                                                  "rule_id": "IMPLEMENTATION_TO_DESIGN",
+                                                  "evidence_gap": "没有源码"}})
+        self.assertEqual(result.returncode, 2)
 
 
 if __name__ == "__main__":

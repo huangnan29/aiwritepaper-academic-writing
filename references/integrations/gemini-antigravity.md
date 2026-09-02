@@ -1,16 +1,3 @@
-# Agent适配：Gemini CLI / Antigravity
+# 适配：Gemini CLI / Antigravity
 
-本附加规则只映射Gemini系客户端的实际能力，不根据模型名称虚构工具权限。
-
-- `AGENT_ADAPTER` 固定记录为 `gemini-antigravity`。
-- Profile不按Gemini或Antigravity名称硬编码。用户明确指定WEAK_MODEL或同一MODEL_LABEL历史权威状态为FAIL时，必须使用 `*-compact.md` 与弱模型任务卡；没有弱信号时不得擅自降低强模型自主度。
-- 当前会话、父任务或客户端真实暴露 Nano Banana、Gemini图片生成或等价工具时，记录 `image_generation.available=true` 与真实调用者，并逐张处理所有适合生图的结构图。
-- “Gemini模型理论上支持图片”不等于当前CLI可以调用图片工具；只有看见真实工具并能取得结果时才标记可用。
-- 图片工具可由父任务代调时，执行器输出完整图片任务单并等待全部结果回传，不能因为当前子任务没有工具就提前生成SVG。
-- 图片接口返回429或配额耗尽时保存实际失败回执并进入允许的单向降级；不能把产品宣传中的图片能力写成当前调用成功。
-- 当前会话自行生成的CSV统一标记 `MODEL_SYNTHETIC`。即使同时生成脚本、哈希和日志，也不能把它作为实验、问卷、临床、性能或统计结果。
-- 不得用脚本同时生成结果CSV和“AUTHOR_OBSERVED/官方下载/正式仿真成功”回执；本次脚本创建的文件统一视为合成或计算产物。回执必须由 `capture_provenance.py` 捕获真实原始文件、HTTP下载或实际领域命令。
-- 研究框架、鱼骨图、组织/责任架构、普通流程和教学路线属于 `SEMANTIC_STRUCTURE`；当前或父层有图片工具时必须设置 `imagegen_eligible=true`，不能批量标为false后全部绕到matplotlib。
-- 最终回复前必须实际保存文献证据、图表、公式、总交付和权威状态五份报告。公式报告必须证明Word存在OMML公式对象且PDF没有可见TeX残留；图表报告FAIL、公式报告缺失、证据题名错配或无观察数据却出现实测结果时，裁决器必须返回FAIL。客户端无法提供图片视觉核验时权威交付状态保持 `PARTIAL`；最终回复只读取 `14-adjudicated-status.json`，不得输出“全部达标”或自行改写为 `PASS`。
-- 中文结构图生成后检查文字、箭头和节点；局部文字问题优先编辑或增加确定性覆盖层，不得静默换成纯SVG。
-- DOCX、PDF或视觉工具缺失时记录能力缺口；不得把Markdown、HTML预览或SVG源码冒充最终文档验收。
+记录`AGENT_ADAPTER=gemini-antigravity`，不按品牌假定能力。当前、父层或客户端有Nano Banana/GenerateImage时，普通结构图逐张生图；父层代调先提交完整任务单，等结果回传后再导出。429/配额失败保留回执后才降级。模型新建CSV属于MODEL_SYNTHETIC，不能冒充实验、课堂或下载数据。中文图检查伪字与箭头，可用确定性中文覆盖，不能静默换纯SVG。最终只按四类检查和裁决报告状态。

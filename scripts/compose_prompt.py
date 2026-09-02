@@ -132,11 +132,11 @@ def main() -> int:
     if profile == "WEAK_MODEL":
         if not args.compiled.name.endswith("-compact.md"):
             raise ValueError("WEAK_MODEL必须使用*-compact.md")
-        expected_profile_file = "weak-model.md"
+        expected_profile_file = "staged-assistance.md"
     else:
         if not args.compiled.name.endswith("-full.md"):
             raise ValueError(f"{profile}必须使用*-full.md")
-        expected_profile_file = "guided.md" if profile == "GUIDED" else None
+        expected_profile_file = "staged-assistance.md" if profile == "GUIDED" else None
 
     if expected_profile_file is None:
         if args.profile_rules is not None:

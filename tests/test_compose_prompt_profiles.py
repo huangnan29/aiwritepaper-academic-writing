@@ -22,8 +22,7 @@ class ComposePromptProfileTests(unittest.TestCase):
         (self.root / "topic-full.md").write_text("完整提示词", encoding="utf-8")
         (self.root / "topic-compact.md").write_text("紧凑提示词", encoding="utf-8")
         (self.root / "adapter.md").write_text("适配层", encoding="utf-8")
-        (self.root / "guided.md").write_text("引导任务卡", encoding="utf-8")
-        (self.root / "weak-model.md").write_text("弱模型任务卡", encoding="utf-8")
+        (self.root / "staged-assistance.md").write_text("分阶段任务卡", encoding="utf-8")
         (self.root / "execution-checkpoints-template.json").write_text(
             '{"schema_version":"1.0","stages":{}}', encoding="utf-8"
         )
@@ -64,10 +63,10 @@ class ComposePromptProfileTests(unittest.TestCase):
         result = self.run_compose(
             "--profile-selection", str(self.selection("GUIDED")),
             "--addon", str(self.root / "execution-checkpoints-template.json"),
-            "--profile-rules", str(self.root / "guided.md"),
+            "--profile-rules", str(self.root / "staged-assistance.md"),
         )
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("引导任务卡", (self.root / "out.md").read_text(encoding="utf-8"))
+        self.assertIn("分阶段任务卡", (self.root / "out.md").read_text(encoding="utf-8"))
 
     def test_guided_without_rules_fails(self) -> None:
         result = self.run_compose(
@@ -78,7 +77,7 @@ class ComposePromptProfileTests(unittest.TestCase):
     def test_weak_requires_compact_prompt(self) -> None:
         result = self.run_compose(
             "--profile-selection", str(self.selection("WEAK_MODEL")),
-            "--profile-rules", str(self.root / "weak-model.md"),
+            "--profile-rules", str(self.root / "staged-assistance.md"),
         )
         self.assertNotEqual(result.returncode, 0)
 
@@ -90,14 +89,14 @@ class ComposePromptProfileTests(unittest.TestCase):
             "--addon", str(self.root / "adapter.md"),
             "--addon", str(self.root / "execution-checkpoints-template.json"),
             "--profile-selection", str(self.selection("WEAK_MODEL")),
-            "--profile-rules", str(self.root / "weak-model.md"),
+            "--profile-rules", str(self.root / "staged-assistance.md"),
             "--output", str(self.root / "weak.md"),
         ]
         result = subprocess.run(command, capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
         text = (self.root / "weak.md").read_text(encoding="utf-8")
         self.assertIn("紧凑提示词", text)
-        self.assertIn("弱模型任务卡", text)
+        self.assertIn("分阶段任务卡", text)
 
 
 if __name__ == "__main__":

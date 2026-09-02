@@ -14,11 +14,11 @@ from typing import Any, Dict, List, Optional
 
 
 PROFILES = {"FULL_AUTONOMY", "GUIDED", "WEAK_MODEL"}
-SELECTOR_VERSION = "2.1.0-dev"
+SELECTOR_VERSION = "2.1.0-rc.1"
 PROFILE_FILES = {
     "FULL_AUTONOMY": "references/profiles/full-autonomy.md",
-    "GUIDED": "references/profiles/guided.md",
-    "WEAK_MODEL": "references/profiles/weak-model.md",
+    "GUIDED": "references/profiles/staged-assistance.md",
+    "WEAK_MODEL": "references/profiles/staged-assistance.md",
 }
 
 # 只有能指向产出执行本身的明确错误，才允许把历史结果解释为模型执行失败。
@@ -196,8 +196,8 @@ def main() -> int:
     args = parse_args()
     capability_path = args.capability_report.expanduser().resolve()
     capability = load_json(capability_path)
-    if capability.get("schema_version") != "1.0":
-        raise ValueError("当前Profile选择器只接受Capability Report schema_version=1.0")
+    if capability.get("schema_version") not in {"1.0", "2.1"}:
+        raise ValueError("Profile选择器只接受Capability Report schema_version=1.0或2.1")
     prior_payloads: List[tuple[Path, Dict[str, Any]]] = []
     for prior in args.prior_adjudication:
         path = prior.expanduser().resolve()

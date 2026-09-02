@@ -6,14 +6,14 @@
   "model_label": "UNKNOWN @ 实际客户端",
   "agent_adapter": "universal-terminal",
   "run_mode": "FULL_BUILD",
-  "features": ["figures", "formulas"],
-  "observed_at": "填写本次真实观察时间与时区",
+  "feature_overrides": {"add": [], "remove": []},
   "capabilities": {
-    "image_generation": {"available": false, "callers": [], "tools": [], "evidence": "示例占位，须替换为实际观察"},
-    "visual_inspection": {"available": false, "callers": [], "tools": [], "evidence": "示例占位，须替换为实际观察"},
-    "docx_export": {"available": false, "callers": [], "tools": [], "evidence": "示例占位，须替换为实际观察"},
-    "pdf_export": {"available": false, "callers": [], "tools": [], "evidence": "示例占位，须替换为实际观察"}
+    "image_generation": null,
+    "visual_inspection": null,
+    "docx_export": null,
+    "pdf_export": null
   },
+  "title_policy": "ASK",
   "document_profile": "THESIS",
   "paper_level": "UNSPECIFIED",
   "language": "zh-CN",

@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "执行提示词安全修订",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "reason"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "reason": {"type": "string", "minLength": 1},
+    "add_features": {"type": "array", "uniqueItems": true, "items": {"enum": ["figures", "statistics", "svg", "formulas", "documents"]}},
+    "remove_features": {"type": "array", "uniqueItems": true, "items": {"enum": ["figures", "statistics", "svg", "formulas", "documents"]}},
+    "title_change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["final_title", "rule_id", "evidence_gap"],
+      "properties": {
+        "final_title": {"type": "string", "minLength": 1},
+        "rule_id": {"enum": ["EFFECT_TO_ASSOCIATION", "IMPLEMENTATION_TO_DESIGN", "EMPIRICAL_TO_REVIEW"]},
+        "evidence_gap": {"type": "string", "minLength": 1},
+        "user_authorized": {"type": "boolean"}
+      }
+    }
+  }
+}
