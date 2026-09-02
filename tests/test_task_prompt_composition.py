@@ -151,8 +151,9 @@ class TaskPromptCompositionTests(unittest.TestCase):
     def test_full_and_compact_are_same_source(self) -> None:
         compact = self.build.render_compact(DIRECTION)
         full = self.build.render_compiled(DIRECTION)
-        expected = full.replace("# general-journal-imrad 完整论文生成提示词", "# general-journal-imrad 紧凑兼容论文生成提示词", 1)
-        self.assertEqual(compact, expected)
+        self.assertLess(len(compact.encode()), len(full.encode()))
+        self.assertIn(self.build.compact_source(DIRECTION), compact)
+        self.assertIn(self.build.compact_source(DIRECTION), full)
         self.assertEqual(full.count("<!-- task-module:"), full.count("<!-- /task-module -->"))
 
 

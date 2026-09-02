@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "精确电气连接表行",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["from_component", "from_pin", "to_component", "to_pin", "net", "voltage_domain", "source"],
+  "properties": {
+    "from_component": {"type": "string", "minLength": 1},
+    "from_pin": {"type": "string", "minLength": 1},
+    "to_component": {"type": "string", "minLength": 1},
+    "to_pin": {"type": "string", "minLength": 1},
+    "net": {"type": "string", "minLength": 1},
+    "voltage_domain": {"type": "string", "minLength": 1},
+    "source": {"type": "string", "minLength": 1}
+  }
+}

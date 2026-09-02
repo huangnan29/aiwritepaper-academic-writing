@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "综述分类抽查行",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["record_id", "title", "set_role", "classification", "decision_basis", "reviewer_status", "notes"],
+  "properties": {
+    "record_id": {"type": "string", "minLength": 1},
+    "title": {"type": "string", "minLength": 1},
+    "set_role": {"enum": ["DISCOVERY", "FULLTEXT", "INCLUDED", "CITED"]},
+    "classification": {"type": "string", "minLength": 1},
+    "decision_basis": {"type": "string", "minLength": 1},
+    "reviewer_status": {"enum": ["MODEL_CHECKED", "INDEPENDENT_CHECKED", "NEEDS_REVIEW"]},
+    "notes": {"type": "string"}
+  }
+}

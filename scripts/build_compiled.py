@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 import tempfile
+import re
 from typing import List, Optional
 
 
@@ -16,8 +17,6 @@ COMMON_DIR = SKILL_ROOT / "references" / "common"
 DIRECTIONS_DIR = SKILL_ROOT / "references" / "directions"
 COMPILED_DIR = SKILL_ROOT / "references" / "compiled-prompts"
 COMPACT_DIR = SKILL_ROOT / "references" / "compact-prompts"
-WEAK_CORE = COMMON_DIR / "weak-model-core.md"
-
 COMMON_FILES = [
     "capability-and-runtime.md",
     "integrity-and-evidence.md",
@@ -29,17 +28,15 @@ COMMON_FILES = [
     "autonomous-completion.md",
     "final-quality-gates.md",
     "mathematical-formulas.md",
-    "quality-90.md",
     "svg-layout.md",
 ]
 
-RUBRICS = SKILL_ROOT / "references" / "quality" / "direction-rubrics.json"
 METHOD_GATES = SKILL_ROOT / "references" / "quality" / "direction-method-gates.json"
-
-def render_rubric(direction: Path) -> str:
-    payload=json.loads(RUBRICS.read_text(encoding="utf-8"));rubric=payload["directions"][direction.stem]
-    focus="\n".join(f"- {x}" for x in rubric["focus"]);critical="\n".join(f"- {x}" for x in rubric["critical"])
-    return f"## 当前方向专业检查卡\n\n本卡用于发现问题，不要求写作模型给自己评分。\n\n### 专业深度关注点\n\n{focus}\n\n### Critical错误\n\n{critical}"
+CORE_PATTERN = re.compile(
+    r"<!-- compact-core:start -->\s*(.*?)\s*<!-- compact-core:end -->",
+    re.DOTALL,
+)
+CORE_MARKERS = re.compile(r"<!-- compact-core:(?:start|end) -->\s*")
 
 
 def render_method_gates(direction: Path) -> str:
@@ -59,6 +56,19 @@ def read_source(path: Path) -> str:
     if not text.strip():
         raise ValueError(f"源文件为空: {path}")
     return text.rstrip("\r\n")
+
+
+def full_source(path: Path) -> str:
+    """完整版保留全部正文，但不把维护标记暴露给执行模型。"""
+    return CORE_MARKERS.sub("", read_source(path)).strip()
+
+
+def compact_source(path: Path) -> str:
+    """紧凑版只取同一源文件中显式标记的CORE段。"""
+    blocks = CORE_PATTERN.findall(read_source(path))
+    if not blocks:
+        raise ValueError(f"源文件缺少compact CORE标记: {path}")
+    return "\n\n".join(block.strip() for block in blocks)
 
 
 def render_compiled(direction: Path) -> str:
@@ -81,21 +91,39 @@ def render_compiled(direction: Path) -> str:
     sections: List[str] = [header.rstrip("\r\n")]
     for name in COMMON_FILES:
         source = COMMON_DIR / name
-        sections.append(f"<!-- task-module:{Path(name).stem} -->\n<!-- 公共来源：references/common/{name} -->\n\n{read_source(source)}\n<!-- /task-module -->")
+        sections.append(f"<!-- task-module:{Path(name).stem} -->\n<!-- 公共来源：references/common/{name} -->\n\n{full_source(source)}\n<!-- /task-module -->")
     sections.append(
-        f"<!-- task-module:direction -->\n<!-- 方向来源：references/directions/{direction.name} -->\n\n{read_source(direction)}\n<!-- /task-module -->"
+        f"<!-- task-module:direction -->\n<!-- 方向来源：references/directions/{direction.name} -->\n\n{full_source(direction)}\n<!-- /task-module -->"
     )
-    sections.append(f"<!-- task-module:rubric -->\n<!-- 质量评分来源：references/quality/direction-rubrics.json -->\n\n{render_rubric(direction)}\n<!-- /task-module -->")
     sections.append(f"<!-- task-module:method -->\n<!-- 方法门来源：references/quality/direction-method-gates.json -->\n\n{render_method_gates(direction)}\n<!-- /task-module -->")
     return "\n\n".join(sections) + "\n"
 
 
 def render_compact(direction: Path) -> str:
-    """保留兼容文件名；事实规则与完整版同源，任务合成时再按需筛选。"""
-    return render_compiled(direction).replace(
-        f"# {direction.stem} 完整论文生成提示词",
-        f"# {direction.stem} 紧凑兼容论文生成提示词", 1,
+    """从与完整版相同的源文件抽取CORE，不维护第二套事实。"""
+    common_list = "\n".join(f"- references/common/{name}" for name in COMMON_FILES)
+    header = (
+        "<!--\n本文件从完整版同一源的CORE段确定性生成；真实性底线不降低。\n"
+        f"公共来源：\n{common_list}\n方向来源：references/directions/{direction.name}\n-->\n\n"
+        f"# {direction.stem} 紧凑论文生成提示词\n\n"
+        "## 合并说明\n\n当前文件只保留执行与方向核心；每次只做阶段卡要求的工作。\n"
     )
+    sections: List[str] = [header.rstrip("\r\n")]
+    for name in COMMON_FILES:
+        source = COMMON_DIR / name
+        sections.append(
+            f"<!-- task-module:{Path(name).stem} -->\n<!-- 公共CORE来源：references/common/{name} -->\n\n"
+            f"{compact_source(source)}\n<!-- /task-module -->"
+        )
+    sections.append(
+        f"<!-- task-module:direction -->\n<!-- 方向CORE来源：references/directions/{direction.name} -->\n\n"
+        f"{compact_source(direction)}\n<!-- /task-module -->"
+    )
+    sections.append(
+        f"<!-- task-module:method -->\n<!-- 方法门来源：references/quality/direction-method-gates.json -->\n\n"
+        f"{render_method_gates(direction)}\n<!-- /task-module -->"
+    )
+    return "\n\n".join(sections) + "\n"
 
 
 def direction_files() -> List[Path]:

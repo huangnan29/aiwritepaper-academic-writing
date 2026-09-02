@@ -58,9 +58,8 @@ FIELD_ALIASES = {
     "status": ["status", "状态"],
     "notes": ["notes", "备注"],
 }
-RUBRIC_PATH = SKILL_ROOT / "references" / "quality" / "direction-rubrics.json"
 CAPTURE_SCRIPT = SKILL_ROOT / "scripts" / "capture_provenance.py"
-VALID_DIRECTION_IDS = set(json.loads(RUBRIC_PATH.read_text(encoding="utf-8"))["directions"])
+VALID_DIRECTION_IDS = {path.stem for path in (SKILL_ROOT / "references/directions").glob("*.md")}
 WRITE_MARKERS = ("to_csv", "to_excel", "write_text", "write_bytes", "json.dump", "csv.writer", "open(")
 RANDOM_MARKERS = ("np.random", "numpy.random", "random.", "default_rng", "faker", "mimesis")
 
@@ -77,7 +76,7 @@ def verifier_identity() -> Dict[str, str]:
     script = Path(__file__).resolve()
     return {
         "name": script.name,
-        "version": "1.9.2",
+        "version": "2.1.0-rc.1",
         "sha256": sha256(script),
         "generated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
     }

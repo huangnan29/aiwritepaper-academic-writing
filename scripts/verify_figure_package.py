@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import csv
 from datetime import datetime
 import hashlib
 import json
@@ -101,25 +102,74 @@ class FigureVerifier:
         except (OSError, UnicodeError, json.JSONDecodeError) as exc:
             self.error("CAPABILITY_REPORT_INVALID", str(exc))
             return {}
-        if not isinstance(report, dict) or report.get("schema_version") != "1.0":
-            self.error("CAPABILITY_SCHEMA_VERSION", "当前仅接受schema_version=1.0")
+        if not isinstance(report, dict) or report.get("schema_version") not in {"1.0", "2.1"}:
+            self.error("CAPABILITY_SCHEMA_VERSION", "当前只接受schema_version=1.0或2.1")
             return report if isinstance(report, dict) else {}
         adapter = report.get("agent_adapter")
         if not isinstance(adapter, str) or not adapter.strip():
             self.error("CAPABILITY_ADAPTER_MISSING", "agent_adapter")
         image_generation = report.get("image_generation")
-        if not isinstance(image_generation, dict) or not isinstance(image_generation.get("available"), bool):
-            self.error("CAPABILITY_IMAGE_INVALID", "image_generation.available必须为布尔值")
+        if not isinstance(image_generation, dict) or image_generation.get("available") not in {True, False, None}:
+            self.error("CAPABILITY_IMAGE_INVALID", "image_generation.available必须为true、false或null")
             return report
         self.image_generation_available = image_generation["available"]
-        callers = image_generation.get("callers")
-        tools = image_generation.get("tools")
-        evidence = image_generation.get("evidence")
-        if not isinstance(callers, list) or not isinstance(tools, list) or not isinstance(evidence, str) or not evidence.strip():
-            self.error("CAPABILITY_IMAGE_EVIDENCE", "callers、tools或evidence无效")
-        if self.image_generation_available and (not callers or not tools):
-            self.error("CAPABILITY_IMAGE_TOOLS_MISSING", "图片能力可用时必须记录调用层和工具")
+        if report.get("schema_version") == "1.0":
+            callers = image_generation.get("callers")
+            tools = image_generation.get("tools")
+            if self.image_generation_available and (not callers or not tools):
+                self.error("CAPABILITY_IMAGE_TOOLS_MISSING", "图片能力可用时必须记录调用层和工具")
+        else:
+            caller = image_generation.get("caller")
+            tool = image_generation.get("tool")
+            if caller is not None and caller not in {"CURRENT_AGENT", "PARENT_AGENT", "CLIENT", "MCP_OR_PLUGIN"}:
+                self.error("CAPABILITY_IMAGE_CALLER_INVALID", str(caller))
+            if self.image_generation_available is True and not tool:
+                self.warning("CAPABILITY_IMAGE_TOOL_UNNAMED", "能力已确认但客户端未暴露工具名")
         return report
+
+    def verify_direction_contracts(self, direction_id: Any, manifest: Dict[str, Any]) -> List[Path]:
+        """只核对专业源表存在与列结构，不声称电气、理论或分类语义正确。"""
+        paths: List[Path] = []
+        figures = manifest.get("figures", []) if isinstance(manifest, dict) else []
+        requirements: List[tuple[Path, set[str], str]] = []
+        if direction_id == "electronic-circuit-design" and any(
+            isinstance(item, dict) and item.get("exactness_class") == "DOMAIN_EXACT" for item in figures
+        ):
+            requirements.append((self.root / "figures/connection-table.csv",
+                                 {"from_component", "from_pin", "to_component", "to_pin", "net", "voltage_domain", "source"},
+                                 "CIRCUIT_CONNECTION_TABLE"))
+        if direction_id == "mathematics-education" and any(
+            isinstance(item, dict) and re.search(r"APOS|概念|认知|图式|过程|对象", str(item.get("title", "")), re.IGNORECASE)
+            for item in figures
+        ):
+            requirements.append((self.root / "figures/concept-edge-table.csv",
+                                 {"from_concept", "to_concept", "relation", "direction", "evidence", "figure_id"},
+                                 "MATH_CONCEPT_EDGE_TABLE"))
+        if direction_id == "literature-review-synthesis" and any(
+            isinstance(item, dict) and (item.get("generation_route") == "DATA_CODE" or re.search(r"分类|证据图|趋势", str(item.get("title", ""))))
+            for item in figures
+        ):
+            requirements.append((self.root / "review/screening-audit.csv",
+                                 {"record_id", "title", "set_role", "classification", "decision_basis", "reviewer_status", "notes"},
+                                 "REVIEW_SCREENING_AUDIT"))
+        for path, required, code in requirements:
+            if not path.is_file() or path.stat().st_size == 0:
+                self.error(f"{code}_MISSING", str(path.relative_to(self.root)))
+                continue
+            try:
+                with path.open(encoding="utf-8-sig", newline="") as handle:
+                    reader = csv.DictReader(handle)
+                    fields = set(reader.fieldnames or [])
+                    rows = list(reader)
+                if not required.issubset(fields):
+                    self.error(f"{code}_FIELDS", ",".join(sorted(required - fields)))
+                if not rows:
+                    self.error(f"{code}_EMPTY", str(path.relative_to(self.root)))
+                else:
+                    paths.append(path)
+            except (OSError, csv.Error, UnicodeError) as exc:
+                self.error(f"{code}_INVALID", str(exc))
+        return paths
 
     def verify_manifest(self, manifest_path: Path) -> Dict[str, Any]:
         try:
@@ -367,6 +417,8 @@ class FigureVerifier:
                 )
 
             elif route == "SVG_FALLBACK":
+                if self.image_generation_available is None:
+                    self.error("IMAGE_CAPABILITY_UNKNOWN", f"{figure_id}: 未完成图片工具检查，不能声明SVG降级")
                 fallback = self.resolve_file(figure.get("fallback_file"), "fallback_file", figure_id)
                 if fallback and fallback.suffix.lower() != ".svg":
                     self.error("FALLBACK_NOT_SVG", figure_id)
@@ -899,7 +951,7 @@ def main() -> int:
     capability_report = args.capability_report if args.capability_report.is_absolute() else root / args.capability_report
     verifier.verify_capability_report(capability_report)
     manifest = args.manifest if args.manifest.is_absolute() else root / args.manifest
-    verifier.verify_manifest(manifest)
+    figure_payload = verifier.verify_manifest(manifest)
     summary = args.manifest_summary if args.manifest_summary.is_absolute() else root / args.manifest_summary
     verifier.verify_manifest_summary(summary)
     markdown = args.markdown if args.markdown.is_absolute() else root / args.markdown
@@ -907,6 +959,7 @@ def main() -> int:
     docx_value = args.docx
     pdf_value = args.pdf
     run_manifest_path = args.run_manifest if args.run_manifest.is_absolute() else root / args.run_manifest
+    run_payload: Dict[str, Any] = {}
     if not args.skip_documents and (docx_value is None or pdf_value is None):
         try:
             run_payload = json.loads(run_manifest_path.read_text(encoding="utf-8"))
@@ -916,6 +969,12 @@ def main() -> int:
                 pdf_value = Path(run_payload["pdf"])
         except (OSError, UnicodeError, json.JSONDecodeError) as exc:
             verifier.error("RUN_MANIFEST_INVALID", str(exc))
+    elif run_manifest_path.is_file():
+        try:
+            run_payload = json.loads(run_manifest_path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+            verifier.error("RUN_MANIFEST_INVALID", str(exc))
+    direction_inputs = verifier.verify_direction_contracts(run_payload.get("direction_id"), figure_payload)
     if not args.skip_documents:
         if docx_value is None:
             verifier.error("DOCX_PATH_MISSING", "run-manifest.json未记录docx")
@@ -926,7 +985,7 @@ def main() -> int:
         else:
             verifier.verify_pdf(pdf_value if pdf_value.is_absolute() else root / pdf_value)
 
-    input_paths = [capability_report, manifest, summary, markdown, run_manifest_path]
+    input_paths = [capability_report, manifest, summary, markdown, run_manifest_path, *direction_inputs]
     if docx_value is not None:
         input_paths.append(docx_value if docx_value.is_absolute() else root / docx_value)
     if pdf_value is not None:
@@ -948,7 +1007,7 @@ def main() -> int:
         "warnings": verifier.warnings,
         "input_sha256": input_sha256,
         "verifier": {
-            "name": Path(__file__).name, "version": "2.0.0",
+            "name": Path(__file__).name, "version": "2.1.0-rc.1",
             "sha256": verifier.sha256(Path(__file__).resolve()),
             "generated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
         },

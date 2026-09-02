@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "理论概念边表行",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["from_concept", "to_concept", "relation", "direction", "evidence", "figure_id"],
+  "properties": {
+    "from_concept": {"type": "string", "minLength": 1},
+    "to_concept": {"type": "string", "minLength": 1},
+    "relation": {"type": "string", "minLength": 1},
+    "direction": {"enum": ["FORWARD", "REVERSE", "BIDIRECTIONAL", "UNDIRECTED"]},
+    "evidence": {"type": "string", "minLength": 1},
+    "figure_id": {"type": "string", "minLength": 1}
+  }
+}

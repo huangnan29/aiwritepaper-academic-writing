@@ -1,36 +1,13 @@
 # 公共规则五：学术配图
 
-图服务正文的具体主张。先确定事实，再选择路线和布局；配图成功后必须核对最终文档中的实际图片。
+<!-- compact-core:start -->
+每图先写目的、正文位置、事实节点/边、逐字标签、禁止项和精确性。生图能力真实可用时，普通流程、架构、组织和概念图必须用IMAGE_GENERATION，并逐图给出详细Prompt；统计图用DATA_CODE；引脚、电路、化学结构和尺度图用DOMAIN_EXACT；真实影像用EVIDENCE_FILE。只有无生图工具、用户要求矢量或出版限制时才SVG_FALLBACK。成功生图及其中文覆盖PNG必须成为final_embed_file并实际进入Word/PDF，不能被同号SVG替换。
+<!-- compact-core:end -->
 
-## 事实、路线与语言
+中文论文图中文字默认简体中文，型号、协议、单位和化学式可保留。Prompt列出exact_labels和allowed_foreign_tokens。生图中文字失败时保留原始构图，用DETERMINISTIC_OVERLAY覆盖中文，不把整图改英文，也不改插纯SVG。
 
-每图在figure_plan中记录目的、正文位置、类型、来源、节点/关系/标签、禁止项与精确性要求。复杂图的事实清单可单列figures/<FIGURE_ID>-facts.md。普通流程、架构、组织、ER/UML和概念图必须从上下文写详细生图Prompt，包含准确标签、边的起终点、分组、方向、风格与禁止项，不能只给论文题目。
+figures/figure-manifest.json是唯一图片清单。每图记录figure_id、display_number、title、figure_type、exactness_class、claim_bearing、imagegen_eligible、generation_route、route_exemption、source_locator/source_data、caption_claim、supported_manuscript_claims、limitations、language_contract、text_render_strategy、final_embed_file、generated_file、prompt_file、generation_receipt、vlm_verification。未使用字段为null，不编造。
 
-实际生图能力可用时，SEMANTIC_STRUCTURE走IMAGE_GENERATION，包括需要精确关系的流程图；不得批量把imagegen_eligible设为false以绕过。数据统计图走DATA_CODE；电路引脚、化学结构、尺度等DOMAIN_EXACT先用可核对的领域工具/确定性底图，生图只处理不改变事实核心的视觉部分；真实科研影像走EVIDENCE_FILE，不能生成证据区域。真正无生图工具、用户明确要求矢量或出版格式禁止时才走SVG_FALLBACK，不以省时为理由降级。
+route_exemption仅为USER_REQUESTED_VECTOR、PUBLICATION_RESTRICTION、IMAGE_TOOL_UNAVAILABLE、DOMAIN_EXACTNESS、EVIDENCE_REQUIRED或null。generation_receipt绑定真实工具结果、时间、Prompt与生成文件摘要；模型自述只能DECLARED_ONLY。vlm_verification绑定实际查看文件与回执，检查节点、箭头、文字、裁切和正文一致性。
 
-中文论文图中说明默认简体中文，型号、协议、单位、化学式等允许保留。Prompt写出逐字标签。直接文字失败可用DETERMINISTIC_OVERLAY覆盖中文，保留原始生图与覆盖过程，不能换成纯SVG替代成功图片。禁止无授权把全图改成英文；标记允许的外文技术词，检查中文缺字、伪字及非白名单英文长句。
-
-## 唯一图片清单
-
-figures/figure-manifest.json是唯一真源（schema_version:1.5，figures数组），每图记录：
-- figure_id、display_number、title、figure_type、exactness_class、claim_bearing、imagegen_eligible、generation_route、route_exemption；
-- source_locator或source_data，caption_claim、supported_manuscript_claims（含正文locator）与limitations；
-- language_contract（manuscript_language、label_language、exact_labels、allowed_foreign_tokens），text_render_strategy；
-- 最终文件final_embed_file；原始generated_file、prompt_file、generation_receipt；没有使用的路线字段为null，不能编造填满；
-- canvas_contains_figure_number_or_caption:false；以及实际vlm_verification。
-
-route_exemption只接受USER_REQUESTED_VECTOR、PUBLICATION_RESTRICTION、IMAGE_TOOL_UNAVAILABLE、DOMAIN_EXACTNESS、EVIDENCE_REQUIRED或null；工具可用却使用IMAGE_TOOL_UNAVAILABLE无效。图片工具成功后，final_embed_file指向该生图或其修正PNG，旧SVG只作备用。Markdown、Word媒体和PDF显示必须使用这一文件；不能按同名扩展名另选。figure-manifest.md只是工具派生的一行摘要，不另写路由。
-
-## 调用与视觉证据
-
-generation_receipt保存实际工具结果或客户端片段，记录evidence_level（NATIVE_TOOL_RESULT或CLIENT_TRANSCRIPT）、tool、真实调用时间、call_id（未暴露时NOT_EXPOSED）、receipt_file、receipt_sha256、prompt_sha256、generated_sha256。只有自述时标DECLARED_ONLY，不能证明调用。SHA-256只能绑定文件，不能证明内容正确或服务商背书。
-
-vlm_verification记录实际status、remaining_issues、iterations、tool、checked_at、checked_file_sha256、receipt_file、receipt_sha256及language_check（status、target_language、observed_language、unintended_foreign_text、allowed_foreign_tokens_verified、exact_labels_verified）。保存真实观察，不由脚本默认填PASS。检查器返回IMAGEGEN_BYPASSED时回到工具能力和路线核对，不能改能力声明绕过。
-
-检查最终PNG在论文实际尺寸的字体、裁切、遮挡、色彩、连接与题注。更重要的是逐边核对起终点、分支条件和正文事实；“好看”或“节点齐全”不足以通过。不能用文字解释错误图片来代替修正。图内不写外部图号/整段图题，正式题注由文档层生成一次。
-
-原始生成图、Prompt与调用结果保留；overlay另记base_image/source_file等实际输入与执行回执。统计图的数据及计算规则见本次选择的统计模块；SVG降级的字体和布局规则见本次选择的SVG模块。若本次唯一MD未含某个必要模块，先补全任务选择并形成有记录的新版提示词；不得悄悄猜规则或宣称旧提示词未改变。
-
-## 修复边界
-
-先解决事实关系，再优化布局。最多两轮无效修复后记录NEEDS_REVIEW和具体缺陷，不能将其改为PASS。缺视觉能力时诚实记CAPABILITY_GAP；原生SVG已通过时不套模板重绘，成功生图不被SVG覆盖。高质量图应保持，只有受影响图和导出需要重检。
+图内不写外部图号和整段题注。最多两轮无效修复后记NEEDS_REVIEW和具体缺陷；不能为了过检删必要边。缺视觉能力记CAPABILITY_GAP。高质量原图只做受影响区域修复。
