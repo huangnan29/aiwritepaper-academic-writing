@@ -185,6 +185,8 @@ cd aiwritepaper-academic-writing
 
 当前版本：`2.1.0-rc.1`。
 
+维护与检查脚本支持Python 3.9+；项目统一使用`uv run python`执行。
+
 ```bash
 uv run python scripts/build_compiled.py
 uv run python scripts/verify_compiled.py

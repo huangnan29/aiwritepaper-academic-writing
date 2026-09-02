@@ -11,6 +11,7 @@
 - 电子电路、数学教育和综述方向新增连接表、概念边表和分类抽查Schema；图片检查器核对适用源表存在、字段与绑定摘要。
 - 合并GUIDED/WEAK_MODEL阶段规则，六个Agent适配器收敛为工具差异；继续保证生图成功后不得被SVG替换、中文论文图中文字默认中文。
 - 新增Compact预算、方向专业占比、三态能力、amend和运行时无评分回归测试。
+- CI基线调整为Python 3.9+，避免ReportLab在Python 3.8中调用不受支持的`hashlib usedforsecurity`参数。
 - 本版本是候选版；尚未完成Grok Build、Codex＋Sol与Antigravity同题A/B，不声称普遍达到90分，也不自动覆盖稳定安装。
 
 ## 2.1.0-dev - 2026-08-29
