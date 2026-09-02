@@ -266,6 +266,8 @@ class StatusAdjudicator:
             "final_status": final_status,
         }
         for field, value in derived.items():
+            if manifest.get("state_contract") == "DERIVED_ONLY":
+                continue
             declared = manifest.get(field)
             if declared != value:
                 self.conflicts.append(f"{field}: 声明{declared}，权威值{value}")

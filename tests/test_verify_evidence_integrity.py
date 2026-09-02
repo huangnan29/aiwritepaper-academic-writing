@@ -216,6 +216,23 @@ class EvidenceIntegrityTests(unittest.TestCase):
         profile_path.write_text(json.dumps(profile), encoding="utf-8")
         self.assertTrue(any("PROFILE_SELECTION_MISMATCH" in item for item in self.run_verifier().errors))
 
+    def test_historical_audit_profile_resolves_copy_only(self) -> None:
+        profile_path = self.root / "00-profile-selection.json"
+        profile = json.loads(profile_path.read_text())
+        profile["selector"]["sha256"] = "0" * 64
+        profile["capability_report"] = "/original/paper/00-capability-report.json"
+        profile_path.write_text(json.dumps(profile))
+        self.manifest["run_mode"] = "AUDIT_ONLY"
+        self.manifest["audit_context"] = {"source_root": "/original/paper", "profile_report_sha256": MODULE.sha256(profile_path)}
+        verifier = MODULE.EvidenceVerifier(self.root)
+        verifier.verify_profile_selection(self.manifest)
+        self.assertEqual(verifier.errors, [])
+        self.assertTrue(any("HISTORICAL_PROFILE_SELECTOR" in x for x in verifier.warnings))
+        self.manifest["audit_context"]["source_root"] = "/wrong/paper"
+        verifier = MODULE.EvidenceVerifier(self.root)
+        verifier.verify_profile_selection(self.manifest)
+        self.assertTrue(any("PROFILE_CAPABILITY_PATH_ESCAPE" in x for x in verifier.errors))
+
     def test_stale_profile_selector_fails(self) -> None:
         profile_path = self.root / "00-profile-selection.json"
         profile = json.loads(profile_path.read_text(encoding="utf-8"))

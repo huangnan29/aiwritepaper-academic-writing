@@ -1,154 +1,36 @@
-# 公共规则五：学术配图路由与证据边界
+# 公共规则五：学术配图
 
-先确定图要表达或证明什么，再根据当前实际工具选择路径。图片输入或理解、编写SVG、把SVG渲染为PNG、平台另有图片产品，都不等于本次已调用图片生成工具。
+图服务正文的具体主张。先确定事实，再选择路线和布局；配图成功后必须核对最终文档中的实际图片。
 
-数据统计图的选择、反虚构、可访问性、图表规划、Manifest与主张追踪同时执行下一份公共规则 `statistical-figures-and-trace.md`；该规则不能被用来把结构图从ImageGen路线改回代码框图。
+## 事实、路线与语言
 
-## 路由
+每图在figure_plan中记录目的、正文位置、类型、来源、节点/关系/标签、禁止项与精确性要求。复杂图的事实清单可单列figures/<FIGURE_ID>-facts.md。普通流程、架构、组织、ER/UML和概念图必须从上下文写详细生图Prompt，包含准确标签、边的起终点、分组、方向、风格与禁止项，不能只给论文题目。
 
-- 当前Agent有图片生成能力时，优先使用实际暴露的内置工具，例如Codex `imagegen`/`image_gen`、Grok Imagine、Gemini Nano Banana或等价图片工具。流程图、组织架构、软件架构、部署图、ER图、UML、研究框架、因果图、时间线、机制、装置和场景图均应逐张真实调用。每张图先从正文、源码、schema、数据或研究材料建立事实与结构清单，再保存独立详细Prompt和最终位图。
-- 柱状图、折线图、散点图、热图、森林图和模型诊断图：读取真实数据并用 Python、R 或等价统计工具生成；保留数据、单位、样本量、计算和脚本。
-- 数学、几何、化学结构、电路和地图：使用对应领域工具，不使用生成式图片猜测公式、连接、结构或边界。
-- 显微图、医学影像、实验照片、遥感图和仪器截图：使用原始科研文件并保留采集与处理记录；不得生成、补画或无披露增强证据区域。
-- 当前Agent没有图片生成能力时，以上结构与概念图才允许降级为自包含HTML/SVG/PNG。SVG中的中文必须使用明确的跨平台字体栈，例如 `"Noto Sans CJK SC", "Source Han Sans SC", "PingFang SC", "Microsoft YaHei", "WenQuanYi Micro Hei", "SimHei", sans-serif`，并在PNG、DOCX和PDF中检查方框、乱码、缺字、换行和裁切。
+实际生图能力可用时，SEMANTIC_STRUCTURE走IMAGE_GENERATION，包括需要精确关系的流程图；不得批量把imagegen_eligible设为false以绕过。数据统计图走DATA_CODE；电路引脚、化学结构、尺度等DOMAIN_EXACT先用可核对的领域工具/确定性底图，生图只处理不改变事实核心的视觉部分；真实科研影像走EVIDENCE_FILE，不能生成证据区域。真正无生图工具、用户明确要求矢量或出版格式禁止时才走SVG_FALLBACK，不以省时为理由降级。
 
-## SVG单向降级与布局编译
+中文论文图中说明默认简体中文，型号、协议、单位、化学式等允许保留。Prompt写出逐字标签。直接文字失败可用DETERMINISTIC_OVERLAY覆盖中文，保留原始生图与覆盖过程，不能换成纯SVG替代成功图片。禁止无授权把全图改成英文；标记允许的外文技术词，检查中文缺字、伪字及非白名单英文长句。
 
-SVG路线只在图片生成工具真实不可用、用户明确要求可编辑矢量或出版格式禁止生成式图片时启用，不能按模型名称预设强弱，也不能覆盖已经成功的 `IMAGE_GENERATION`。
+## 唯一图片清单
 
-SVG有两种布局模式：
+figures/figure-manifest.json是唯一真源（schema_version:1.5，figures数组），每图记录：
+- figure_id、display_number、title、figure_type、exactness_class、claim_bearing、imagegen_eligible、generation_route、route_exemption；
+- source_locator或source_data，caption_claim、supported_manuscript_claims（含正文locator）与limitations；
+- language_contract（manuscript_language、label_language、exact_labels、allowed_foreign_tokens），text_render_strategy；
+- 最终文件final_embed_file；原始generated_file、prompt_file、generation_receipt；没有使用的路线字段为null，不能编造填满；
+- canvas_contains_figure_number_or_caption:false；以及实际vlm_verification。
 
-- `NATIVE`：当前模型直接生成SVG。先完成几何和视觉检查；节点、文字、连线、中文字体和论文尺寸全部通过时保留，不重复套模板。
-- `COMPILED`：原生SVG出现节点重叠、文字溢出、连线穿越、非必要交叉、端点悬空或模型明确无法可靠计算坐标时，模型只生成语义化 `figure-spec.json`，再由Skill的确定性布局编译器计算坐标和正交连线。
+route_exemption只接受USER_REQUESTED_VECTOR、PUBLICATION_RESTRICTION、IMAGE_TOOL_UNAVAILABLE、DOMAIN_EXACTNESS、EVIDENCE_REQUIRED或null；工具可用却使用IMAGE_TOOL_UNAVAILABLE无效。图片工具成功后，final_embed_file指向该生图或其修正PNG，旧SVG只作备用。Markdown、Word媒体和PDF显示必须使用这一文件；不能按同名扩展名另选。figure-manifest.md只是工具派生的一行摘要，不另写路由。
 
-`figure-spec.json`只描述用途、方向、节点、逐字标签、分组、形状、边及边标签；不得包含 `x`、`y`、宽高或SVG path。模型决定图中有什么以及关系含义，布局器只决定节点尺寸、换行、位置、端口、连线、画布和样式。布局器不得新增、删除、合并、改写节点与边。
+## 调用与视觉证据
 
-Node.js可用时，编译命令为：
+generation_receipt保存实际工具结果或客户端片段，记录evidence_level（NATIVE_TOOL_RESULT或CLIENT_TRANSCRIPT）、tool、真实调用时间、call_id（未暴露时NOT_EXPOSED）、receipt_file、receipt_sha256、prompt_sha256、generated_sha256。只有自述时标DECLARED_ONLY，不能证明调用。SHA-256只能绑定文件，不能证明内容正确或服务商背书。
 
-```bash
-node "<SKILL_DIR>/scripts/render_svg_layout.mjs" \
-  --input "<OUTPUT_DIR>/figures/<FIGURE_ID>-spec.json" \
-  --output "<OUTPUT_DIR>/figures/<FIGURE_ID>-source.svg" \
-  --report "<OUTPUT_DIR>/figures/<FIGURE_ID>-layout-report.json"
-```
+vlm_verification记录实际status、remaining_issues、iterations、tool、checked_at、checked_file_sha256、receipt_file、receipt_sha256及language_check（status、target_language、observed_language、unintended_foreign_text、allowed_foreign_tokens_verified、exact_labels_verified）。保存真实观察，不由脚本默认填PASS。检查器返回IMAGEGEN_BYPASSED时回到工具能力和路线核对，不能改能力声明绕过。
 
-编译报告必须通过重复ID、悬空边、节点重叠、文字溢出、连线穿越非端点节点、可检测交叉和共线重叠检查。随后仍需在论文实际尺寸做VLM或人工核验，并把SVG渲染为最终PNG。Node.js不可用时记录能力缺口，继续使用能够通过检查的原生SVG；不得临时写一套更脆弱的坐标脚本冒充布局器。
+检查最终PNG在论文实际尺寸的字体、裁切、遮挡、色彩、连接与题注。更重要的是逐边核对起终点、分支条件和正文事实；“好看”或“节点齐全”不足以通过。不能用文字解释错误图片来代替修正。图内不写外部图号/整段图题，正式题注由文档层生成一次。
 
-强模型保护规则：原生SVG已通过时不启动编译器；图片工具已成功生成时不进入任何SVG路线；生成图需要精确文字或箭头修正时，只能以生成图为底图增加确定性覆盖并导出PNG，不能改为编译SVG替代。
+原始生成图、Prompt与调用结果保留；overlay另记base_image/source_file等实际输入与执行回执。统计图的数据及计算规则见本次选择的统计模块；SVG降级的字体和布局规则见本次选择的SVG模块。若本次唯一MD未含某个必要模块，先补全任务选择并形成有记录的新版提示词；不得悄悄猜规则或宣称旧提示词未改变。
 
-### SVG事实契约与路线切换
+## 修复边界
 
-每张SVG动坐标前先写 `figures/<FIGURE_ID>-facts.md`，至少包含：该图回答的问题、允许表达的主张、节点全集、逐字标签、每条边的起点与终点、分组与层级、来源定位，以及禁止新增、遗漏或误连的内容。事实文件不写坐标。电路、ER、组织、流程、机制和研究框架都先完成这一步；不能从“看起来合理”反推拓扑。
-
-- 简单分层的节点—边图优先提交无坐标语义Spec给编译器；编译器负责布局，模型不得在Spec中偷塞坐标。
-- 编译失败时先做一次语义级减负：拆图、减少非必要边、把次要关系改成节点注记或图例。仍出现穿节点、交叉或共线重叠时转为 `NATIVE`，并保留失败Spec与报告作为过程证据。
-- 电路原理图、引脚图、化学键、晶体结构、尺度标注和其他 `DOMAIN_EXACT` 图直接使用领域工具或原生确定性SVG，不把精确符号交给通用布局器猜测。
-- 稠密的多对一供电、跨域总线、双向回路和多层交叉依赖若无法平面化，应拆成“总体关系图+局部精确图”，不能靠缩小字号或无限增加折点硬塞进一张图。
-
-### 各类SVG的通用布局语法
-
-| 图类 | 首选结构 | 防乱规则 |
-|---|---|---|
-| 流程、研究路线、时间线 | LR或TB单向主轴，分支后回到明确汇合点 | 主路径只前进；反馈走外缘；分支条件贴近菱形出口 |
-| 软件架构、系统框图、数据流 | 按层或按责任域分列，接口只连接相邻层 | 跨层边走专用外侧通道；数据流与控制流用线型或颜色区分 |
-| 组织架构、岗位责任 | 树形或泳道，层级关系与协作关系分开 | 例外协作放侧轨或独立子图，不能用交叉线破坏上下级结构 |
-| ER、UML、数据模型 | 实体按主题域分区，关系端点使用独立端口 | 基数和关系名放在线旁空白带；实体过多时按主题域拆图 |
-| 电路、引脚、设备连接 | 原生符号、引脚和总线，电源/信号/地分层 | 每个引脚一一核对；总线分支用明确结点；不同电压域不暗接 |
-| 机制、概念、因果关系 | 上游因素—中间机制—下游结果，证据与推断分层 | 事实、推断和方案用稳定视觉编码；没有数据时不画定量曲线 |
-| 统计图、地图、科研影像 | 不走手写结构SVG | 统计图走真实数据代码；地图走GIS；科研影像使用原始证据文件 |
-
-### 原生SVG的几何纪律
-
-SVG降级图必须先布局节点，再规划连接线。流程、架构、ER、UML、电路和组织图使用整数坐标网格与横平竖直的 `line`/`polyline`；除网络关系或确有语义需要外不使用斜线和贝塞尔曲线。连接点应以共享坐标精确落在节点边界或引脚端口上，不能悬空、落在文字区、随意连接节点中心或集中挤在同一个角。箭头必须准确落到目标边界，线端与节点之间不得出现明显空隙或过度伸入。
-
-每条纵向或横向主干分配独立通道，同向并行线保持稳定间距，进入同一节点时使用错开的端口。分支从主干正交引出，真实电气或逻辑汇合使用明确的实心结点；不能让多条独立边共用一段线却不标示连接关系。两条线方向相同且区间重叠属于“共线重叠”，即使交叉检查未报警也必须修复。
-
-跨越其他轨道时优先使用两种方法：把目标节点放到相关轨道之间，以短抽头连接；或从画布外缘空白区绕行。必须交叉时，先重排节点、改端口或拆图；确实无法避免才使用跨线桥，并保证连接语义唯一。
-
-线框完成后再单独布局文字。节点标签、边标签、单位、图例和注释放入预留空白带，主动使用 `text-anchor="middle"`、`end` 或多行 `tspan`，不能默认全部左对齐。分组虚线框若挤压线路或被验收器视为障碍，改用浅色背景域、标题带或顶部图例表达分组。
-
-### 渲染尺寸、字体与字形安全
-
-- 先确定论文最终物理宽度，再反推SVG字号：`最终字号pt = SVG字号px × 最终宽度pt ÷ viewBox宽度`；正文标签最终不得小于约9pt。
-- PNG渲染使用2—3倍像素缩放，并按最终插入宽度保证至少300 DPI；高像素不能补救原始字号过小。
-- 中文字体栈至少包含 `PingFang SC, Songti SC, Noto Sans CJK SC, Source Han Sans SC, Microsoft YaHei, SimHei, sans-serif`，渲染后再确认实际命中字形。
-- `×`、`µ`、Unicode上下标、特殊箭头及数学符号属于高风险字形，不做跨环境可用的假设。缺字时优先嵌入/更换支持字体；确实无法保证时在图内使用可审计的ASCII写法，如 `x`、`uA`、`I2C`、`10^n`，正文仍可保留规范数学写法。
-
-### 论文与配图语言一致性
-
-图片语言默认跟随论文主语言。中文论文的普通说明、节点名称、流程动作、分组标题和风险提示使用简体中文；芯片型号、协议缩写、化学式、蛋白/基因名、单位和通行标准名可以保留原文。不能因为图片模型更擅长英文，就把整张中文论文配图改成英文。
-
-每张图在 `figure-plan.json` 与 Figure Manifest 中记录：
-
-```yaml
-language_contract:
-  manuscript_language: zh-CN
-  label_language: zh-CN
-  exact_labels: ["室内暴露", "卫生指南", "可测参数", "电路任务"]
-  allowed_foreign_tokens: ["ESP32-WROOM-32E", "I2C", "UART", "PM2.5", "CO2", "WHO AQG", "3.3 V"]
-text_render_strategy: DIRECT_IMAGE_TEXT | DETERMINISTIC_OVERLAY | DOMAIN_VECTOR_TEXT | NO_CANVAS_TEXT
-```
-
-- `exact_labels` 是应出现在画布上的逐字标签，必须写进图片Prompt；样式指令可用模型更易理解的语言，但标签区块必须使用目标语言。
-- `allowed_foreign_tokens` 只列确需保留的术语，不能把完整英文句子或说明段落伪装成技术词白名单。
-- `DIRECT_IMAGE_TEXT`：图片模型直接正确生成目标语言短标签；视觉核验逐字通过后可直接嵌入。
-- `DETERMINISTIC_OVERLAY`：图片模型生成构图、图标、材质和颜色底图，最终中文由SVG/HTML/canvas等确定性覆盖层写入，再合成为PNG。该路线必须保留原始生成图、覆盖源、执行回执与合成后文件摘要。
-- `DOMAIN_VECTOR_TEXT`：统计图、精确电路、ER/UML或其他领域矢量图直接由确定性工具写入目标语言。
-- `NO_CANVAS_TEXT`：图内没有文字，解释全部放在文档题注；不能在实际含有英文文字时冒用。
-
-中文标签优先使用短语，长定义、完整句子和证据边界移到Word/PDF图题或图注。图片模型中文出现错字、伪字、方框或英文替代时，先尝试图片编辑；仍不稳定则切换 `DETERMINISTIC_OVERLAY`，不能把整张生成图静默替换成纯SVG。
-
-语言视觉回执至少记录目标语言、观察到的主要语言、非白名单外文、技术词保留是否正确，以及逐字标签检查结果。中文论文中出现非白名单英文长句、英文节点标题或模型伪文字时不得标记 `PASS`。
-
-### 预检与视觉闭环
-
-原生SVG完成后先运行与终验同口径的几何预检。内置预检检查可解析线段的严格交叉、穿越非端点矩形和共线重叠；模型再结合事实清单与最终PNG检查节点重叠、端点悬空、画布越界和连接侧是否合理。不能只验证XML可解析。预检不自动改拓扑，只报告模型需要修复的位置。
-
-可先对单图运行Skill内置预检，再进入完整Figure Manifest验收：
-
-```bash
-python3 "<SKILL_DIR>/scripts/verify_figure_package.py" \
-  --root "<OUTPUT_DIR>" \
-  --preflight-svg "figures/<FIGURE_ID>-source.svg" \
-  --report "figures/receipts/<FIGURE_ID>-svg-preflight.json"
-```
-
-单图预检只覆盖可解析的几何与字体/远程资源，不能替代最终PNG视觉检查，也不能判断图中学术关系是否正确。
-
-随后按“渲染最终PNG→在论文实际显示尺寸视觉检查→写缺陷清单→修改SVG→重渲染→重跑预检→再次视觉检查”闭环执行。标签压线、文字溢出、缺字方框、颜色难辨和留白失衡只能通过查看实际渲染结果发现。每轮发现与修复写入 `figures/receipts/<FIGURE_ID>-vlm.txt` 或等价视觉回执；最多两轮仍无法通过时标记 `NEEDS_REVIEW`，不得自报PASS。
-
-导出前在论文实际显示尺寸检查每条边的起点、终点、方向、交叉数、穿越、重叠、转折、箭头和连接点。发现连线穿过内容、非必要交叉、端点悬空或连接侧不合理时必须重新布局；仅XML可解析或SVG能够打开不能视为通过。
-
-精确流程图和关系图的生图Prompt必须列出：用途、画布比例、阅读方向、节点总数、每个节点的逐字标签与形状、分组和层级、每条箭头的起点终点、分支条件、主次路径、配色、字体、禁止新增或遗漏内容以及逐项验收清单。先要求图片模型直接生成；文字或箭头局部错误时优先使用图片编辑工具修正，必要时增加确定性标签覆盖层，但不得用纯SVG替代真实图片调用。
-
-普通语义结构图优先控制在6—10个核心节点，每个中文节点标签通常2—8个汉字；解释性长句、证据边界和方法细节移到图注。必须超过10个节点时先评估拆成主图与子图。图片模型负责构图、图标、材质和视觉层次；逐字中文、公式、数值和精确箭头不稳定时使用 `DETERMINISTIC_OVERLAY`，但底图仍保留本次真实图片生成结果。
-
-## 父子代理图片任务交接
-
-详细大纲完成后，先建立完整 `figures/figure-plan.json`。每张图至少包含 `figure_id`、`display_number`、用途、类型、逐字标题、事实与结构清单、`exactness_class`、`imagegen_eligible`、计划路线、正文位置和Prompt文件。适合生图的普通语义结构图必须先全部进入任务单，再由实际拥有图片工具的调用层逐张执行；不能先让子执行器批量生成SVG，最后由父代理只补第一张概念图。
-
-父代理代调时，论文执行器负责语义和Prompt，父代理负责真实工具调用与原始回执，结果必须回到同一输出目录。全部图片任务完成并核对后才能整合正文。只完成部分图片任务时保持配图阶段未完成，不进入DOCX/PDF。
-
-## 通用质量门
-
-每张图在权威 `figures/figure-manifest.json` 记录机器可读路由，在 `figures/figure-manifest.md` 提供供人阅读的摘要。图片能力Agent的每张适合生图的图必须设置 `imagegen_eligible=true`，并有独立Prompt与真实PNG/JPEG/WebP；不能用SVG、HTML截图、占位PNG或图片理解能力冒充。只有用户明确要求可编辑矢量、出版规则禁止或整个调用链真实无图片工具时才记录 `route_exemption`。
-
-`USER_REQUESTED_VECTOR` 必须记录用户原话与请求定位，`PUBLICATION_RESTRICTION` 必须记录出版规则原文与定位；只有模型自述的豁免无效。`ARCHITECTURE`、`PROCESS`、`ER_UML` 不能为了绕开图片生成被登记为 `DATA_GRAPH`。流程图中即使含少量计数或比例，只要主要任务是表达节点关系，仍属于 `SEMANTIC_STRUCTURE`。
-
-`imagegen_eligible` 不能只由“图是否好看”决定。电路接线、引脚、化学键、晶体连接、公式、尺度、载荷位置、焊接接头、电极体系和精确生物通路统一标记为 `DOMAIN_EXACT`，使用领域工具、确定性矢量或证据底图；ImageGen只能在不改变精确核心的前提下做配色、材质、图标和版式合成。普通研究框架、组织关系、责任分工和不承载精确连接的流程才标记为 `SEMANTIC_STRUCTURE`。
-
-## 最终嵌入文件优先级
-
-每张图必须在清单中设置唯一的 `final_embed_file`。正文Markdown、DOCX和PDF只能使用该路径，不得在整合或导出阶段重新扫描目录并自行选择同名文件。
-
-- Imagine、`imagegen`、`image_gen`、Nano Banana或其他图片工具已经生成并通过核对时，`final_embed_file`必须指向该生成位图，或指向以该位图为底图完成文字/箭头修正后导出的最终PNG；
-- 若图片工具输出JPEG或WebP，可为文档兼容性转换为PNG，但图像主体必须来自本次生成结果，不能换成SVG重画版本；
-- SVG、HTML、Mermaid、Graphviz或其他确定性文件只能记录为 `source_file`、`fallback_file` 或 `overlay_source`，不得覆盖已经成功生成的Imagine/image-gen产物；
-- 如果生成图需要确定性文字、箭头或图例覆盖，先完成合成并导出如 `fig-4-1-final.png`，再把该PNG设为 `final_embed_file`；不能把覆盖层SVG本身插入最终论文；
-- 图片生成结果未通过事实或视觉核对时，应编辑或重新生成，必要时标记能力缺口；不能静默改插SVG并仍声称使用了Imagine。
-
-JSON清单字段和条件规则以 `statistical-figures-and-trace.md` 为准，其中只有 `final_embed_file` 是最终论文插图入口。Markdown摘要不得覆盖JSON值。
-
-PNG记录最终物理宽度、像素宽高和有效DPI。正文先引用、再展示、后解释。结构、事实、节点、箭头、中文、缩放可读性、裁切、远程资源和最终文档中的显示结果未经核对时，不得将该图标记为通过。
-
-SVG降级图还必须按论文最终栏宽检查物理尺寸。默认正文单栏图建议宽度约140—160mm；缩放后正文标签不得小于约9pt，横向流程图优先1.4:1—1.8:1，非必要的细长竖图、过大留白和低内容占用率不得通过。复杂结构优先拆成主图与子图，不能靠持续缩小字号塞进单页。
+先解决事实关系，再优化布局。最多两轮无效修复后记录NEEDS_REVIEW和具体缺陷，不能将其改为PASS。缺视觉能力时诚实记CAPABILITY_GAP；原生SVG已通过时不套模板重绘，成功生图不被SVG覆盖。高质量图应保持，只有受影响图和导出需要重检。

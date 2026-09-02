@@ -1,1 +1,16 @@
-{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","required":["schema_version","direction_id","scores","critical","important","total","reviewer_report","reviewer_report_sha256"],"properties":{"schema_version":{"const":"1.0"},"direction_id":{"type":"string"},"scores":{"type":"object","required":["evidence","content","structure","figures","documents","integrity"]},"critical":{"type":"array"},"important":{"type":"array"},"total":{"type":"number"},"reviewer_report":{"const":"09-final-peer-review.json"},"reviewer_report_sha256":{"type":"string","pattern":"^[0-9a-fA-F]{64}$"}}}
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["schema_version", "direction_id", "reviewer_report", "reviewer_report_sha256"],
+  "properties": {
+    "schema_version": {"enum": ["1.0", "1.1"]},
+    "direction_id": {"type": "string"},
+    "scores": {"type": "object", "required": ["evidence", "content", "structure", "figures", "documents", "integrity"]},
+    "critical": {"type": "array"}, "important": {"type": "array"},
+    "total": {"type": "number"},
+    "reviewer_report": {"const": "09-final-peer-review.json"},
+    "reviewer_report_sha256": {"type": "string", "pattern": "^[0-9a-fA-F]{64}$"}
+  },
+  "dependentRequired": {"scores": ["total", "critical", "important"], "total": ["scores"]},
+  "allOf": [{"if": {"properties": {"schema_version": {"const": "1.0"}}}, "then": {"required": ["scores", "critical", "important", "total"]}}]
+}

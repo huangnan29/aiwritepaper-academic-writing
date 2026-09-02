@@ -1,0 +1,23 @@
+{
+  "schema_version": "1.0",
+  "example_only": true,
+  "paper_title": "填写用户真实题目",
+  "direction_id": "mathematics-education",
+  "model_label": "UNKNOWN @ 实际客户端",
+  "agent_adapter": "universal-terminal",
+  "run_mode": "FULL_BUILD",
+  "features": ["figures", "formulas"],
+  "observed_at": "填写本次真实观察时间与时区",
+  "capabilities": {
+    "image_generation": {"available": false, "callers": [], "tools": [], "evidence": "示例占位，须替换为实际观察"},
+    "visual_inspection": {"available": false, "callers": [], "tools": [], "evidence": "示例占位，须替换为实际观察"},
+    "docx_export": {"available": false, "callers": [], "tools": [], "evidence": "示例占位，须替换为实际观察"},
+    "pdf_export": {"available": false, "callers": [], "tools": [], "evidence": "示例占位，须替换为实际观察"}
+  },
+  "document_profile": "THESIS",
+  "paper_level": "UNSPECIFIED",
+  "language": "zh-CN",
+  "citation_mode": "NUMERIC",
+  "citation_style": "GB/T 7714-2015",
+  "constraints": "填写用户的输出目录、真实材料、工具与停止边界，不编造研究结果。"
+}

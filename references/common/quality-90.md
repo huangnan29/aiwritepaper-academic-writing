@@ -1,15 +1,27 @@
-# 公共规则十一：90分质量上限与方向审稿
+# 公共规则十一：具体审查与独立评分
 
-当前方向的90分标准来自 `references/quality/direction-rubrics.json`。评分维度固定为证据25、内容20、结构15、配图15、文档15、自审10。高分不要求研究状态为PASS；设计稿、方案或综述可在诚实PARTIAL状态下获得高交付质量分。
+90分是独立评测目标，不是作者必须填写的结果。当前方向专业检查卡用于找到真实问题；不因文件齐全、回执存在或模型自报高分宣布达标。
 
-正文完成后建立 `claim-evidence-map.json`：列出重要主张、章节定位、主张状态、证据source_id、页码/章节、反例/限制和是否进入结论。重要主张没有证据或限制时必须修改，不能用多篇段尾引文掩盖。
+## 一份审查输入
 
-依据当前方向评分卡进行独立同行评审。初稿审稿可以写入 `09-peer-review.md`，但不能直接作为最终评分。全部图片、DOCX、PDF和视觉审计完成后必须重新隔离审稿，写入 `09-final-peer-review.json`，绑定最终正文、Figure Manifest、视觉审计、DOCX和PDF的SHA-256；审稿输入不包含作者自评分。最终 `15-quality-scorecard.json` 的分项与总分必须与该审稿报告一致，并记录审稿报告路径和SHA-256。不得先给高分再补理由，也不得在旧审稿后由作者自行抬分。
+在qa-review.json（schema_version:1.1）集中记录实际审查；模型先完成观察，工具prepare_audit_views.py只投影为旧格式并计算摘要。保留原始资料、检索日志、图片调用、视觉回执和最终文件，不用汇总替代证据。
 
-任何Critical未清零、Important仍为OPEN/ACCEPTED/NOTED、任一维度低于该维度80%、总分低于90时不能标记“90+质量目标达成”。已修复Important可以保留审计记录，但状态必须是 `RESOLVED`、`FIXED`、`CLOSED` 或 `ADDRESSED`。
+- claims：重要主张的location、importance、evidence_ids、来源页/章节、反例与边界。CORE/CONCLUSION不得缺少证据指向。
+- figures：每张figure_id、与权威清单相同的final_embed_file、status、blind_summary、checked_file和visual_receipt。遮住图题核对节点、边、数值与正文，实际文件和观察缺一不可。
+- document_checks：checkpoint、正整数page、status、checked_file（最终PDF的实际页面图）、visual_receipt、发现问题。检查cover、primary_abstract、toc、complex_table、complex_formula、representative_figure、references、last_page等适用位置；确实无对应内容时写status:NOT_APPLICABLE及reason，不造图或公式。检查器从真实DOCX确认零公式/表格/媒体；只有明确JOURNAL或REPORT可免封面/目录，未知模板不自动豁免。
+- review：reviewer_mode为SELF或ISOLATED，真实status、issues（critical_open、important_open、显式items），alignment四项：title_supported、research_question_answered、method_result_consistent、abstract_conclusion_consistent。每个问题写level、location、evidence、fix、status；未解决问题不能写成RESOLVED。
 
-配图另建 `figures/figure-semantic-audit.json`：每张图记录图题主张、遮住图题后的盲读摘要、正文定位、节点/箭头/数据来源一致性和PASS/PARTIAL/FAIL。可换标题复用的模板图、与正文无关曲线、错误箭头或ImageGen虚构关系不得PASS。
+有真实隔离审稿时reviewer_source绑定实际审稿来源文件；不能只改ISOLATED字符串伪装独立性。scores和total仅在实际执行数字评分时填写，按证据25、内容20、结构15、配图15、文档15、自审10；无评分就省略，不默认给0或90。
 
-文档另建 `16-document-visual-audit.json`，抽查封面、中文摘要、英文摘要、目录、复杂表格、复杂公式、代表性配图、参考文献及末页；每个检查点绑定实际页码、由最终PDF渲染的PNG/JPEG/WebP页面图、页面图SHA-256、视觉回执、问题、修复和状态。整份PDF不能冒充某一页的视觉检查文件；页码不能写“约12页”一类字符串。只解析文件不等于视觉通过。
+统一检查入口会自动进行审计视图投影，无需另开一个生产步骤：
+```bash
+python3 "<SKILL_DIR>/scripts/paper.py" check --root "<OUTPUT_DIR>"
+```
 
-正文质量审查关注重复句式、列表占比、无证据强化词、摘要—结论机械复述和边界声明密度。只报告位置和修订建议，不输出AI率，不自动重写正文。
+工具生成claim-evidence-map.json、figures/figure-semantic-audit.json、16-document-visual-audit.json、09-final-peer-review.json及兼容15-quality-scorecard.json；有能力JSON和权威图片JSON时派生其Markdown视图。没有实际观察或文件不一致时不能生成成功材料。关键文件和回执摘要由工具绑定；输入变化后旧审查失效，不自动续签。
+
+## 判定与返修
+
+Critical和Important必须处理；缺原始材料、缺视觉工具或无法完成修复时明确交付缺口，不能以提高评分逃避。纯语言比例、常用词密度作建议，真实性、数学和专业错误仍为实质问题。
+
+SELF或未评分只说明已做自审，不是90分已验证，质量保持PARTIAL。有实际独立评分时仍须总分≥90、各维≥80%、无未解决重要问题、来源和检查覆盖有效，才可报告对应评测结果。每张图的节点/箭头和最终目录必须实际查看；工具绑定证据不证明审稿结论正确。

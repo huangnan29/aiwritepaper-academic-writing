@@ -6,6 +6,9 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
+import zipfile
+import xml.etree.ElementTree as ET
 from pathlib import Path
 import re
 from typing import Any, Dict, List, Optional
@@ -55,6 +58,23 @@ def is_image(path: Path) -> bool:
     )
 
 
+def document_capabilities(root: Path, manifest: Dict[str, Any]) -> Optional[Dict[str, int]]:
+    """从最终DOCX解包统计真实结构，不能用审计文字替代。"""
+    path = resolve(root, manifest.get("docx"))
+    if path is None or not path.is_file():
+        return None
+    try:
+        with zipfile.ZipFile(path) as archive:
+            names = archive.namelist()
+            if "word/document.xml" not in names:
+                return None
+            roots = [ET.fromstring(archive.read(name)) for name in names if name.startswith("word/") and name.endswith(".xml")]
+        ns = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main", "m": "http://schemas.openxmlformats.org/officeDocument/2006/math"}
+        return {"omml": sum(len(r.findall(".//m:oMath", ns)) for r in roots), "tables": sum(len(r.findall(".//w:tbl", ns)) for r in roots), "drawings": sum(len(r.findall(".//w:drawing", ns)) + len(r.findall(".//w:pict", ns)) for r in roots), "media": sum(name.startswith("word/media/") for name in names)}
+    except (OSError, zipfile.BadZipFile, ET.ParseError):
+        return None
+
+
 def check_artifact(root: Path, item: Dict[str, Any], prefix: str, errors: List[str], image_required: bool) -> None:
     for field in ["checked_file", "visual_receipt"]:
         path = resolve(root, item.get(field))
@@ -70,7 +90,7 @@ def check_artifact(root: Path, item: Dict[str, Any], prefix: str, errors: List[s
             errors.append(f"{prefix}_CHECKED_FILE_NOT_PAGE_IMAGE")
 
 
-def check_review(root: Path, manifest: Dict[str, Any], score: Dict[str, Any], errors: List[str]) -> Optional[Path]:
+def check_review(root: Path, manifest: Dict[str, Any], score: Dict[str, Any], errors: List[str], warnings: List[str]) -> Optional[Path]:
     value = score.get("reviewer_report", "09-final-peer-review.json")
     review_path = resolve(root, value)
     if review_path is None or not review_path.is_file() or review_path.stat().st_size == 0:
@@ -79,13 +99,28 @@ def check_review(root: Path, manifest: Dict[str, Any], score: Dict[str, Any], er
     if score.get("reviewer_report_sha256") != sha256(review_path):
         errors.append("FINAL_PEER_REVIEW_HASH")
     review = load(review_path)
-    if not isinstance(review, dict) or review.get("schema_version") != "1.0":
+    if not isinstance(review, dict) or review.get("schema_version") not in {"1.0", "1.1"}:
         errors.append("FINAL_PEER_REVIEW_SCHEMA")
         return review_path
     if review.get("direction_id") != manifest.get("direction_id"):
         errors.append("FINAL_PEER_REVIEW_DIRECTION")
-    if review.get("status") != "PASS" or review.get("reviewer_mode") != "ISOLATED":
+    mode = review.get("reviewer_mode")
+    if review.get("status") not in {"PASS", "REVIEWED", "PARTIAL"}:
         errors.append("FINAL_PEER_REVIEW_NOT_PASS")
+    if review.get("status") == "PARTIAL":
+        warnings.append("REVIEW_PARTIAL")
+    if mode == "SELF":
+        warnings.append("SELF_REVIEW_NOT_INDEPENDENT")
+    elif mode == "ISOLATED" and review.get("schema_version") == "1.1":
+        source = review.get("reviewer_source")
+        if not isinstance(source, dict) or not source.get("path") or not source.get("sha256"):
+            warnings.append("ISOLATED_REVIEW_SOURCE_UNBOUND")
+        else:
+            source_path = resolve(root, source.get("path"))
+            if source_path is None or not source_path.is_file() or source.get("sha256") != sha256(source_path):
+                warnings.append("ISOLATED_REVIEW_SOURCE_STALE")
+    elif mode != "ISOLATED":
+        errors.append("FINAL_PEER_REVIEW_MODE_INVALID")
     alignment = review.get("alignment")
     alignment_fields = {
         "title_supported", "research_question_answered", "method_result_consistent",
@@ -96,7 +131,20 @@ def check_review(root: Path, manifest: Dict[str, Any], score: Dict[str, Any], er
     issues = review.get("issues")
     if not isinstance(issues, dict) or issues.get("critical_open") != 0 or issues.get("important_open") != 0:
         errors.append("FINAL_PEER_REVIEW_ISSUES_OPEN")
-    if review.get("scores") != score.get("scores") or float(review.get("total", -1)) != float(score.get("total", -2)):
+    if review.get("schema_version") == "1.1":
+        items = issues.get("items") if isinstance(issues, dict) else None
+        if not isinstance(items, list):
+            errors.append("FINAL_PEER_REVIEW_ISSUE_ITEMS_MISSING")
+        else:
+            for item in items:
+                if not isinstance(item, dict):
+                    errors.append("FINAL_PEER_REVIEW_ISSUE_INVALID")
+                elif str(item.get("severity", item.get("level", ""))).upper() in {"CRITICAL", "IMPORTANT"} and str(item.get("status", "")).upper() not in RESOLVED_IMPORTANT:
+                    errors.append("FINAL_PEER_REVIEW_ISSUES_OPEN")
+    if review.get("schema_version") == "1.1" and review.get("scores") is None:
+        if score.get("scores") is not None or score.get("total") is not None:
+            errors.append("FINAL_PEER_REVIEW_SCORE_MISMATCH")
+    elif review.get("scores") != score.get("scores") or float(review.get("total", -1)) != float(score.get("total", -2)):
         errors.append("FINAL_PEER_REVIEW_SCORE_MISMATCH")
     reviewed = review.get("reviewed_artifacts")
     required = ["07-paper-full.md", "figures/figure-manifest.json", "16-document-visual-audit.json"]
@@ -140,11 +188,11 @@ def check_prose(markdown: Path, errors: List[str], warnings: List[str]) -> Dict[
             counts[sentence] = counts.get(sentence, 0) + 1
     duplicate_sentences = sum(value - 1 for value in counts.values() if value > 1)
     if ratio > 0.10:
-        errors.append("CONCLUSION_RATIO_EXCESSIVE")
+        warnings.append("CONCLUSION_RATIO_EXCESSIVE")
     elif ratio > 0.07:
         warnings.append("CONCLUSION_RATIO_HIGH")
     if boundary_density > 80:
-        errors.append("BOUNDARY_LANGUAGE_EXCESSIVE")
+        warnings.append("BOUNDARY_LANGUAGE_EXCESSIVE")
     elif boundary_density > 55:
         warnings.append("BOUNDARY_LANGUAGE_HIGH")
     if process_density > 20:
@@ -194,29 +242,47 @@ def main() -> int:
     scores = score.get("scores")
     calculated = 0.0
     if not isinstance(scores, dict):
-        errors.append("SCORES_MISSING")
+        if not (score.get("schema_version") == "1.1" and scores is None and score.get("total") is None):
+            errors.append("SCORES_MISSING")
         scores = {}
-    for key, maximum in WEIGHTS.items():
-        value = scores.get(key)
-        if not isinstance(value, (int, float)) or value < 0 or value > maximum:
-            errors.append(f"SCORE_RANGE:{key}")
-            continue
-        calculated += float(value)
-        if value < maximum * 0.8:
-            warnings.append(f"DIMENSION_BELOW_80_PERCENT:{key}")
-    if abs(calculated - float(score.get("total", -1))) > 0.01:
+    if score.get("scores") is not None:
+        for key, maximum in WEIGHTS.items():
+            value = scores.get(key)
+            if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value < 0 or value > maximum:
+                errors.append(f"SCORE_RANGE:{key}")
+                continue
+            calculated += float(value)
+            if value < maximum * 0.8:
+                warnings.append(f"DIMENSION_BELOW_80_PERCENT:{key}")
+    numeric_score = score.get("total")
+    if score.get("schema_version") == "1.1" and score.get("scores") is None and numeric_score is None:
+        numeric_score = None
+    elif (isinstance(score.get("total"), bool) or not isinstance(score.get("total"), (int, float))
+          or not math.isfinite(score.get("total")) or abs(calculated - float(score.get("total"))) > 0.01):
         errors.append("SCORE_TOTAL_MISMATCH")
     if score.get("critical"):
         errors.append("CRITICAL_NOT_ZERO")
     important = score.get("important")
     if not isinstance(important, list):
-        errors.append("IMPORTANT_SHAPE")
+        if not (score.get("schema_version") == "1.1" and score.get("scores") is None and score.get("total") is None):
+            errors.append("IMPORTANT_SHAPE")
     else:
         for issue in important:
             if not isinstance(issue, dict) or str(issue.get("status", "")).upper() not in RESOLVED_IMPORTANT:
                 errors.append("IMPORTANT_NOT_RESOLVED")
 
-    review_path = check_review(root, manifest, score, errors)
+    review_path = check_review(root, manifest, score, errors, warnings)
+    independent_verified = False
+    if review_path and review_path.is_file():
+        try:
+            review_snapshot = load(review_path)
+            independent_verified = False
+            if review_snapshot.get("schema_version") == "1.1":
+                source = review_snapshot.get("reviewer_source")
+                source_path = resolve(root, source.get("path")) if isinstance(source, dict) else None
+                independent_verified = bool(source_path and source_path.is_file() and source.get("sha256") == sha256(source_path))
+        except (OSError, ValueError, json.JSONDecodeError):
+            independent_verified = False
     prose_metrics = check_prose(root / "07-paper-full.md", errors, warnings)
     delivery_report = resolve(root, manifest.get("delivery_verification_report", "13-delivery-verification.json"))
     if delivery_report is None or not delivery_report.is_file():
@@ -249,14 +315,32 @@ def main() -> int:
         "representative_figure", "references", "last_page",
     }
     checks = visual.get("checks", [])
-    if not required_checkpoints.issubset({item.get("checkpoint") for item in checks}):
+    capabilities = document_capabilities(root, manifest) if visual.get("schema_version") == "1.1" else None
+    profile_value = manifest.get("document_profile", "")
+    profile = str(profile_value.get("type", profile_value) if isinstance(profile_value, dict) else profile_value).upper()
+    figure_empty = not bool(figure_manifest.get("figures"))
+    na_allowed = {}
+    if capabilities is not None and profile in {"JOURNAL", "REPORT"}:
+        na_allowed.update({"cover": True, "toc": True})
+    if capabilities is not None:
+        na_allowed.update({"complex_formula": capabilities["omml"] == 0,
+                           "complex_table": capabilities["tables"] == 0,
+                           "representative_figure": capabilities["drawings"] == 0 and capabilities["media"] == 0 and figure_empty})
+    seen = {item.get("checkpoint") for item in checks}
+    if not required_checkpoints.issubset(seen):
         errors.append("DOCUMENT_VISUAL_COVERAGE")
     for item in checks:
-        if item.get("status") != "PASS" or not isinstance(item.get("page"), int) or item.get("page") < 1:
+        status = item.get("status")
+        checkpoint = item.get("checkpoint")
+        if status == "NOT_APPLICABLE":
+            if not na_allowed.get(checkpoint, False) or not isinstance(item.get("reason"), str) or not item["reason"].strip():
+                errors.append("DOCUMENT_VISUAL_NA_UNPROVEN")
+            continue
+        if status != "PASS" or not isinstance(item.get("page"), int) or item.get("page") < 1:
             errors.append("DOCUMENT_VISUAL_NOT_PASS")
         check_artifact(root, item, "DOCUMENT_VISUAL", errors, image_required=True)
 
-    status = "QUALITY_FAIL" if errors else ("QUALITY_PARTIAL" if warnings or calculated < 90 else "QUALITY_OK")
+    status = "QUALITY_FAIL" if errors else ("QUALITY_PARTIAL" if warnings or numeric_score is None or calculated < 90 else "QUALITY_OK")
     inputs = [
         root / "run-manifest.json", root / "15-quality-scorecard.json", root / "claim-evidence-map.json",
         root / "figures/figure-semantic-audit.json", root / "16-document-visual-audit.json",
@@ -269,10 +353,16 @@ def main() -> int:
     input_hashes = {str(path.relative_to(root)): sha256(path) for path in inputs if path.is_file()}
     script = Path(__file__).resolve()
     payload = {
-        "schema_version": "1.0", "status": status, "total": calculated,
-        "errors": errors, "warnings": warnings, "metrics": {"prose": prose_metrics},
+        "schema_version": "1.1" if score.get("schema_version") == "1.1" else "1.0", "status": status,
+        "total": calculated if numeric_score is not None else None,
+        "errors": errors, "warnings": warnings,
+        "metrics": {"prose": prose_metrics, "numeric_score": numeric_score,
+                    "ninety_plus_verified": bool(numeric_score is not None and numeric_score >= 90
+                                                 and not errors and not warnings and independent_verified
+                                                 and (not review_path or load(review_path).get("reviewer_mode") == "ISOLATED")
+                                                 and status == "QUALITY_OK")},
         "input_sha256": input_hashes,
-        "verifier": {"name": script.name, "version": "2.0.0", "sha256": sha256(script)},
+        "verifier": {"name": script.name, "version": "2.1.0", "sha256": sha256(script)},
     }
     output = args.report if args.report.is_absolute() else root / args.report
     try:

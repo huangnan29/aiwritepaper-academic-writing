@@ -30,6 +30,7 @@ COMMON_FILES = [
     "final-quality-gates.md",
     "mathematical-formulas.md",
     "quality-90.md",
+    "svg-layout.md",
 ]
 
 RUBRICS = SKILL_ROOT / "references" / "quality" / "direction-rubrics.json"
@@ -38,7 +39,7 @@ METHOD_GATES = SKILL_ROOT / "references" / "quality" / "direction-method-gates.j
 def render_rubric(direction: Path) -> str:
     payload=json.loads(RUBRICS.read_text(encoding="utf-8"));rubric=payload["directions"][direction.stem]
     focus="\n".join(f"- {x}" for x in rubric["focus"]);critical="\n".join(f"- {x}" for x in rubric["critical"])
-    return f"## 当前方向90分评分卡\n\n### 专业深度关注点\n\n{focus}\n\n### Critical错误\n\n{critical}"
+    return f"## 当前方向专业检查卡\n\n本卡用于发现问题，不要求写作模型给自己评分。\n\n### 专业深度关注点\n\n{focus}\n\n### Critical错误\n\n{critical}"
 
 
 def render_method_gates(direction: Path) -> str:
@@ -46,7 +47,7 @@ def render_method_gates(direction: Path) -> str:
     gate = payload["directions"][direction.stem]
     items = "\n".join(f"- {item}" for item in gate["completion_gates"])
     return (
-        "## 当前方向方法完成门\n\n"
+        "## 当前方向方法完成门\n\n只检查本稿实际采用的方法与主张；不为通过清单添加无关实验。事实错误不能以材料不足豁免。\n\n"
         f"{items}\n\n"
         "### 数据不足时的题目与主张处理\n\n"
         f"{gate['retitle_or_downgrade']}"
@@ -80,38 +81,20 @@ def render_compiled(direction: Path) -> str:
     sections: List[str] = [header.rstrip("\r\n")]
     for name in COMMON_FILES:
         source = COMMON_DIR / name
-        sections.append(f"<!-- 公共来源：references/common/{name} -->\n\n{read_source(source)}")
+        sections.append(f"<!-- task-module:{Path(name).stem} -->\n<!-- 公共来源：references/common/{name} -->\n\n{read_source(source)}\n<!-- /task-module -->")
     sections.append(
-        f"<!-- 方向来源：references/directions/{direction.name} -->\n\n{read_source(direction)}"
+        f"<!-- task-module:direction -->\n<!-- 方向来源：references/directions/{direction.name} -->\n\n{read_source(direction)}\n<!-- /task-module -->"
     )
-    sections.append(f"<!-- 质量评分来源：references/quality/direction-rubrics.json -->\n\n{render_rubric(direction)}")
-    sections.append(f"<!-- 方法门来源：references/quality/direction-method-gates.json -->\n\n{render_method_gates(direction)}")
+    sections.append(f"<!-- task-module:rubric -->\n<!-- 质量评分来源：references/quality/direction-rubrics.json -->\n\n{render_rubric(direction)}\n<!-- /task-module -->")
+    sections.append(f"<!-- task-module:method -->\n<!-- 方法门来源：references/quality/direction-method-gates.json -->\n\n{render_method_gates(direction)}\n<!-- /task-module -->")
     return "\n\n".join(sections) + "\n"
 
 
 def render_compact(direction: Path) -> str:
-    """由一个紧凑公共核心与同一方向源生成弱模型提示词。"""
-    prompt_id = direction.stem
-    header = (
-        "<!--\n"
-        "本文件由弱模型紧凑公共核心与当前方向源确定性合成。\n"
-        "运行时只读取本文件，不加载完整版提示词或其他公共规则。\n"
-        "公共来源：references/common/weak-model-core.md\n"
-        f"方向来源：references/directions/{direction.name}\n"
-        "-->\n\n"
-        f"# {prompt_id} 弱模型紧凑论文生成提示词\n"
-    )
-    return (
-        header.rstrip("\r\n")
-        + "\n\n<!-- 紧凑公共来源：references/common/weak-model-core.md -->\n\n"
-        + read_source(WEAK_CORE)
-        + f"\n\n<!-- 方向来源：references/directions/{direction.name} -->\n\n"
-        + read_source(direction)
-        + "\n\n<!-- 质量评分来源：references/quality/direction-rubrics.json -->\n\n"
-        + render_rubric(direction)
-        + "\n\n<!-- 方法门来源：references/quality/direction-method-gates.json -->\n\n"
-        + render_method_gates(direction)
-        + "\n"
+    """保留兼容文件名；事实规则与完整版同源，任务合成时再按需筛选。"""
+    return render_compiled(direction).replace(
+        f"# {direction.stem} 完整论文生成提示词",
+        f"# {direction.stem} 紧凑兼容论文生成提示词", 1,
     )
 
 

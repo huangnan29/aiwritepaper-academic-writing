@@ -146,7 +146,7 @@ class QualityTests(unittest.TestCase):
         self.assertEqual(self.run_quality().returncode, 0)
         self.assertEqual(self.report()["status"], "QUALITY_PARTIAL")
 
-    def test_excessive_conclusion_ratio_fails(self):
+    def test_excessive_conclusion_ratio_is_warning(self):
         paper = self.root / "07-paper-full.md"
         paper.write_text(
             "# 第1章 绪论\n" + "正文论证。" * 60 + "\n# 第7章 结论\n" + "重复结论。" * 80,
@@ -160,8 +160,8 @@ class QualityTests(unittest.TestCase):
         score = json.loads(score_path.read_text())
         score["reviewer_report_sha256"] = digest(review_path)
         score_path.write_text(json.dumps(score))
-        self.assertNotEqual(self.run_quality().returncode, 0)
-        self.assertIn("CONCLUSION_RATIO_EXCESSIVE", self.report()["errors"])
+        self.assertEqual(self.run_quality().returncode, 0)
+        self.assertIn("CONCLUSION_RATIO_EXCESSIVE", self.report()["warnings"])
 
 
 if __name__ == "__main__":

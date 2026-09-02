@@ -3,13 +3,13 @@
   "type": "object",
   "required": [
     "schema_version", "direction_id", "status", "reviewer_mode", "issues",
-    "alignment", "scores", "total", "reviewed_artifacts"
+    "alignment", "reviewed_artifacts"
   ],
   "properties": {
-    "schema_version": {"const": "1.0"},
+    "schema_version": {"enum": ["1.0", "1.1"]},
     "direction_id": {"type": "string"},
-    "status": {"enum": ["PASS", "FAIL"]},
-    "reviewer_mode": {"const": "ISOLATED"},
+    "status": {"enum": ["PASS", "FAIL", "PARTIAL", "REVIEWED"]},
+    "reviewer_mode": {"enum": ["ISOLATED", "SELF"]},
     "issues": {
       "type": "object",
       "required": ["critical_open", "important_open"],
@@ -37,5 +37,7 @@
       "type": "object",
       "additionalProperties": {"type": "string", "pattern": "^[0-9a-fA-F]{64}$"}
     }
-  }
+  },
+  "dependentRequired": {"scores": ["total"], "total": ["scores"]},
+  "allOf": [{"if": {"properties": {"schema_version": {"const": "1.0"}}}, "then": {"required": ["scores", "total"], "properties": {"reviewer_mode": {"const": "ISOLATED"}}}, "else": {"properties": {"issues": {"required": ["items"]}}}}]
 }

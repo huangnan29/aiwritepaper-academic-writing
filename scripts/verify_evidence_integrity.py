@@ -179,13 +179,26 @@ class EvidenceVerifier:
             self.error("PROFILE_MODEL_LABEL_MISMATCH", str(payload.get("model_label")))
         selector = payload.get("selector")
         selector_script = SKILL_ROOT / "scripts" / "select_execution_profile.py"
+        context = manifest.get("audit_context")
+        historical_copy = (manifest.get("run_mode") == "AUDIT_ONLY" and isinstance(context, dict)
+                           and context.get("profile_report_sha256") == sha256(report)
+                           and isinstance(context.get("source_root"), str))
         if not isinstance(selector, dict) or selector.get("name") != selector_script.name:
             self.error("PROFILE_SELECTOR_IDENTITY_MISSING", str(selector))
         elif selector.get("sha256") != sha256(selector_script):
-            self.error("PROFILE_SELECTOR_STALE", selector_script.name)
+            if historical_copy:
+                self.warning("HISTORICAL_PROFILE_SELECTOR", "历史Profile使用不同选择器；仅审计现有材料，不冒充当前执行记录")
+            else:
+                self.error("PROFILE_SELECTOR_STALE", selector_script.name)
         capability = Path(str(payload.get("capability_report") or "")).expanduser()
         if not capability.is_absolute():
             capability = (self.root / capability).resolve()
+        elif historical_copy:
+            try:
+                relative = capability.resolve().relative_to(Path(context["source_root"]).resolve())
+                capability = (self.root / relative).resolve()
+            except ValueError:
+                pass
         try:
             capability.relative_to(self.root)
         except ValueError:

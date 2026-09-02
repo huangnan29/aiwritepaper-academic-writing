@@ -15,10 +15,17 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+      # 固定官方setup-uv版本；本地候选尚未触发远端CI。
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d
+        with:
+          python-version: ${{ matrix.python-version }}
+          activate-environment: true
+      - name: 安装真实PDF回归依赖
+        run: uv pip install pypdf reportlab
       - name: 校验提示词与路由同步
-        run: python scripts/verify_compiled.py
+        run: uv run python scripts/verify_compiled.py
       - name: 校验图表包机械门禁
-        run: python -m unittest discover -s tests -p 'test_*.py'
+        run: uv run python -m unittest discover -s tests -p 'test_*.py'
 
   svg-layout:
     runs-on: ubuntu-latest

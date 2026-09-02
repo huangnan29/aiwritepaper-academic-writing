@@ -2,7 +2,7 @@
 
 本Profile与唯一 `*-compact.md` 一起使用。不要再读取完整版提示词或公共规则目录。使用本最终提示词内嵌的阶段模板创建 `00-execution-checkpoints.json`，并把 `execution_profile` 改为 `WEAK_MODEL`。
 
-严格按紧凑核心的九节执行，使用 `00-execution-checkpoints.json` 和阶段任务卡持续完成，不向用户逐阶段确认。每次只处理当前阶段；保存文件后立即核对存在性、数量和SHA-256，再进入下一阶段。
+按本次合成MD的实际模块执行，使用 `00-execution-checkpoints.json` 和阶段任务卡持续完成，不向用户逐阶段确认。每次只处理当前阶段；保存文件后核对必要产物与未解决问题，文件摘要由工具计算。不要按过期的固定章节数量套流程。
 
 发生错误时：
 

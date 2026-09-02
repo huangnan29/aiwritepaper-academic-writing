@@ -90,16 +90,60 @@ class DeliveryVerifier:
         reference = REFERENCE_HEADING.search(text, first.end())
         body = text[first.start():reference.start() if reference else len(text)]
         body = re.sub(r"```.*?```", "", body, flags=re.DOTALL)
+        # Pandoc可能把复杂表格展开成TeX longtable/tabular，多行内容不属于正文计数。
+        body = re.sub(
+            r"\\begin\{(?:longtable|tabular|tabularx|table)\}.*?\\end\{(?:longtable|tabular|tabularx|table)\}",
+            "",
+            body,
+            flags=re.DOTALL | re.IGNORECASE,
+        )
         body = re.sub(r"!\[[^\]]*\]\([^)]*\)", "", body)
         body = re.sub(r"<[^>]+>", "", body)
+        lines = body.splitlines()
+        table_lines: set[int] = set()
+        # Pandoc多行表格允许空行分隔记录，列分隔横线之间也可能只有一个空格。
+        # 必须同时见到外框、列分隔线和闭合外框，不能把普通分隔线后的正文吞掉。
+        border = re.compile(r"^ {2,}-{10,}\s*$")
+        columns = re.compile(r"^ {2,}(?:-{3,}\s+)+-{3,}\s*$")
+        index = 0
+        while index < len(lines):
+            if not border.match(lines[index]):
+                index += 1
+                continue
+            end = index + 1
+            while end < len(lines) and not border.match(lines[end]) and not re.match(r"^#{1,6}\s", lines[end]):
+                end += 1
+            if end < len(lines) and border.match(lines[end]) and any(columns.match(row) for row in lines[index + 1:end]):
+                table_lines.update(range(index, end + 1))
+                index = end + 1
+            else:
+                index += 1
+        # 识别Pandoc纯Markdown多行表格：两空格列分隔或管线列分隔，且有长横线分隔行。
+        separator = re.compile(r"^\s{2,}(?:[-‐‑‒–—]{3,}\s{2,})+[-‐‑‒–—]{3,}\s*$")
+        for index, line in enumerate(lines):
+            if not (separator.match(line) or ("|" in line and re.search(r"[-‐‑‒–—]{3,}", line))):
+                continue
+            start = index
+            while start > 0 and lines[start - 1].strip() and ("|" in lines[start - 1] or re.search(r"\s{2,}", lines[start - 1])):
+                start -= 1
+            end = index
+            while end + 1 < len(lines) and lines[end + 1].strip() and ("|" in lines[end + 1] or re.search(r"\s{2,}", lines[end + 1])):
+                end += 1
+            table_lines.update(range(start, end + 1))
         kept: List[str] = []
-        for line in body.splitlines():
+        for index, line in enumerate(lines):
             stripped = line.strip()
+            if index in table_lines:
+                continue
             if stripped.startswith("|"):
+                continue
+            # 表格边界和Pandoc控制行不计入正文，但不改动原始Markdown文件。
+            if re.match(r"^(?:\s*:::|\s*\\(?:toprule|midrule|bottomrule|endhead|endfirsthead|arraybackslash)\b)", stripped, re.IGNORECASE):
                 continue
             if re.match(r"^(?:图|表)\s*[0-9]+(?:[-－—.][0-9]+)*\s+", stripped):
                 continue
-            kept.append(re.sub(r"^#{1,6}\s*", "", line))
+            cleaned = re.sub(r"\\[A-Za-z@]+\*?(?:\s*\[[^\]]*\])?", " ", line)
+            kept.append(re.sub(r"^#{1,6}\s*", "", cleaned))
         return "\n".join(kept)
 
     def verify_body_length(self, markdown: Path) -> None:
@@ -354,6 +398,65 @@ class DeliveryVerifier:
                     f"{indented_table_cell_paragraphs}/{table_cell_paragraphs}；示例: "
                     + " | ".join(table_indent_examples),
                 )
+
+            # 逐个媒体段落检查Pandoc alt text与正式图题，避免把正文中的正常图号引用误报。
+            paragraphs = root.findall(".//w:body/w:p", WORD_NS)
+            paragraph_texts = [
+                "".join(node.text or "" for node in paragraph.findall(".//w:t", WORD_NS)).strip()
+                for paragraph in paragraphs
+            ]
+            captions: List[Tuple[int, str]] = []
+            for index, paragraph in enumerate(paragraphs):
+                style_node = paragraph.find("./w:pPr/w:pStyle", WORD_NS)
+                style = style_node.get(f"{{{WORD_NS['w']}}}val", "").lower() if style_node is not None else ""
+                text = paragraph_texts[index]
+                if text and (style in {"caption", "figurecaption", "tablecaption"} or re.match(r"^(?:图|表|figure|table)\s*[0-9一二三四五六七八九十]+(?:[.、:-]|\s)", text, re.IGNORECASE)):
+                    captions.append((index, text))
+            duplicate_caption_count = 0
+            media_count = 0
+            media_alt_texts: List[str] = []
+            for index, paragraph in enumerate(paragraphs):
+                drawings = paragraph.findall(".//wp:docPr", {"wp": "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"})
+                has_media = bool(drawings or paragraph.findall(".//w:pict", WORD_NS) or paragraph.findall(".//w:object", WORD_NS))
+                if not has_media:
+                    continue
+                media_count += 1
+                doc_alt_values = []
+                for doc_pr in drawings:
+                    for key in ("descr", "title"):
+                        value = doc_pr.get(key, "").strip()
+                        if value:
+                            doc_alt_values.append(value)
+                # docPr descr/title是元数据，不等同于Word中实际可见文字。
+                alt_values = []
+                alt_values.extend(value for value in [paragraph_texts[index]] if value)
+                # 某些Pandoc链会把alt text落成媒体前后的独立可见段落。
+                # 只纳入短、无句末标点的邻近文本，避免把正文中的“参见图1”当作题注。
+                for neighbor in (index - 1, index + 1):
+                    if 0 <= neighbor < len(paragraphs) and paragraph_texts[neighbor] and neighbor not in {pos for pos, _ in captions}:
+                        candidate = paragraph_texts[neighbor]
+                        if len(candidate) <= 120 and not re.search(r"[。！？.!?]$", candidate):
+                            alt_values.append(candidate)
+                media_alt_texts.extend(alt_values)
+                # 正式题注通常紧邻媒体段落；最多看前后两段，且只在题注候选中比对。
+                nearby = [text for pos, text in captions if 0 < abs(pos - index) <= 2]
+                for alt in alt_values:
+                    compact_alt = re.sub(r"\s+", "", alt).lower()
+                    if not compact_alt:
+                        continue
+                    metadata_locates_visible_alt = any(
+                        re.sub(r"\s+", "", metadata).lower() in compact_alt
+                        or compact_alt in re.sub(r"\s+", "", metadata).lower()
+                        for metadata in doc_alt_values
+                    )
+                    if metadata_locates_visible_alt and nearby:
+                        duplicate_caption_count += 1
+                        break
+                    if any(compact_alt == re.sub(r"\s+", "", caption).lower() or compact_alt in re.sub(r"\s+", "", caption).lower() or re.sub(r"\s+", "", caption).lower() in compact_alt for caption in nearby):
+                        duplicate_caption_count += 1
+                        break
+            if duplicate_caption_count:
+                self.error("DOCX_DUPLICATE_MEDIA_CAPTION", f"{duplicate_caption_count}/{media_count}个媒体邻近段落的alt text与正式题注重复")
             weighted_body_sizes: List[float] = []
             for paragraph in root.findall(".//w:p", WORD_NS):
                 style_node = paragraph.find("./w:pPr/w:pStyle", WORD_NS)
@@ -406,9 +509,11 @@ class DeliveryVerifier:
                 "toc_field": "TOC" in field_text.upper(), "body_font_pt": body_font_pt,
                 "table_cell_paragraphs": table_cell_paragraphs,
                 "indented_table_cell_paragraphs": indented_table_cell_paragraphs,
+                "media_count": media_count,
+                "duplicate_media_captions": duplicate_caption_count,
             }
 
-    def verify_pdf(self, path: Path, require_toc: bool) -> None:
+    def verify_pdf(self, path: Path, require_toc: bool, markdown: Optional[Path] = None) -> None:
         if path.stat().st_size < 8 or path.read_bytes()[:5] != b"%PDF-":
             self.error("PDF_INVALID", str(path))
             return
@@ -418,16 +523,69 @@ class DeliveryVerifier:
             pages = len(reader.pages)
             page_texts = [(page.extract_text() or "") for page in reader.pages]
             visible_text = "\n".join(page_texts)
-            visible_toc = bool(re.search(r"(^|\n)目\s*录\s*(\n|$)", visible_text))
+            toc_heading = re.compile(r"(^|\n)\s*目\s*录\s*(\n|$)")
+            visible_toc = bool(toc_heading.search(visible_text))
             toc_page = next(
-                (index + 1 for index, text in enumerate(page_texts) if re.search(r"(^|\n)目\s*录\s*(\n|$)", text)),
+                (index + 1 for index, text in enumerate(page_texts) if toc_heading.search(text)),
                 None,
             )
-            self.metrics["pdf"] = {"pages": pages, "visible_toc": visible_toc, "toc_page": toc_page}
+            toc_entries: List[str] = []
+            toc_page_numbers: List[int] = []
+            if toc_page is not None:
+                # 目录可跨页；从目录标题开始，遇到明显正文标题后停止。
+                in_toc = False
+                stop_toc = False
+                for page_text in page_texts[toc_page - 1:]:
+                    if stop_toc:
+                        break
+                    page_has_entry = False
+                    for raw_line in page_text.splitlines():
+                        line = re.sub(r"\s+", " ", raw_line).strip()
+                        if not in_toc:
+                            if re.fullmatch(r"目\s*录", line):
+                                in_toc = True
+                            continue
+                        if not line or re.fullmatch(r"目\s*录", line):
+                            continue
+                        match = re.match(r"^(.+?)(?:\s*[.·…]{2,}\s*|\s+)\s*(\d{1,4})\s*$", line)
+                        if match and not re.fullmatch(r"\d{1,4}", match.group(1).strip()):
+                            title = match.group(1).strip(" .·…")
+                            toc_entries.append(title)
+                            toc_page_numbers.append(int(match.group(2)))
+                        elif re.match(r"^(?:第\s*[一二三四五六七八九十百0-9]+\s*章|[一二三四五六七八九十百0-9]+[.、])", line) and not re.search(r"\d{1,4}\s*$", line):
+                            # 首个正文章标题意味着目录块已结束，后续页绝不能继续扫描。
+                            stop_toc = True
+                            break
+                        if re.match(r"^(?:第\s*[一二三四五六七八九十百0-9]+\s*章|摘要|Abstract|参考文献|References)", line, re.IGNORECASE) and not re.search(r"\d{1,4}\s*$", line):
+                            stop_toc = True
+                            break
+                        if match:
+                            page_has_entry = True
+                    if stop_toc:
+                        break
+                    # 目录标题页若没有任何条目，或后续页不是目录延续，立即结束目录块。
+                    if in_toc and not page_has_entry and page_texts.index(page_text) > toc_page - 1:
+                        break
+            chapter_titles: List[str] = []
+            if markdown and markdown.is_file():
+                markdown_text = markdown.read_text(encoding="utf-8", errors="replace")
+                for match in CHAPTER_HEADING.finditer(markdown_text):
+                    title = re.sub(r"^#+\s*", "", match.group(0)).strip()
+                    chapter_titles.append(re.sub(r"\s+", "", title).lower())
+            matched_chapters = 0
+            for title in toc_entries:
+                compact = re.sub(r"\s+", "", title).lower()
+                if any(compact in chapter or chapter in compact for chapter in chapter_titles):
+                    matched_chapters += 1
+            self.metrics["pdf"] = {"pages": pages, "visible_toc": visible_toc, "toc_page": toc_page, "toc_entries": len(toc_entries), "toc_page_numbers": len(toc_page_numbers), "toc_chapter_matches": matched_chapters}
             if pages == 0:
                 self.error("PDF_NO_PAGES", str(path))
             if require_toc and not visible_toc:
                 self.error("PDF_VISIBLE_TOC_MISSING", str(path))
+            if require_toc and (len(toc_entries) == 0 or len(toc_page_numbers) != len(toc_entries)):
+                self.error("PDF_TOC_ENTRIES_MISSING", "目录必须包含实际条目及页码")
+            if require_toc and chapter_titles and matched_chapters == 0:
+                self.error("PDF_TOC_CHAPTER_MISMATCH", "目录条目未匹配真实章标题")
             if require_toc and toc_page == 1:
                 self.error("THESIS_COVER_TOC_SAME_PAGE", str(path))
         except ImportError:
@@ -540,18 +698,19 @@ class DeliveryVerifier:
                 formula_pdf_hash = hashes.get("pdf_sha256") if isinstance(hashes, dict) else None
                 if not isinstance(formula_pdf_hash, str) or formula_pdf_hash.lower() != self.sha256(pdf):
                     self.error("FORMULA_PDF_HASH_MISMATCH", str(formula_report_value))
-            self.verify_pdf(pdf, requires_pdf_toc)
+            self.verify_pdf(pdf, requires_pdf_toc, markdown)
 
         research_status = manifest.get("research_status")
         delivery_status = manifest.get("delivery_status")
         final_status = manifest.get("final_status")
-        if research_status not in {"PASS", "PARTIAL", "FAIL"}:
+        derived_only = manifest.get("state_contract") == "DERIVED_ONLY"
+        if not derived_only and research_status not in {"PASS", "PARTIAL", "FAIL"}:
             self.error("RESEARCH_STATUS_INVALID", str(research_status))
-        if delivery_status not in {"PASS", "PARTIAL", "FAIL"}:
+        if not derived_only and delivery_status not in {"PASS", "PARTIAL", "FAIL"}:
             self.error("DELIVERY_STATUS_INVALID", str(delivery_status))
-        if figure_visual_status == "PARTIAL" and delivery_status == "PASS":
+        if not derived_only and figure_visual_status == "PARTIAL" and delivery_status == "PASS":
             self.error("DELIVERY_VISUAL_STATUS_CONFLICT", "视觉未核验时delivery_status不能为PASS")
-        if research_status in {"PASS", "PARTIAL", "FAIL"} and delivery_status in {"PASS", "PARTIAL", "FAIL"}:
+        if not derived_only and research_status in {"PASS", "PARTIAL", "FAIL"} and delivery_status in {"PASS", "PARTIAL", "FAIL"}:
             if research_status == "FAIL" or delivery_status == "FAIL":
                 expected_final = "FAIL"
             elif research_status == "PASS" and delivery_status == "PASS":

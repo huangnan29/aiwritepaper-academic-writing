@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0",
+  "features": {
+    "figures": ["academic-figures"],
+    "statistics": ["academic-figures", "statistical-figures-and-trace"],
+    "svg": ["academic-figures", "svg-layout"],
+    "formulas": ["mathematical-formulas"],
+    "documents": ["output-contract"]
+  },
+  "always": ["capability-and-runtime", "integrity-and-evidence", "autonomous-completion", "final-quality-gates"],
+  "modes": {
+    "FULL_BUILD": ["literature-and-citation", "output-contract", "academic-prose-quality", "quality-90", "direction", "rubric", "method"],
+    "PROPOSAL_ONLY": ["literature-and-citation", "output-contract", "academic-prose-quality", "direction", "method"],
+    "DEFENSE_ONLY": ["output-contract", "academic-prose-quality"],
+    "FIGURES_ONLY": ["academic-figures"],
+    "EXPORT_ONLY": ["output-contract"],
+    "AUDIT_ONLY": ["literature-and-citation", "output-contract", "academic-figures", "quality-90", "direction", "rubric", "method"]
+  }
+}

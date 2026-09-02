@@ -106,6 +106,16 @@ class AdjudicateStatusTests(unittest.TestCase):
         self.assertEqual(adjudicator.errors, [])
         self.assertEqual(derived["final_status"], "PASS")
 
+    def test_derived_only_does_not_require_author_statuses(self) -> None:
+        self.manifest["state_contract"] = "DERIVED_ONLY"
+        for key in ("research_status", "delivery_status", "final_status"):
+            self.manifest.pop(key)
+        self.write_all()
+        adjudicator, derived = self.adjudicate()
+        self.assertEqual(adjudicator.errors, [])
+        self.assertEqual(adjudicator.conflicts, [])
+        self.assertEqual(derived["final_status"], "PARTIAL")
+
     def test_evidence_failure_forces_final_failure(self) -> None:
         self.reports["evidence"]["status"] = "EVIDENCE_FAIL"
         self.write_all()

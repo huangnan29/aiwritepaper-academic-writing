@@ -4,8 +4,8 @@
     "FULL_BUILD": {"evidence": ["RUN"], "figure": ["RUN"], "formula": ["RUN"], "delivery": ["RUN"], "quality":["RUN"]},
     "RESUME": {"evidence": ["RUN", "SKIPPED_UNCHANGED"], "figure": ["RUN", "SKIPPED_UNCHANGED"], "formula": ["RUN", "SKIPPED_UNCHANGED"], "delivery": ["RUN", "SKIPPED_UNCHANGED"], "quality":["RUN","SKIPPED_UNCHANGED"]},
     "REVISE_ONLY": {"evidence": ["RUN", "SKIPPED_UNCHANGED"], "figure": ["RUN", "SKIPPED_UNCHANGED"], "formula": ["RUN"], "delivery": ["RUN"], "quality":["RUN"]},
-    "FIGURES_ONLY": {"evidence": ["SKIPPED_NOT_APPLICABLE", "SKIPPED_UNCHANGED"], "figure": ["RUN"], "formula": ["SKIPPED_NOT_APPLICABLE", "SKIPPED_UNCHANGED"], "delivery": ["RUN", "SKIPPED_NOT_APPLICABLE", "SKIPPED_UNCHANGED"], "quality":["RUN","SKIPPED_NOT_APPLICABLE"]},
-    "EXPORT_ONLY": {"evidence": ["SKIPPED_UNCHANGED"], "figure": ["SKIPPED_UNCHANGED"], "formula": ["RUN"], "delivery": ["RUN"], "quality":["RUN","SKIPPED_UNCHANGED"]},
+    "FIGURES_ONLY": {"evidence": ["SKIPPED_NOT_APPLICABLE", "SKIPPED_UNCHANGED"], "figure": ["RUN"], "formula": ["RUN", "SKIPPED_NOT_APPLICABLE", "SKIPPED_UNCHANGED"], "delivery": ["RUN", "SKIPPED_NOT_APPLICABLE", "SKIPPED_UNCHANGED"], "quality":["RUN","SKIPPED_NOT_APPLICABLE"]},
+    "EXPORT_ONLY": {"evidence": ["RUN", "SKIPPED_UNCHANGED"], "figure": ["RUN", "SKIPPED_UNCHANGED"], "formula": ["RUN"], "delivery": ["RUN"], "quality":["RUN","SKIPPED_UNCHANGED"]},
     "AUDIT_ONLY": {"evidence": ["RUN"], "figure": ["RUN"], "formula": ["RUN"], "delivery": ["RUN"], "quality":["RUN"]},
     "PROPOSAL_ONLY": {"evidence": ["RUN"], "figure": ["RUN", "SKIPPED_NOT_APPLICABLE"], "formula": ["RUN", "SKIPPED_NOT_APPLICABLE"], "delivery": ["RUN", "SKIPPED_NOT_APPLICABLE"], "quality":["SKIPPED_NOT_APPLICABLE"]},
     "DEFENSE_ONLY": {"evidence": ["SKIPPED_UNCHANGED"], "figure": ["RUN", "SKIPPED_NOT_APPLICABLE", "SKIPPED_UNCHANGED"], "formula": ["SKIPPED_NOT_APPLICABLE"], "delivery": ["SKIPPED_NOT_APPLICABLE"], "quality":["SKIPPED_NOT_APPLICABLE"]}

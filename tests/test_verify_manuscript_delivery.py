@@ -95,6 +95,16 @@ class DeliveryTests(unittest.TestCase):
         verifier.verify_run_manifest(self.root / "run-manifest.json", self.markdown)
         return verifier
 
+    def test_derived_only_omits_self_reported_states(self) -> None:
+        path = self.root / "run-manifest.json"
+        payload = json.loads(path.read_text())
+        payload["state_contract"] = "DERIVED_ONLY"
+        for key in ("research_status", "delivery_status", "final_status"):
+            payload.pop(key)
+        path.write_text(json.dumps(payload))
+        errors = self.verifier().errors
+        self.assertFalse(any(error.startswith(("RESEARCH_STATUS_INVALID", "DELIVERY_STATUS_INVALID", "FINAL_STATUS_MISMATCH")) for error in errors))
+
     def replace_docx_and_hashes(self, document_xml: str, styles_xml: str) -> None:
         manifest_path = self.root / "run-manifest.json"
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
