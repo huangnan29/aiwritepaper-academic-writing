@@ -34,14 +34,12 @@ class AdjudicateStatusTests(unittest.TestCase):
             "figure_verification_report": "figures/figure-verification.json",
             "formula_verification_report": "equations/formula-verification.json",
             "delivery_verification_report": "13-delivery-verification.json",
-            "quality_verification_report": "17-quality-verification.json",
         }
         self.reports = {
             "evidence": {"status": "EVIDENCE_OK"},
             "figure": {"status": "STRUCTURE_OK", "mechanical_status": "PASS", "visual_status": "PASS"},
             "formula": {"status": "FORMULA_OK"},
             "delivery": {"status": "DELIVERY_OK"},
-            "quality": {"status": "QUALITY_OK"},
         }
         (self.root / "artifact.txt").write_text("稳定输入", encoding="utf-8")
         self.write_all()
@@ -123,12 +121,6 @@ class AdjudicateStatusTests(unittest.TestCase):
         self.assertEqual(derived["research_status"], "FAIL")
         self.assertEqual(derived["final_status"], "FAIL")
 
-    def test_quality_partial_caps_delivery(self) -> None:
-        self.reports["quality"]["status"]="QUALITY_PARTIAL";self.write_all();_,derived=self.adjudicate();self.assertEqual(derived["delivery_status"],"PARTIAL")
-
-    def test_quality_failure_forces_failure(self) -> None:
-        self.reports["quality"]["status"]="QUALITY_FAIL";self.write_all();_,derived=self.adjudicate();self.assertEqual(derived["final_status"],"FAIL")
-
     def test_visual_partial_caps_delivery(self) -> None:
         self.manifest["research_claim_level"] = "OBSERVED_STUDY"
         self.reports["figure"]["visual_status"] = "PARTIAL"
@@ -186,7 +178,7 @@ class AdjudicateStatusTests(unittest.TestCase):
     def test_figures_only_allows_not_applicable_reports(self) -> None:
         self.manifest["run_mode"] = "FIGURES_ONLY"
         self.write_all()
-        for name in ["evidence", "formula", "delivery", "quality"]:
+        for name in ["evidence", "formula", "delivery"]:
             self.write_skip(name, "SKIPPED_NOT_APPLICABLE", "FIGURES_ONLY")
         adjudicator, derived = self.adjudicate()
         self.assertEqual(adjudicator.errors, [])

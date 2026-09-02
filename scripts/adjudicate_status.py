@@ -34,7 +34,6 @@ REPORT_SPECS = {
         "default": "13-delivery-verification.json",
         "script": "verify_manuscript_delivery.py",
     },
-    "quality": {"manifest_field":"quality_verification_report","default":"17-quality-verification.json","script":"verify_quality_package.py"},
 }
 
 
@@ -209,14 +208,12 @@ class StatusAdjudicator:
                 if name == "figure": return {"mechanical_status": "PASS", "visual_status": "PASS"}
                 if name == "formula": return {"status": "FORMULA_OK"}
                 if name == "delivery": return {"status": "DELIVERY_OK"}
-                if name == "quality": return {"status": "QUALITY_OK"}
             return payload
 
         evidence = effective("evidence")
         figure = effective("figure")
         formula = effective("formula")
         delivery = effective("delivery")
-        quality = effective("quality")
         evidence_status = evidence.get("status")
         claim_level = manifest.get("research_claim_level")
 
@@ -236,16 +233,14 @@ class StatusAdjudicator:
         figure_visual = figure.get("visual_status")
         formula_status = formula.get("status")
         delivery_status_raw = delivery.get("status")
-        quality_status = quality.get("status")
         if (
             self.errors
             or figure_mechanical != "PASS"
             or formula_status != "FORMULA_OK"
             or delivery_status_raw != "DELIVERY_OK"
-            or quality_status == "QUALITY_FAIL"
         ):
             delivery_status = "FAIL"
-        elif figure_visual == "PARTIAL" or quality_status == "QUALITY_PARTIAL":
+        elif figure_visual == "PARTIAL":
             delivery_status = "PARTIAL"
         elif figure_visual == "PASS":
             delivery_status = "PASS"
@@ -313,7 +308,7 @@ def main() -> int:
         "warnings": adjudicator.warnings,
         "report_sha256": adjudicator.report_hashes,
         "verifier": {
-            "name": script.name, "version": "1.9.1", "sha256": sha256(script),
+            "name": script.name, "version": "2.1.0-rc.1", "sha256": sha256(script),
             "generated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
         },
         "scope_note": "权威状态只裁决证据与交付门禁，不替代同行评审或学校审查",

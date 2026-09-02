@@ -53,15 +53,15 @@ def make_plan(root, manifest, mode):
     matrix = load(SKILL_ROOT / "references/mode-checker-matrix.json")["modes"][mode]
     reexport = manifest.get("reexport_documents") is True
     steps = []
-    if (root / "qa-review.json").is_file() and not (mode == "FIGURES_ONLY" and not reexport):
-        steps.append({"category": "views", "command": [sys.executable, str(SKILL_ROOT / "scripts/prepare_audit_views.py"), "--root", str(root)], "report": None})
+    if (root / "qa-observations.json").is_file() and not (mode == "FIGURES_ONLY" and not reexport):
+        steps.append({"category": "views", "command": [sys.executable, str(SKILL_ROOT / "scripts/prepare_audit_views.py"), "--root", str(root), "--input", "qa-observations.json"], "report": None})
     for category, options in matrix.items():
         spec = REPORT_SPECS[category]
         relative = manifest.get(spec["manifest_field"], spec["default"])
         destination = output_path(root, relative)
         action = "RUN" if "RUN" in options else options[0]
         if mode == "FIGURES_ONLY":
-            action = "RUN" if category == "figure" or (reexport and category in {"formula", "delivery", "quality"}) else "SKIPPED_NOT_APPLICABLE"
+            action = "RUN" if category == "figure" or (reexport and category in {"formula", "delivery"}) else "SKIPPED_NOT_APPLICABLE"
         if action not in options:
             raise ValueError(f"模式矩阵不允许{mode}.{category}.{action}")
         if action == "RUN":
@@ -104,7 +104,7 @@ def verify_upstream(root, category, path):
 
 def preflight_outputs(root, manifest, steps):
     root = root.resolve()
-    protected = {"run-manifest.json", "paper-request.json", "run-params.md", "final-execution-prompt.md", "qa-review.json",
+    protected = {"run-manifest.json", "paper-request.json", "run-params.md", "final-execution-prompt.md", "qa-observations.json",
                  "03-evidence-matrix.csv", "references.bib", "07-paper-full.md", "figures/figure-manifest.json",
                  "00-capability-report.json"}
     for key in ("docx", "pdf"):
@@ -126,7 +126,7 @@ def preflight_outputs(root, manifest, steps):
         raise ValueError(".audit-logs必须是本目录内的真实文件夹")
     # 审查投影器的输出也不得经符号链接改写其他文件。
     for relative in ["claim-evidence-map.json", "figures/figure-semantic-audit.json", "16-document-visual-audit.json",
-                     "09-final-peer-review.json", "15-quality-scorecard.json", "figures/figure-manifest.md", "00-capability-report.md"]:
+                     "issue-register.json", "figures/figure-manifest.md", "00-capability-report.md"]:
         output_path(root, relative)
 
 
@@ -137,7 +137,6 @@ def run_checks(root, manifest, steps):
     logs = Path(tempfile.mkdtemp(prefix=datetime.now().strftime("check-%Y%m%d-%H%M%S-"), dir=log_root))
     backups = logs / "upstream"; backups.mkdir()
     failures, results = [], []
-    views_failed = False
     # 先隔离旧裁决，避免本次崩溃后把旧PASS误当新结果。
     previous = root / "14-adjudicated-status.json"
     if previous.is_file():
@@ -161,10 +160,6 @@ def run_checks(root, manifest, steps):
             shutil.move(str(report), str(archived))
             if step.get("action") == "SKIPPED_UNCHANGED":
                 command += ["--upstream-report", str(archived.relative_to(root))]
-        if category == "quality" and views_failed:
-            failures.append("quality: 新审查输入投影失败，不能沿用旧视图")
-            results.append({"category": category, "status": "BLOCKED", "errors": ["新审查输入投影失败"]})
-            continue
         if report is not None:
             report.parent.mkdir(parents=True, exist_ok=True)
         try:
@@ -182,8 +177,6 @@ def run_checks(root, manifest, steps):
                 failures.append(f"{category}: 当次报告不可解析")
         if code != 0:
             failures.append(f"{category}: 检查命令退出码{code}")
-            if category == "views":
-                views_failed = True
             if report is not None and report.is_file() and payload and "FAIL" not in str(payload.get("status", "")):
                 shutil.move(str(report), str(backups / f"{index:02d}-{category}-failed-command.json"))
         if report is not None and payload is None:
@@ -200,7 +193,7 @@ def run_checks(root, manifest, steps):
         failures = [f"{row['category']}: {item}" for row in results for item in row.get("errors", [])]
     summary = {"status": status, "mode": manifest.get("run_mode"), "authoritative_status": authoritative,
                "failed_categories": failures, "checks": results, "report": str(root / "12-final-qa-report.md"),
-               "logs": str(logs), "scope_note": "仅汇总当次检查；不代表独立90分，也不自动修改正文。"}
+               "logs": str(logs), "scope_note": "仅汇总当次机械检查；不代表独立学术评价，也不自动修改正文。"}
     lines = ["# 本次检查结果", "", f"- 范围：{manifest.get('run_mode')}", f"- 状态：{status}",
              "- 本报告不代替学术判断，不自动修订论文。", "", "## 需要处理的问题", ""]
     for row in results:

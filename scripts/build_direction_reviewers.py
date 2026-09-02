@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""从方向源生成专业审查参考，不自动假定独立身份或评分。"""
+"""从方向规则生成写作流之外的独立审查参考。"""
 import json
 from pathlib import Path
 
@@ -17,7 +17,7 @@ def main():
         method = "\n".join(f"- {x}" for x in gates[key]["completion_gates"])
         text = f"""# 方向专业审查：{key}
 
-先读取实际稿件、研究契约、证据与最终图表/文档，定位具体错误，再提出修复。不要读取作者自评分。只有真实独立审稿调用时声明ISOLATED，否则如实声明SELF；文件哈希不能证明审稿判断正确。
+只在论文写作流程结束后使用。先读取冻结的review-package.json，再按其中SHA-256核对实际稿件、证据矩阵、图表清单、DOCX/PDF与QA。目录名、Skill版本和作者期望分数不得作为评分依据；文件哈希只证明评审对象固定，不证明结论正确。
 
 ## 专业关注点
 {focus}
@@ -32,11 +32,9 @@ def main():
 {critical}
 
 ## 审查输出
-使用qa-review.json的review记录status、reviewer_mode、issues（含critical_open、important_open及显式items），逐项写location、evidence、fix、status。alignment分别核对题目支持、问题回答、方法与结果、摘要与结论；false时如实记录，不为了通过改为true。
+在独立评测目录写review-result.json，不修改论文目录和14-adjudicated-status.json。结果包含review_id、reviewer_identity、reviewed_package_sha256、六维分数、total、逐项issues、Critical/Important数量和证据定位。权重为证据25、内容20、结构15、配图15、文档15、学术诚信10。
 
-实际做了独立数字评分时才提供scores/total与审稿来源，权重为证据25、内容20、结构15、配图15、文档15、自审10。未评分可省略，不能编造90分。自行检查不叫独立评测。
-
-先修实质问题，后润色。终稿变化后复查受影响材料；由prepare_audit_views.py派生兼容报告并绑定真实摘要。该工具不作审查、不补PASS、不替代原始调用和视觉证据。
+每个问题写severity、location、evidence、why_it_matters与recommended_fix。分别核对题目支持、研究问题回答、方法结果、摘要结论和图文语义。无法实际查看图片或文档页面时，对应维度写NOT_REVIEWED并说明能力缺口，不能猜分。先列问题再评分；终稿变化后旧结果自动失效。
 """
         (out / f"{key}.md").write_text(text, encoding="utf-8")
     print(f"已生成{len(rubrics['directions'])}份审查参考；未运行真实论文评测。")

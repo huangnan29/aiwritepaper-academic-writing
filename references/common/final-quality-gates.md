@@ -1,17 +1,11 @@
 # 公共规则九：统一核验
 
-完成实际专业/视觉观察并记录qa-review.json后，运行一个检查入口：
+<!-- compact-core:start -->
+完成专业、图形和页面观察后写qa-observations.json，再运行一次`paper.py check`。入口只执行证据、图片、公式和交付四类机械检查并计算权威状态，不生成论文、语义PASS或数字评分。Critical/Important必须修复；无法修复时明确PARTIAL/FAIL。哈希只绑定文件，检查器成功不证明专业正确。
+<!-- compact-core:end -->
 
-```bash
-python3 "<SKILL_DIR>/scripts/paper.py" check --root "<OUTPUT_DIR>" --docx "<实际Word文件>" --pdf "<实际PDF文件>"
-```
+qa-observations.json只记录主张证据、逐图盲检、实际页面检查和问题清单；每个视觉判断绑定被查看文件与真实回执。需要学术评价时，在写作流程结束后把冻结交付包交给另一会话、另一模型或人工审阅。
 
-路径已正确登记时省略--docx/--pdf。入口只登记已有文件并计算摘要，不生成文档；根据模式自动运行既有检查器、派生兼容视图、最后调用adjudicate_status.py，输出12-final-qa-report.md和当次问题清单。不要再次手填五份底层报告或三层自报状态。
+检查覆盖题录与引用、数据来源、生图路线与实际嵌图、公式/OMML、目录、题注、表格、篇幅、DOCX/PDF和SHA。旧报告只有输入摘要与当前文件完全一致时才能复用。AUDIT_ONLY输出到源目录之外；FIGURES_ONLY无重导时不改正文和文档。
 
-检查涵盖文献与真实来源、图片路线和实际嵌图、公式及OMML、目录条目/页码、题注、表格、篇幅和文件。没有公式/表格时仅在真实文件支持下标不适用，不补造内容。只有已核实的旧输入和报告才能复用，不能用过期PASS掩盖本次失败。
-
-专业审查仍须核对题目与方法、主张与证据、摘要与结论，以及图中的实际节点/箭头/数值。SHA-256只绑定输入；几何整齐不等于专业正确，脚本退出成功不等于论文通过。Critical/Important和用户硬目标不能由自评分豁免；词频与结论比例仅作建议。
-
-FIGURES_ONLY无重导只查图片；显式要求重导时检查公式和新文档。AUDIT_ONLY用源目录外的新--audit-dir，原稿只读。其他模式按现有模式矩阵核验；兼容命令仍可用于诊断，不是模型必须逐个执行的生产阶段。
-
-只修实际问题和依赖它的输出，重新check；不全面重写或改高分数。最终答复采用本次检查结果：RESEARCH_STATUS说明证据充分性，DELIVERY_STATUS说明交付，FINAL_STATUS为汇总。任何命令失败、报告缺失或陈旧都不能报成功；PARTIAL与具体缺口应如实交付。所有最终文件摘要由工具计算。
+修复后重新check。最终答复只读取14-adjudicated-status.json，报告RESEARCH_STATUS、DELIVERY_STATUS、FINAL_STATUS及真实缺口；任何报告缺失、陈旧或命令失败都不能报PASS。

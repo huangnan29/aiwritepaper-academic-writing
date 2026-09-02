@@ -36,7 +36,7 @@ class CheckPaperTests(unittest.TestCase):
         result = self.invoke("--plan")
         self.assertEqual(result.returncode, 0, result.stdout)
         data = json.loads(result.stdout)
-        self.assertEqual([x["category"] for x in data["commands"]], ["evidence", "figure", "formula", "delivery", "quality", "adjudication"])
+        self.assertEqual([x["category"] for x in data["commands"]], ["evidence", "figure", "formula", "delivery", "adjudication"])
         for step in data["commands"]:
             self.assertEqual(step["command"][0], sys.executable)
             self.assertEqual(Path(step["command"][1]).parent, ROOT / "scripts")
@@ -64,13 +64,13 @@ class CheckPaperTests(unittest.TestCase):
         steps = json.loads(self.invoke("--plan").stdout)["commands"]
         self.assertEqual(next(s for s in steps if s["category"] == "figure")["action"], "RUN")
         self.assertIn("--skip-documents", next(s for s in steps if s["category"] == "figure")["command"])
-        for category in ("evidence", "formula", "delivery", "quality"):
+        for category in ("evidence", "formula", "delivery"):
             self.assertEqual(next(s for s in steps if s["category"] == category)["action"], "SKIPPED_NOT_APPLICABLE")
 
     def test_explicit_figure_reexport_checks_formula_and_documents(self):
         self.manifest.update(run_mode="FIGURES_ONLY", reexport_documents=True); self.save()
         steps = json.loads(self.invoke("--plan").stdout)["commands"]
-        for category in ("figure", "formula", "delivery", "quality"):
+        for category in ("figure", "formula", "delivery"):
             self.assertEqual(next(s for s in steps if s["category"] == category)["action"], "RUN")
 
     def test_actual_figure_only_generates_skips_not_empty_claims(self):
@@ -120,7 +120,7 @@ class CheckPaperTests(unittest.TestCase):
             if "adjudicate_status.py" in command[1]:
                 payload = {"authoritative_status": {"research_status": "PARTIAL", "delivery_status": "PARTIAL", "final_status": "PARTIAL"}}
             else:
-                payload = {"status": "QUALITY_PARTIAL" if "verify_quality" in command[1] else "OK", "errors": [], "warnings": []}
+                payload = {"status": "OK", "errors": [], "warnings": []}
             path.write_text(json.dumps(payload))
             return SimpleNamespace(returncode=0, stdout="fixture", stderr="")
         steps = checker.make_plan(self.root, self.manifest, "FULL_BUILD")

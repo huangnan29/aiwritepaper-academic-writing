@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AIWritePaper独立评审结果",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["schema_version", "review_id", "reviewer_identity", "reviewed_package_sha256", "scores", "total", "issues"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "review_id": {"type": "string", "minLength": 1},
+    "reviewer_identity": {"type": "string", "minLength": 1},
+    "reviewed_package_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "scores": {
+      "type": "object",
+      "required": ["evidence", "content", "structure", "figures", "documents", "integrity"]
+    },
+    "total": {"type": "number", "minimum": 0, "maximum": 100},
+    "issues": {"type": "array", "items": {"type": "object"}}
+  }
+}
