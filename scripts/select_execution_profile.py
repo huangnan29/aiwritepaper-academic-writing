@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Optional
 
 
 PROFILES = {"FULL_AUTONOMY", "GUIDED", "WEAK_MODEL"}
-SELECTOR_VERSION = "2.1.0-rc.1"
+SELECTOR_VERSION = "2.1.0-rc.2"
 PROFILE_FILES = {
     "FULL_AUTONOMY": "references/profiles/full-autonomy.md",
     "GUIDED": "references/profiles/staged-assistance.md",

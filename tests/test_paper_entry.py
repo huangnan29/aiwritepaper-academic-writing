@@ -102,7 +102,7 @@ class PaperEntryTests(unittest.TestCase):
         schema = json.loads((ROOT / "references/schemas/profile-selection.schema.json").read_text())
         self.assertTrue(set(schema["required"]).issubset(profile))
         self.assertTrue(set(schema["properties"]["selector"]["required"]).issubset(profile["selector"]))
-        self.assertEqual(profile["selector"]["version"], "2.1.0-rc.1")
+        self.assertEqual(profile["selector"]["version"], "2.1.0-rc.2")
         manifest = json.loads((self.root / "run-manifest.json").read_text())
         self.assertEqual(manifest["state_contract"], "DERIVED_ONLY")
         self.assertFalse({"research_status", "delivery_status", "final_status"} & set(manifest))

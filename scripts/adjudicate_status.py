@@ -308,7 +308,7 @@ def main() -> int:
         "warnings": adjudicator.warnings,
         "report_sha256": adjudicator.report_hashes,
         "verifier": {
-            "name": script.name, "version": "2.1.0-rc.1", "sha256": sha256(script),
+            "name": script.name, "version": "2.1.0-rc.2", "sha256": sha256(script),
             "generated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
         },
         "scope_note": "权威状态只裁决证据与交付门禁，不替代同行评审或学校审查",

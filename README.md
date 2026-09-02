@@ -4,14 +4,14 @@
 
 从题目和真实材料出发，完成方向路由、文献、正文、学术配图、DOCX/PDF与可核验交付。
 
-![版本](https://img.shields.io/badge/version-2.1.0--rc.1-DB2777)
+![版本](https://img.shields.io/badge/version-2.1.0--rc.2-DB2777)
 ![架构](https://img.shields.io/badge/architecture-MD--first-7C3AED)
 ![方向](https://img.shields.io/badge/directions-19-16A34A)
 ![弱模型预算](https://img.shields.io/badge/compact-%E2%89%A415KB-0284C7)
 
 </div>
 
-> `2.1.0-rc.1` 是候选版本。工程回归通过不等于论文稳定达到90分；正式版仍需完成同题、同材料、同客户端的跨Agent盲评A/B。
+> `2.1.0-rc.2` 是候选版本。工程回归通过不等于论文稳定达到90分；正式版仍需完成同题、同材料、同客户端的跨Agent盲评A/B。
 
 ## 一句话使用
 
@@ -152,7 +152,7 @@ uv run python eval/build_review_package.py \
 
 既有批次的题目、版本和审查严格度不同，不能作为绝对模型排行榜。相对稳定的现象是：Grok Build/Grok 4.6通常具有较高完整度和较好的原生生图执行；Kimi正文配合WorkBuddy K3完成最终Word的历史样本完成度较高，但必须标记为模型接力，不能并成单一K3成绩；Gemini 3.7 Flash/Antigravity曾出现内容、排版、SVG和证据可靠性问题；MiniMax M3/Claude Code历史批次还出现过内容、引用和Word结构严重缺失。Z.ai与DeepSeek-tui有过较好单篇结果，但样本量不足。
 
-2.1.0-rc.1针对这些共性失败增加Compact预算、三态能力、默认模块、专业源表和四类硬检查；尚未用新版本完成同题复测，因此README不宣称任何Agent已经提升。
+2.1.0-rc.2针对这些共性失败增加Compact预算、三态能力、默认模块、专业源表和四类硬检查；尚未用新版本完成同题复测，因此README不宣称任何Agent已经提升。
 
 ## 模式
 
@@ -183,7 +183,7 @@ cd aiwritepaper-academic-writing
 
 ## 维护与候选限制
 
-当前版本：`2.1.0-rc.1`。
+当前版本：`2.1.0-rc.2`。
 
 维护与检查脚本支持Python 3.9+；项目统一使用`uv run python`执行。
 

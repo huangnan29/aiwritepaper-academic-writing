@@ -76,7 +76,7 @@ def verifier_identity() -> Dict[str, str]:
     script = Path(__file__).resolve()
     return {
         "name": script.name,
-        "version": "2.1.0-rc.1",
+        "version": "2.1.0-rc.2",
         "sha256": sha256(script),
         "generated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
     }
