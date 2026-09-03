@@ -165,8 +165,8 @@ def case_command(case: dict[str, Any]) -> list[str]:
     prompt = (directory / "prompt.txt").read_text(encoding="utf-8").strip()
     if case["agent"] == "codex":
         return [
-            "codex", "exec", "-C", str(directory), "--skip-git-repo-check",
-            "-m", case["model"], "-s", "workspace-write", "-a", "never", "--search",
+            "codex", "--search", "exec", "-C", str(directory), "--skip-git-repo-check",
+            "-m", case["model"], "-s", "workspace-write",
             "-o", str(directory / "runner-final-message.txt"), prompt,
         ]
     if case["agent"] == "grok":

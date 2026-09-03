@@ -4,3 +4,5 @@ __pycache__/
 .venv/
 .idea/
 .vscode/
+.npm-cache/
+.playwright-cli/

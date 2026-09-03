@@ -7,6 +7,7 @@
 - Antigravity固定使用真实`agy` CLI与`gemini-3.8-flash-high`；不再以Gemini CLI代替。
 - Antigravity不启用会阻断`uv`与项目`.venv`的OS终端沙箱；改为独立项目目录、自动权限和Skill输出边界，并记录中断/失败尝试。
 - 新增`eval/ab_dashboard.py`动态进度页，每2秒从真实产物推断阶段，显示首批总体进度、当前Agent、耗时和逐篇状态；页面只读。
+- 修复Codex无交互命令误传`-a`导致立即退出的问题；保留当前用户保存的ChatGPT登录，仅使用官方支持的`codex exec --sandbox workspace-write`。
 
 ## 2.1.0-rc.2 - 2026-09-02
 

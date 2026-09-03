@@ -59,6 +59,15 @@ class ABRunnerTests(unittest.TestCase):
         self.assertNotIn("--sandbox", command)
         self.assertNotIn("gemini-3.7-flash", command)
 
+    def test_codex_uses_saved_login_and_supported_exec_flags(self):
+        self.lab.mkdir()
+        (self.lab / "prompt.txt").write_text("测试")
+        command = MODULE.case_command({"agent": "codex", "model": "gpt-5.6-sol", "directory": str(self.lab)})
+        self.assertEqual(command[:3], ["codex", "--search", "exec"])
+        self.assertIn("workspace-write", command)
+        self.assertNotIn("-a", command)
+        self.assertNotIn("--ignore-user-config", command)
+
     def test_status_requires_real_delivery_files(self):
         manifest = self.initialize()
         first = Path(manifest["cases"][0]["directory"])
