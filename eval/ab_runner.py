@@ -40,7 +40,7 @@ TOPICS = {
     },
 }
 AGENTS = {
-    "codex": {"binary": "codex", "model": "gpt-5.6-sol", "skill_root": ".codex/skills"},
+    "codex": {"binary": "codex", "model": "gpt-5.6-sol", "reasoning_effort": "medium", "skill_root": ".codex/skills"},
     "grok": {"binary": "grok", "model": "grok-4.6", "skill_root": ".grok/skills"},
     "antigravity": {"binary": "agy", "model": "gemini-3.8-flash-high", "skill_root": ".agents/skills"},
 }
@@ -141,7 +141,8 @@ def initialize(lab: Path, seed: int) -> dict[str, Any]:
                 case = {
                     "case_id": f"{agent}__{topic}__{arm}", "agent": agent,
                     "agent_label": "Antigravity CLI" if agent == "antigravity" else agent,
-                    "model": agent_info["model"], "topic": topic, "direction_id": topic_info["direction"],
+                    "model": agent_info["model"], "reasoning_effort": agent_info.get("reasoning_effort"),
+                    "topic": topic, "direction_id": topic_info["direction"],
                     "title": topic_info["title"], "arm": arm, "version": version["label"],
                     "version_ref": version["ref"], "skill_file": str((skill_dir / "SKILL.md").relative_to(directory)),
                     "skill_sha256": sha(skill_dir / "SKILL.md"), "directory": str(directory),
@@ -165,7 +166,8 @@ def case_command(case: dict[str, Any]) -> list[str]:
     prompt = (directory / "prompt.txt").read_text(encoding="utf-8").strip()
     if case["agent"] == "codex":
         return [
-            "codex", "--search", "exec", "-C", str(directory), "--skip-git-repo-check",
+            "codex", "-c", f'model_reasoning_effort="{case.get("reasoning_effort") or AGENTS["codex"]["reasoning_effort"]}"',
+            "--search", "exec", "-C", str(directory), "--skip-git-repo-check",
             "-m", case["model"], "-s", "workspace-write",
             "-o", str(directory / "runner-final-message.txt"), prompt,
         ]
@@ -340,7 +342,8 @@ def run_cases(lab: Path, args: argparse.Namespace) -> int:
         archived = None
         if int(case.get("attempts", 0)) > 0 and case.get("status") != "COMPLETE":
             archived = archive_previous_attempt(directory, int(case["attempts"]))
-        case.update(status="RUNNING", attempts=int(case.get("attempts", 0)) + 1, started_at=now(), error=None)
+        case.update(status="RUNNING", attempts=int(case.get("attempts", 0)) + 1, started_at=now(), error=None,
+                    reasoning_effort=case.get("reasoning_effort") or AGENTS[case["agent"]].get("reasoning_effort"))
         if archived is not None:
             case["previous_attempt_archive"] = str(archived)
         write_json(manifest_path, manifest)
