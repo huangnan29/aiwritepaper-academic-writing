@@ -16,6 +16,14 @@ uv run python eval/ab_runner.py --lab "$LAB" run
 uv run python eval/ab_runner.py --lab "$LAB" status
 ```
 
+动态查看首批进度：
+
+```bash
+uv run python eval/ab_dashboard.py --lab "$LAB" --port 8766
+```
+
+浏览器打开`http://127.0.0.1:8766`。页面每2秒读取真实文件并更新总体进度、当前Agent、当前阶段、耗时和每篇完成度；只读，不改变实验状态。
+
 `run`按固定随机序列逐个执行，已完成任务自动跳过；可以用`--agent`、`--version`、`--topic`和`--limit`先跑小批次。所有命令使用参数数组，不拼接shell。Antigravity通过真实`agy`命令运行，以独立项目作为工作区并自动批准工具；不启用其OS终端沙箱，因为该沙箱会阻断`uv`运行目录和项目`.venv`。论文Prompt与Skill仍限制只写当前运行目录。Grok和Codex使用各自无交互模式。
 
 完成后匿名和汇总：
