@@ -175,7 +175,7 @@ def case_command(case: dict[str, Any]) -> list[str]:
             "--permission-mode", "auto", "--output-format", "json", "-p", prompt,
         ]
     return [
-        "agy", "--new-project", "--model", case["model"], "--effort", "high", "--sandbox",
+        "agy", "--new-project", "--model", case["model"], "--effort", "high",
         "--dangerously-skip-permissions", "--print-timeout", "8h",
         "--output-format", "json", "-p", prompt,
     ]
@@ -274,6 +274,21 @@ def inspect_delivery(directory: Path) -> dict[str, Any]:
     }
 
 
+def archive_previous_attempt(directory: Path, attempt: int) -> Path | None:
+    """把失败/中断输出移入审计目录，保留固定Prompt和版本Skill。"""
+    preserved = {".codex", ".grok", ".agents", ".attempts", "prompt.txt", "case-manifest.json"}
+    candidates = [item for item in directory.iterdir() if item.name not in preserved]
+    if not candidates:
+        return None
+    target = directory / ".attempts" / f"attempt-{attempt:03d}"
+    if target.exists():
+        raise ValueError(f"尝试归档目录已存在: {target}")
+    target.mkdir(parents=True)
+    for item in candidates:
+        shutil.move(str(item), str(target / item.name))
+    return target
+
+
 def run_cases(lab: Path, args: argparse.Namespace) -> int:
     manifest_path = lab / MANIFEST
     manifest = read_json(manifest_path)
@@ -302,7 +317,12 @@ def run_cases(lab: Path, args: argparse.Namespace) -> int:
             write_json(manifest_path, manifest)
             continue
         directory = Path(case["directory"])
+        archived = None
+        if int(case.get("attempts", 0)) > 0 and case.get("status") != "COMPLETE":
+            archived = archive_previous_attempt(directory, int(case["attempts"]))
         case.update(status="RUNNING", attempts=int(case.get("attempts", 0)) + 1, started_at=now(), error=None)
+        if archived is not None:
+            case["previous_attempt_archive"] = str(archived)
         write_json(manifest_path, manifest)
         command = case_command(case)
         started = time.monotonic()
@@ -312,6 +332,12 @@ def run_cases(lab: Path, args: argparse.Namespace) -> int:
                 result = subprocess.run(command, cwd=directory, stdout=stdout, stderr=stderr,
                                         timeout=args.timeout_hours * 3600, check=False, text=True)
             exit_code = result.returncode
+        except KeyboardInterrupt:
+            case.update(status="FINISHED_INCOMPLETE", exit_code=130, error="INTERRUPTED",
+                        elapsed_seconds=round(time.monotonic() - started, 1), finished_at=now())
+            write_json(directory / "case-manifest.json", case)
+            write_json(manifest_path, manifest)
+            return 130
         except subprocess.TimeoutExpired:
             exit_code = 124
             case["error"] = "TIMEOUT"

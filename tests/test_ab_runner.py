@@ -56,6 +56,7 @@ class ABRunnerTests(unittest.TestCase):
         self.assertIn("gemini-3.8-flash-high", command)
         self.assertEqual(command[0], "agy")
         self.assertIn("--new-project", command)
+        self.assertNotIn("--sandbox", command)
         self.assertNotIn("gemini-3.7-flash", command)
 
     def test_status_requires_real_delivery_files(self):
@@ -70,6 +71,17 @@ class ABRunnerTests(unittest.TestCase):
         result = MODULE.status(self.lab)
         self.assertEqual(result["counts"]["COMPLETE"], 1)
         self.assertEqual(result["counts"]["PENDING"], 1)
+
+    def test_failed_attempt_is_archived_before_retry(self):
+        manifest = self.initialize()
+        case = manifest["cases"][0]
+        directory = Path(case["directory"])
+        (directory / "partial.md").write_text("失败残留")
+        target = MODULE.archive_previous_attempt(directory, 1)
+        self.assertTrue((target / "partial.md").is_file())
+        self.assertFalse((directory / "partial.md").exists())
+        self.assertTrue((directory / "prompt.txt").is_file())
+        self.assertTrue((directory / case["skill_file"]).is_file())
 
 
 if __name__ == "__main__":
