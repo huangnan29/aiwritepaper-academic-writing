@@ -299,7 +299,7 @@ def locate_artifact_root(directory: Path) -> Path:
     candidates = []
     for name in ("07-paper-full.md", "run-manifest.json", "final-execution-prompt.md"):
         for path in directory.rglob(name):
-            if any(part in {".codex", ".grok", ".agents", ".attempts"} for part in path.parts):
+            if any(part in {".codex", ".grok", ".agents", ".attempts", ".npm-cache", ".venv", ".cache", "node_modules", "__pycache__"} for part in path.parts):
                 continue
             candidates.append(path.parent)
     if not candidates:

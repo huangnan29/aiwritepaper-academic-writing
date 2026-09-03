@@ -78,7 +78,8 @@ def infer(case: dict) -> dict:
             case = {**case, **load(case_status)}
         except (OSError, ValueError, json.JSONDecodeError):
             pass
-    files = [path for path in root.rglob("*") if path.is_file() and ".agents" not in path.parts and ".codex" not in path.parts and ".grok" not in path.parts and ".attempts" not in path.parts]
+    ignored_parts = {".agents", ".codex", ".grok", ".attempts", ".npm-cache", ".venv", ".cache", "node_modules", "__pycache__"}
+    files = [path for path in root.rglob("*") if path.is_file() and not ignored_parts.intersection(path.parts)]
     output = locate_artifact_root(root)
     output_files = [path for path in output.rglob("*") if path.is_file()]
     names = {str(path.relative_to(output)) for path in output_files}
@@ -135,7 +136,7 @@ def locate_artifact_root(root: Path) -> Path:
     candidates = []
     for name in ("07-paper-full.md", "run-manifest.json", "final-execution-prompt.md"):
         for path in root.rglob(name):
-            if any(part in {".codex", ".grok", ".agents", ".attempts"} for part in path.parts):
+            if any(part in {".codex", ".grok", ".agents", ".attempts", ".npm-cache", ".venv", ".cache", "node_modules", "__pycache__"} for part in path.parts):
                 continue
             candidates.append(path.parent)
     if not candidates:
