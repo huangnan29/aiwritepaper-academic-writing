@@ -47,7 +47,7 @@ function fmt(sec){sec=Math.max(0,sec||0);return `${String(Math.floor(sec/60)).pa
 async function refresh(){try{const r=await fetch('/api/status?scope=smoke-b',{cache:'no-store'});if(!r.ok)throw Error(r.status);const d=await r.json();
 document.querySelector('#overall').textContent=d.overall_percent;document.querySelector('#overallFill').style.width=d.overall_percent+'%';document.querySelector('#done').textContent=`${d.complete_count} / ${d.cases.length}`;document.querySelector('#elapsed').textContent=fmt(d.current_elapsed_seconds);
 document.querySelector('#current').textContent=d.current?`${d.current.agent_label} · ${d.current.phase}`:'队列等待';document.querySelector('#updated').textContent=`更新 ${d.server_time}`;document.querySelector('#connection').textContent='实时连接';document.querySelector('#connection').className='';
-document.querySelector('#cases').innerHTML=d.cases.map((x,i)=>`<article class="card"><div class="index">${String(i+1).padStart(2,'0')}</div><div><div class="name">${esc(x.agent_label)}<span class="badge ${x.state_class}">${esc(x.status)}</span></div><div class="sub">${esc(x.title)} · ${esc(x.version)}</div><div class="mini"><i style="width:${x.progress}%"></i></div></div><div class="phase">${esc(x.phase)}<div class="sub">${x.artifact_count} 个文件</div></div><div class="pct">${x.progress}%</div></article>`).join('');
+document.querySelector('#cases').innerHTML=d.cases.map((x,i)=>`<article class="card"><div class="index">${String(i+1).padStart(2,'0')}</div><div><div class="name">${esc(x.agent_label)}<span class="badge ${x.state_class}">${esc(x.status)}</span></div><div class="sub">${esc(x.title)} · ${esc(x.version)}</div><div class="mini"><i style="width:${x.progress}%"></i></div></div><div class="phase">${esc(x.phase)}<div class="sub">${x.artifact_count} 个文件 · ${fmt(x.last_activity_seconds)} 前更新</div></div><div class="pct">${x.progress}%</div></article>`).join('');
 }catch(e){document.querySelector('#connection').textContent='连接中断';document.querySelector('#connection').className='error'}}
 refresh();setInterval(refresh,2000);
 </script></body></html>'''
@@ -88,8 +88,8 @@ def infer(case: dict) -> dict:
     if "figures/figure-manifest.json" in names:
         image_count = sum(Path(name).suffix.lower() in {".png", ".jpg", ".jpeg", ".webp"} for name in names if name.startswith("figures/"))
         progress, phase = min(84, 76 + image_count), "配图与视觉检查"
-    docx = any(name.lower().endswith(".docx") and not name.startswith(".attempts/") for name in names)
-    pdf = any(name.lower().endswith(".pdf") and not name.startswith(".attempts/") for name in names)
+    docx = any(path.parent == root and path.suffix.lower() == ".docx" for path in files)
+    pdf = any(path.parent == root and path.suffix.lower() == ".pdf" for path in files)
     if docx or pdf:
         progress, phase = 90 if docx and pdf else 86, "文档导出"
     if "13-delivery-verification.json" in names:
@@ -102,8 +102,11 @@ def infer(case: dict) -> dict:
     if status in {"FINISHED_INCOMPLETE", "BLOCKED"}:
         phase = "需要处理"
     state_class = "running" if status == "RUNNING" else "complete" if progress == 100 else "failed" if status in {"FINISHED_INCOMPLETE", "BLOCKED"} else "pending"
+    latest = max((path.stat().st_mtime for path in files), default=0)
+    last_activity_seconds = max(0, int(datetime.now().timestamp() - latest)) if latest else 0
     return {**case, "progress": progress, "phase": phase, "artifact_count": len(files),
-            "elapsed_seconds": seconds_since(case.get("started_at")), "state_class": state_class}
+            "elapsed_seconds": seconds_since(case.get("started_at")),
+            "last_activity_seconds": last_activity_seconds, "state_class": state_class}
 
 
 def snapshot(lab: Path, scope: str) -> dict:

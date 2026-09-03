@@ -29,6 +29,10 @@ class DashboardTests(unittest.TestCase):
         (self.root / "final-execution-prompt.md").write_text("prompt")
         (self.root / "03-evidence-matrix.csv").write_text("source_id")
         (self.root / "07-paper-full.md").write_text("正文")
+        evidence = self.root / "evidence"
+        evidence.mkdir()
+        (evidence / "source.pdf").write_bytes(b"evidence")
+        self.assertLess(MODULE.infer(self.case)["progress"], 86)
         (self.root / "paper.docx").write_bytes(b"docx")
         (self.root / "paper.pdf").write_bytes(b"pdf")
         self.assertEqual(MODULE.infer(self.case)["progress"], 90)
