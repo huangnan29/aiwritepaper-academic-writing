@@ -11,7 +11,7 @@
 
 </div>
 
-> `2.1.0-rc.2` 是候选版本。工程回归通过不等于论文稳定达到90分；正式版仍需完成同题、同材料、同客户端的跨Agent盲评A/B。
+> `2.1.0-rc.2` 是候选版本。工程回归通过不等于论文稳定达到90分；当前采用Grok标杆、Gemini 3.8 Flash弱模型观察和Codex补充对照进行精简真实测试。
 
 ## 一句话使用
 
@@ -148,7 +148,7 @@ uv run python eval/build_review_package.py \
 
 再由独立会话、另一模型或人工盲评。写作进程不会创建数字评分，也不会用评分覆盖机械失败。历史评分器与57任务矩阵仅作为维护资料，不代表已经跑完。
 
-A/B不需要手工切换仓库版本。`eval/ab_runner.py`可以一次建立v1.9.1与v2.1.0-rc.2的18个隔离运行位，自动调用Codex、Grok Build和Antigravity CLI、断点续跑、核对真实文件、匿名评审并生成差值表。使用方式见[评测说明](eval/README.md)。Antigravity测试固定使用其真实`agy` CLI与`gemini-3.8-flash-high`，不以Gemini CLI代替。
+当前评测不再要求重跑旧版、完成18/30任务矩阵或频繁切换仓库。`eval/ab_runner.py`复用Grok已完成结果，只并行补充Gemini 3.8 Flash与Codex各两篇；每篇使用独立目录、日志和状态文件。使用方式见[评测说明](eval/README.md)。Antigravity固定使用真实`agy` CLI与`gemini-3.8-flash-high`，不以Gemini CLI代替。
 
 ## 历史Agent观察
 
@@ -196,4 +196,4 @@ uv run python -m unittest discover -s tests -p 'test_*.py'
 node --test tests/test_render_svg_layout.mjs
 ```
 
-只有跨Agent真实论文A/B达到[实施计划](implementation_plan.md)的非劣与零伪造门槛，才会把RC升级为正式2.1.0并覆盖稳定安装。详细历史见[CHANGELOG](CHANGELOG.md)。
+完成[实施计划](implementation_plan.md)中的4个新增真实样本、零伪造检查和统一审阅后，再决定是否把RC升级为正式2.1.0并覆盖稳定安装。评测代码与文档可正常提交GitHub，不被旧18/30矩阵阻塞。详细历史见[CHANGELOG](CHANGELOG.md)。

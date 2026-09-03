@@ -16,7 +16,7 @@ HTML = r'''<!doctype html>
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>AIWritePaper A/B 实验台</title>
+<title>AIWritePaper 精简评测台</title>
 <style>
 :root{--ink:#112126;--paper:#f4f0e8;--red:#ed5b46;--lime:#c8db57;--blue:#32697a;--line:#c9c1b4;--muted:#6c746f}
 *{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font-family:"PingFang SC","Hiragino Sans GB",sans-serif}
@@ -35,18 +35,18 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.28;ba
 @media(max-width:760px){.mast,.hero{grid-template-columns:1fr}.card{grid-template-columns:42px 1fr 70px}.phase{display:none}.shell{padding:24px 18px}.panel{box-shadow:4px 4px 0 var(--ink)}}
 </style></head>
 <body><main class="shell">
-<header class="mast"><div><div class="eyebrow">AIWritePaper · Controlled Experiment</div><h1 class="title">A/B 实验台</h1></div><div class="live"><i class="dot"></i><span id="connection">实时连接</span></div></header>
-<section class="hero"><div class="panel"><div class="label">首批 B 组 · 总体完成度</div><div class="big"><span id="overall">0</span><small style="font-size:.35em">%</small></div><div class="track"><div class="fill" id="overallFill"></div></div></div>
-<div class="panel"><div class="label">当前动作</div><div class="now" id="current">等待数据</div><div class="meta"><div><b id="done">0 / 3</b><span>实际完成</span></div><div><b id="elapsed">00:00</b><span>当前耗时</span></div></div></div></section>
+<header class="mast"><div><div class="eyebrow">AIWritePaper · Lean Benchmark</div><h1 class="title">精简评测台</h1></div><div class="live"><i class="dot"></i><span id="connection">实时连接</span></div></header>
+<section class="hero"><div class="panel"><div class="label">Grok 标杆 · Gemini 与 Codex 补充样本</div><div class="big"><span id="overall">0</span><small style="font-size:.35em">%</small></div><div class="track"><div class="fill" id="overallFill"></div></div></div>
+<div class="panel"><div class="label">当前动作</div><div class="now" id="current">等待数据</div><div class="meta"><div><b id="done">0 / 7</b><span>实际完成</span></div><div><b id="elapsed">00:00</b><span>最长运行时间</span></div></div></div></section>
 <section><div class="label" style="margin:34px 0 8px">RUN QUEUE</div><div class="cases" id="cases"></div></section>
 <footer class="foot"><span id="updated">尚未刷新</span><span>每 2 秒自动更新 · 只读监控</span></footer>
 </main>
 <script>
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function fmt(sec){sec=Math.max(0,sec||0);return `${String(Math.floor(sec/60)).padStart(2,'0')}:${String(Math.floor(sec%60)).padStart(2,'0')}`}
-async function refresh(){try{const r=await fetch('/api/status?scope=smoke-b',{cache:'no-store'});if(!r.ok)throw Error(r.status);const d=await r.json();
+async function refresh(){try{const r=await fetch('/api/status?scope=lean',{cache:'no-store'});if(!r.ok)throw Error(r.status);const d=await r.json();
 document.querySelector('#overall').textContent=d.overall_percent;document.querySelector('#overallFill').style.width=d.overall_percent+'%';document.querySelector('#done').textContent=`${d.complete_count} / ${d.cases.length}`;document.querySelector('#elapsed').textContent=fmt(d.current_elapsed_seconds);
-document.querySelector('#current').textContent=d.current?`${d.current.agent_label} · ${d.current.phase}`:'队列等待';document.querySelector('#updated').textContent=`更新 ${d.server_time}`;document.querySelector('#connection').textContent='实时连接';document.querySelector('#connection').className='';
+document.querySelector('#current').textContent=d.running_count?`${d.running_count} 个任务并行 · ${d.current.phase}`:'队列等待';document.querySelector('#updated').textContent=`更新 ${d.server_time}`;document.querySelector('#connection').textContent='实时连接';document.querySelector('#connection').className='';
 document.querySelector('#cases').innerHTML=d.cases.map((x,i)=>`<article class="card"><div class="index">${String(i+1).padStart(2,'0')}</div><div><div class="name">${esc(x.agent_label)}<span class="badge ${x.state_class}">${esc(x.status)}</span></div><div class="sub">${esc(x.title)} · ${esc(x.version)}</div><div class="mini"><i style="width:${x.progress}%"></i></div></div><div class="phase">${esc(x.phase)}<div class="sub">${x.artifact_count} 个文件 · ${fmt(x.last_activity_seconds)} 前更新</div></div><div class="pct">${x.progress}%</div></article>`).join('');
 }catch(e){document.querySelector('#connection').textContent='连接中断';document.querySelector('#connection').className='error'}}
 refresh();setInterval(refresh,2000);
@@ -72,6 +72,12 @@ def seconds_since(value: object) -> int:
 
 def infer(case: dict) -> dict:
     root = Path(case["directory"])
+    case_status = root / "case-manifest.json"
+    if case_status.is_file():
+        try:
+            case = {**case, **load(case_status)}
+        except (OSError, ValueError, json.JSONDecodeError):
+            pass
     files = [path for path in root.rglob("*") if path.is_file() and ".agents" not in path.parts and ".codex" not in path.parts and ".grok" not in path.parts and ".attempts" not in path.parts]
     output = locate_artifact_root(root)
     output_files = [path for path in output.rglob("*") if path.is_file()]
@@ -146,15 +152,24 @@ def snapshot(lab: Path, scope: str) -> dict:
     by_id = {case["case_id"]: case for case in cases}
     if scope == "all":
         selected = [by_id[case_id] for case_id in manifest["randomized_order"]]
+    elif scope == "lean":
+        lean_ids = [
+            "grok__review__B",
+            "antigravity__apos__B", "antigravity__review__B", "antigravity__circuit__B",
+            "codex__review__B", "codex__apos__B", "codex__circuit__B",
+        ]
+        selected = [by_id[case_id] for case_id in lean_ids if case_id in by_id]
     else:
         selected = [by_id[case_id] for case_id in manifest["randomized_order"] if by_id[case_id]["version"] == "v2.1.0-rc.2"][:3]
     rows = [infer(case) for case in selected]
-    running = next((row for row in rows if row["status"] == "RUNNING"), None)
+    running_rows = [row for row in rows if row["status"] == "RUNNING"]
+    running = running_rows[0] if running_rows else None
     return {
         "server_time": datetime.now().astimezone().strftime("%H:%M:%S"),
         "scope": scope, "overall_percent": round(sum(row["progress"] for row in rows) / max(len(rows), 1)),
         "complete_count": sum(row["progress"] == 100 for row in rows), "current": running,
-        "current_elapsed_seconds": running["elapsed_seconds"] if running else 0, "cases": rows,
+        "running_count": len(running_rows),
+        "current_elapsed_seconds": max((row["elapsed_seconds"] for row in running_rows), default=0), "cases": rows,
     }
 
 
@@ -174,7 +189,7 @@ def main() -> int:
             if parsed.path == "/favicon.ico":
                 self.send_response(204); self.end_headers(); return
             if parsed.path == "/api/status":
-                scope = parse_qs(parsed.query).get("scope", ["smoke-b"])[0]
+                scope = parse_qs(parsed.query).get("scope", ["lean"])[0]
                 data = json.dumps(snapshot(lab, scope), ensure_ascii=False).encode("utf-8")
                 self.send_response(200); self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.send_header("Cache-Control", "no-store"); self.send_header("Content-Length", str(len(data)))

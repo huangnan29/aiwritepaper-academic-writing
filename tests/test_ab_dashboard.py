@@ -59,6 +59,32 @@ class DashboardTests(unittest.TestCase):
         self.assertEqual(result["progress"], 68)
         self.assertEqual(result["artifact_root"], "paper-output")
 
+    def test_case_manifest_overrides_central_status(self):
+        (self.root / "case-manifest.json").write_text(json.dumps({**self.case, "status": "RUNNING"}))
+        result = MODULE.infer({**self.case, "status": "PENDING"})
+        self.assertEqual(result["status"], "RUNNING")
+        self.assertEqual(result["progress"], 4)
+
+    def test_lean_scope_selects_fixed_benchmark_set(self):
+        cases = []
+        for case_id in [
+            "grok__review__B", "antigravity__apos__B", "antigravity__review__B",
+            "antigravity__circuit__B", "codex__review__B", "codex__apos__B", "codex__circuit__B",
+            "grok__review__A",
+        ]:
+            directory = self.root / case_id
+            directory.mkdir()
+            agent = case_id.split("__", 1)[0]
+            cases.append({"case_id": case_id, "directory": str(directory), "status": "PENDING",
+                          "agent_label": agent, "title": "题目", "version": "v2.1.0-rc.2"})
+        (self.root / "ab-manifest.json").write_text(json.dumps({
+            "cases": cases, "randomized_order": [case["case_id"] for case in reversed(cases)]
+        }))
+        result = MODULE.snapshot(self.root, "lean")
+        self.assertEqual(len(result["cases"]), 7)
+        self.assertEqual(result["cases"][0]["case_id"], "grok__review__B")
+        self.assertNotIn("grok__review__A", {row["case_id"] for row in result["cases"]})
+
 
 if __name__ == "__main__":
     unittest.main()

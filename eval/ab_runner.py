@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 import hashlib
 import io
@@ -15,6 +16,7 @@ import shutil
 import subprocess
 import sys
 import tarfile
+import threading
 import time
 from typing import Any
 
@@ -183,11 +185,17 @@ def case_command(case: dict[str, Any]) -> list[str]:
     ]
 
 
-def doctor(lab: Path) -> tuple[dict[str, Any], bool]:
+def doctor(
+    lab: Path,
+    selected_agents: set[str] | None = None,
+    selected_versions: set[str] | None = None,
+) -> tuple[dict[str, Any], bool]:
     manifest = read_json(lab / MANIFEST)
     checks: dict[str, Any] = {"checked_at": now(), "agents": {}, "versions": []}
     ok = True
     for agent, info in AGENTS.items():
+        if selected_agents is not None and agent not in selected_agents:
+            continue
         binary = shutil.which(info["binary"])
         row: dict[str, Any] = {"binary": binary, "ready": bool(binary)}
         if binary:
@@ -208,6 +216,8 @@ def doctor(lab: Path) -> tuple[dict[str, Any], bool]:
                     row["ready"] = False
                 discoveries = []
                 for arm in VERSIONS:
+                    if selected_versions is not None and VERSIONS[arm]["label"] not in selected_versions:
+                        continue
                     representative = next(
                         Path(case["directory"]) for case in manifest["cases"]
                         if case["agent"] == "antigravity" and case["arm"] == arm
@@ -228,6 +238,10 @@ def doctor(lab: Path) -> tuple[dict[str, Any], bool]:
         checks["agents"][agent] = row
         ok = ok and row["ready"]
     for case in manifest["cases"]:
+        if selected_agents is not None and case["agent"] not in selected_agents:
+            continue
+        if selected_versions is not None and case["version"] not in selected_versions:
+            continue
         directory = Path(case["directory"])
         skill_file = directory / case["skill_file"]
         actual = skill_version(skill_file) if skill_file.is_file() else None
@@ -324,29 +338,39 @@ def run_cases(lab: Path, args: argparse.Namespace) -> int:
             for case in cases
         ]}, ensure_ascii=False, indent=2))
         return 0
-    health, _ = doctor(lab)
+    selected_agents = {case["agent"] for case in cases}
+    selected_versions = {case["version"] for case in cases}
+    health, _ = doctor(lab, selected_agents, selected_versions)
     blocked_agents = sorted({case["agent"] for case in cases if not health["agents"][case["agent"]]["ready"]})
     if blocked_agents:
         print(json.dumps({"status": "BLOCKED", "agents": blocked_agents,
                           "doctor_report": str(lab / "doctor-report.json")}, ensure_ascii=False))
         return 2
-    failures = 0
-    for case in cases:
+    manifest_lock = threading.Lock()
+
+    def set_case(case: dict[str, Any], **values: Any) -> None:
+        with manifest_lock:
+            case.update(values)
+            write_json(Path(case["directory"]) / "case-manifest.json", case)
+            write_json(manifest_path, manifest)
+
+    def run_one(case: dict[str, Any]) -> bool:
         binary = shutil.which(AGENTS[case["agent"]]["binary"])
         if not binary:
-            case.update(status="BLOCKED", error="AGENT_BINARY_MISSING", finished_at=now())
-            failures += 1
-            write_json(manifest_path, manifest)
-            continue
+            set_case(case, status="BLOCKED", error="AGENT_BINARY_MISSING", finished_at=now())
+            return False
         directory = Path(case["directory"])
         archived = None
         if int(case.get("attempts", 0)) > 0 and case.get("status") != "COMPLETE":
             archived = archive_previous_attempt(directory, int(case["attempts"]))
-        case.update(status="RUNNING", attempts=int(case.get("attempts", 0)) + 1, started_at=now(), error=None,
-                    reasoning_effort=case.get("reasoning_effort") or AGENTS[case["agent"]].get("reasoning_effort"))
+        running_fields = {
+            "status": "RUNNING", "attempts": int(case.get("attempts", 0)) + 1,
+            "started_at": now(), "error": None,
+            "reasoning_effort": case.get("reasoning_effort") or AGENTS[case["agent"]].get("reasoning_effort"),
+        }
         if archived is not None:
-            case["previous_attempt_archive"] = str(archived)
-        write_json(manifest_path, manifest)
+            running_fields["previous_attempt_archive"] = str(archived)
+        set_case(case, **running_fields)
         command = case_command(case)
         started = time.monotonic()
         try:
@@ -356,27 +380,41 @@ def run_cases(lab: Path, args: argparse.Namespace) -> int:
                                         timeout=args.timeout_hours * 3600, check=False, text=True)
             exit_code = result.returncode
         except KeyboardInterrupt:
-            case.update(status="FINISHED_INCOMPLETE", exit_code=130, error="INTERRUPTED",
-                        elapsed_seconds=round(time.monotonic() - started, 1), finished_at=now())
-            write_json(directory / "case-manifest.json", case)
-            write_json(manifest_path, manifest)
-            return 130
+            set_case(case, status="FINISHED_INCOMPLETE", exit_code=130, error="INTERRUPTED",
+                     elapsed_seconds=round(time.monotonic() - started, 1), finished_at=now())
+            return False
         except subprocess.TimeoutExpired:
             exit_code = 124
-            case["error"] = "TIMEOUT"
+            error = "TIMEOUT"
         except OSError as exc:
             exit_code = 127
-            case["error"] = str(exc)
+            error = str(exc)
+        else:
+            error = None
         delivery = inspect_delivery(directory)
-        case.update(
+        set_case(
+            case,
             status="COMPLETE" if exit_code == 0 and delivery["complete_files"] else "FINISHED_INCOMPLETE",
             exit_code=exit_code, elapsed_seconds=round(time.monotonic() - started, 1),
-            delivery=delivery, finished_at=now(),
+            delivery=delivery, finished_at=now(), error=error,
         )
-        write_json(directory / "case-manifest.json", case)
-        write_json(manifest_path, manifest)
-        if case["status"] != "COMPLETE":
-            failures += 1
+        return case["status"] == "COMPLETE"
+
+    workers = max(1, min(args.parallel, len(cases)))
+    if workers == 1:
+        results = [run_one(case) for case in cases]
+    else:
+        with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="paper-eval") as pool:
+            futures = {pool.submit(run_one, case): case["case_id"] for case in cases}
+            results = []
+            for future in as_completed(futures):
+                try:
+                    results.append(future.result())
+                except Exception as exc:
+                    case = next(item for item in cases if item["case_id"] == futures[future])
+                    set_case(case, status="FINISHED_INCOMPLETE", error=str(exc), finished_at=now())
+                    results.append(False)
+    failures = sum(not result for result in results)
     return 1 if failures else 0
 
 
@@ -490,15 +528,16 @@ def parser() -> argparse.ArgumentParser:
     value = argparse.ArgumentParser(description="AIWritePaper隔离A/B控制器")
     value.add_argument("--lab", required=True, type=Path, help="独立A/B根目录")
     sub = value.add_subparsers(dest="action", required=True)
-    init = sub.add_parser("init", help="一次建立18个版本隔离目录")
+    init = sub.add_parser("init", help="建立兼容旧协议的版本隔离目录")
     init.add_argument("--seed", type=int, default=2102)
     sub.add_parser("doctor", help="检查登录、CLI与Skill版本")
-    run = sub.add_parser("run", help="按随机顺序执行并可断点续跑")
+    run = sub.add_parser("run", help="在隔离目录中执行，可并行和断点续跑")
     run.add_argument("--agent", action="append", choices=sorted(AGENTS))
     run.add_argument("--version", action="append", choices=[item["label"] for item in VERSIONS.values()])
     run.add_argument("--topic", action="append", choices=sorted(TOPICS))
     run.add_argument("--limit", type=int)
     run.add_argument("--timeout-hours", type=int, default=8)
+    run.add_argument("--parallel", type=int, default=1, help="并行任务数；每个任务使用独立目录和日志")
     run.add_argument("--rerun", action="store_true")
     run.add_argument("--dry-run", action="store_true")
     sub.add_parser("status", help="核对真实文件与运行状态")
