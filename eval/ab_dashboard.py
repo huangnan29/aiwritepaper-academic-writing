@@ -152,7 +152,7 @@ def snapshot(lab: Path, scope: str) -> dict:
     by_id = {case["case_id"]: case for case in cases}
     if scope == "all":
         selected = [by_id[case_id] for case_id in manifest["randomized_order"]]
-    elif scope == "lean":
+    elif scope in {"lean", "smoke-b"}:
         lean_ids = [
             "grok__review__B",
             "antigravity__apos__B", "antigravity__review__B", "antigravity__circuit__B",
