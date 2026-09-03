@@ -363,7 +363,8 @@ def status(lab: Path) -> dict[str, Any]:
     rows = []
     for case in manifest["cases"]:
         delivery = inspect_delivery(Path(case["directory"]))
-        current = "COMPLETE" if delivery["complete_files"] else case.get("status", "PENDING")
+        stored = case.get("status", "PENDING")
+        current = stored if stored == "RUNNING" else ("COMPLETE" if delivery["complete_files"] else stored)
         counts[current] = counts.get(current, 0) + 1
         rows.append({"case_id": case["case_id"], "version": case["version"], "status": current,
                      "final_status": (delivery.get("authoritative_status") or {}).get("final_status")})

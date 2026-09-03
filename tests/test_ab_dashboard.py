@@ -39,7 +39,17 @@ class DashboardTests(unittest.TestCase):
 
     def test_adjudication_means_complete(self):
         (self.root / "14-adjudicated-status.json").write_text(json.dumps({"status": "ADJUDICATED_PARTIAL"}))
+        self.assertEqual(MODULE.infer(self.case)["progress"], 99)
+        self.case["status"] = "COMPLETE"
         self.assertEqual(MODULE.infer(self.case)["progress"], 100)
+
+    def test_running_failed_adjudication_is_repairing(self):
+        (self.root / "14-adjudicated-status.json").write_text(json.dumps({
+            "authoritative_status": {"final_status": "FAIL"}
+        }))
+        result = MODULE.infer(self.case)
+        self.assertEqual(result["progress"], 97)
+        self.assertEqual(result["phase"], "返修与复验")
 
 
 if __name__ == "__main__":

@@ -94,9 +94,20 @@ def infer(case: dict) -> dict:
         progress, phase = 90 if docx and pdf else 86, "文档导出"
     if "13-delivery-verification.json" in names:
         progress, phase = 95, "最终机械验收"
-    if "14-adjudicated-status.json" in names:
-        progress, phase = 100, "完成"
     status = case.get("status", "PENDING")
+    if "14-adjudicated-status.json" in names:
+        final_status = None
+        try:
+            adjudication = load(root / "14-adjudicated-status.json")
+            final_status = (adjudication.get("authoritative_status") or {}).get("final_status")
+        except (OSError, ValueError, json.JSONDecodeError):
+            pass
+        if status == "RUNNING":
+            progress, phase = (97, "返修与复验") if final_status == "FAIL" else (99, "完成前收尾")
+        elif status == "COMPLETE":
+            progress, phase = 100, "完成"
+        else:
+            progress, phase = 97, "裁决后待收尾"
     if status == "COMPLETE" and progress < 100:
         progress, phase = 99, "等待最终状态同步"
     if status in {"FINISHED_INCOMPLETE", "BLOCKED"}:
