@@ -12,6 +12,8 @@
 - [x] 同源Compact恢复，19方向保守最终输入不超过15KB。
 - [x] 合并阶段辅助并精简六个Agent适配器。
 - [x] 新增写作流外冻结评审包。
+- [x] 新增无需切换仓库的18任务A/B控制器，并完成Codex、Grok Build、Antigravity CLI环境doctor。
+- [x] Antigravity A/B固定使用`agy`与Gemini 3.8 Flash High，A/B两臂项目级Skill均已实际发现。
 - [x] 更新Skill入口、README、CHANGELOG和UI元数据。
 - [ ] 运行Grok Build、Codex＋Sol、Antigravity三方向同题A/B。
 - [ ] 运行完整30次盲评A/B并达到非劣门。

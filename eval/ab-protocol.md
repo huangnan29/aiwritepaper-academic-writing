@@ -1,5 +1,7 @@
 # 2.1.0候选真实论文A/B协议
 
+本协议由`eval/ab_runner.py`自动执行；无需手工切换Git分支、标签或全局Skill。控制器为每个Agent、题目和版本建立独立项目级Skill快照，自动记录版本摘要、运行日志和完成状态。
+
 ## 小规模发布门
 
 固定三个题目：
@@ -8,7 +10,7 @@
 2. 数学教育：`APOS理论视角下高中函数概念教学设计研究`
 3. 文献综述：`大语言模型支持形成性评价的研究进展与证据综合`
 
-固定三个环境：Grok Build、Codex＋Sol、Antigravity。每个环境分别运行v1.9.1和v2.1.0-rc.2，共18个运行位。题目、材料、字数、工具暴露和时间窗保持一致；输出目录只写本次结果，不读取另一臂。
+固定三个环境：Grok Build（Grok 4.6）、Codex（GPT-5.6-Sol）、Antigravity CLI（Gemini 3.8 Flash High）。每个环境分别运行v1.9.1和v2.1.0-rc.2，共18个运行位。题目、材料、字数、工具暴露和时间窗保持一致；输出目录只写本次结果，不读取另一臂。
 
 每次仅给简短提示：
 
@@ -17,6 +19,8 @@
 ```
 
 RC测试时明确从GitHub标签`v2.1.0-rc.2`或本地候选路径加载，不能只改目录名。旧版同理固定标签。
+
+当前自动实验根目录：`/Users/anan/Desktop/paper-test/aiwritepaper-ab-2.1.0-rc.2`。已经初始化18个运行位，doctor确认Codex、Grok Build和Antigravity CLI均可用；Antigravity固定`agy` 1.1.24暴露的`gemini-3.8-flash-high`。
 
 ## 盲评
 

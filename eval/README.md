@@ -2,6 +2,32 @@
 
 本目录不进入论文写作提示词。论文生产结束后，先冻结评审包，再由另一会话、另一模型或人工盲评。写作进程不得创建数字评分或把SELF改名为ISOLATED。
 
+## 自动A/B控制器
+
+不需要切换仓库版本。控制器把v1.9.1与v2.1.0-rc.2分别提取到18个独立项目目录，固定随机顺序，并直接调用Codex、Grok Build与Antigravity CLI。默认模型分别为GPT-5.6-Sol、Grok 4.6和Gemini 3.8 Flash High。
+
+```bash
+LAB="/Users/anan/Desktop/paper-test/aiwritepaper-ab-2.1.0-rc.2"
+
+uv run python eval/ab_runner.py --lab "$LAB" init
+uv run python eval/ab_runner.py --lab "$LAB" doctor
+uv run python eval/ab_runner.py --lab "$LAB" run --dry-run
+uv run python eval/ab_runner.py --lab "$LAB" run
+uv run python eval/ab_runner.py --lab "$LAB" status
+```
+
+`run`按固定随机序列逐个执行，已完成任务自动跳过；可以用`--agent`、`--version`、`--topic`和`--limit`先跑小批次。所有命令使用参数数组，不拼接shell。Antigravity通过真实`agy`命令运行，并在沙箱中自动批准当前任务所需工具；Grok和Codex使用各自无交互模式。
+
+完成后匿名和汇总：
+
+```bash
+uv run python eval/ab_runner.py --lab "$LAB" blind
+# 独立审阅者把R001.json等结果写入 "$LAB/reviews/"
+uv run python eval/ab_runner.py --lab "$LAB" summarize
+```
+
+`blind-map.private.json`权限为600，不交给审阅者；匿名副本去除Skill、Prompt、模型与版本路径。控制器不会修改用户级全局Skill。
+
 ```bash
 uv run python eval/build_review_package.py --root <论文目录> --output <独立评测目录>/review-package.json
 ```

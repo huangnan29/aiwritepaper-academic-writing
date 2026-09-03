@@ -40,6 +40,13 @@
 - 保留文献全文定位、数据来源、ImageGen实际嵌入、中文图、OMML、目录、题注、表格缩进、正文长度和文件摘要门。
 - 成功生图不能被SVG替换；精确领域图必须读取适用源表。
 
+### A/B自动化
+
+- `eval/ab_runner.py`一次生成18个Agent×题目×版本隔离目录，不切换全局仓库。
+- 支持doctor、固定随机顺序、无交互运行、断点续跑、真实交付检测、匿名副本与差值汇总。
+- 当前实验根目录为`/Users/anan/Desktop/paper-test/aiwritepaper-ab-2.1.0-rc.2`，18个运行位均为PENDING。
+- Codex、Grok Build和Antigravity CLI登录/模型检查通过；Antigravity两臂均确认加载各自项目级Skill，模型固定Gemini 3.8 Flash High。
+
 ## 候选验收
 
 - 全量Python测试、Node SVG测试、19方向编译同步和Skill入口校验必须通过。

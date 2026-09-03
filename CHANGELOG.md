@@ -1,5 +1,11 @@
 # 更新记录
 
+## Unreleased
+
+- 新增`eval/ab_runner.py`，一次创建v1.9.1与v2.1.0-rc.2的18个隔离运行位，无需切换Git分支或覆盖全局Skill。
+- 支持Codex、Grok Build与Antigravity CLI无交互启动、环境doctor、固定随机顺序、断点续跑、实际交付检测、匿名评审包和A/B差值汇总。
+- Antigravity固定使用真实`agy` CLI与`gemini-3.8-flash-high`；不再以Gemini CLI代替。
+
 ## 2.1.0-rc.2 - 2026-09-02
 
 - 修复RC在GitHub Python 3.8环境中因ReportLab依赖`hashlib usedforsecurity`而失败的问题；明确脚本运行基线为Python 3.9+。

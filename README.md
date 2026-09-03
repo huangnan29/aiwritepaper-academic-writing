@@ -148,6 +148,8 @@ uv run python eval/build_review_package.py \
 
 再由独立会话、另一模型或人工盲评。写作进程不会创建数字评分，也不会用评分覆盖机械失败。历史评分器与57任务矩阵仅作为维护资料，不代表已经跑完。
 
+A/B不需要手工切换仓库版本。`eval/ab_runner.py`可以一次建立v1.9.1与v2.1.0-rc.2的18个隔离运行位，自动调用Codex、Grok Build和Antigravity CLI、断点续跑、核对真实文件、匿名评审并生成差值表。使用方式见[评测说明](eval/README.md)。Antigravity测试固定使用其真实`agy` CLI与`gemini-3.8-flash-high`，不以Gemini CLI代替。
+
 ## 历史Agent观察
 
 既有批次的题目、版本和审查严格度不同，不能作为绝对模型排行榜。相对稳定的现象是：Grok Build/Grok 4.6通常具有较高完整度和较好的原生生图执行；Kimi正文配合WorkBuddy K3完成最终Word的历史样本完成度较高，但必须标记为模型接力，不能并成单一K3成绩；Gemini 3.7 Flash/Antigravity曾出现内容、排版、SVG和证据可靠性问题；MiniMax M3/Claude Code历史批次还出现过内容、引用和Word结构严重缺失。Z.ai与DeepSeek-tui有过较好单篇结果，但样本量不足。
