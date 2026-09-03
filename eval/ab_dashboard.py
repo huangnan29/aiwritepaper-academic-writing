@@ -36,8 +36,8 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.28;ba
 </style></head>
 <body><main class="shell">
 <header class="mast"><div><div class="eyebrow">AIWritePaper · Lean Benchmark</div><h1 class="title">精简评测台</h1></div><div class="live"><i class="dot"></i><span id="connection">实时连接</span></div></header>
-<section class="hero"><div class="panel"><div class="label">Grok 标杆 · Gemini 与 Codex 补充样本</div><div class="big"><span id="overall">0</span><small style="font-size:.35em">%</small></div><div class="track"><div class="fill" id="overallFill"></div></div></div>
-<div class="panel"><div class="label">当前动作</div><div class="now" id="current">等待数据</div><div class="meta"><div><b id="done">0 / 7</b><span>实际完成</span></div><div><b id="elapsed">00:00</b><span>最长运行时间</span></div></div></div></section>
+<section class="hero"><div class="panel"><div class="label">Grok 标杆 · Gemini 3.8 弱模型观察</div><div class="big"><span id="overall">0</span><small style="font-size:.35em">%</small></div><div class="track"><div class="fill" id="overallFill"></div></div></div>
+<div class="panel"><div class="label">当前动作</div><div class="now" id="current">等待数据</div><div class="meta"><div><b id="done">0 / 6</b><span>实际完成</span></div><div><b id="elapsed">00:00</b><span>最长运行时间</span></div></div></div></section>
 <section><div class="label" style="margin:34px 0 8px">RUN QUEUE</div><div class="cases" id="cases"></div></section>
 <footer class="foot"><span id="updated">尚未刷新</span><span>每 2 秒自动更新 · 只读监控</span></footer>
 </main>
@@ -155,9 +155,8 @@ def snapshot(lab: Path, scope: str) -> dict:
         selected = [by_id[case_id] for case_id in manifest["randomized_order"]]
     elif scope in {"lean", "smoke-b"}:
         lean_ids = [
-            "grok__review__B",
+            "grok__review__B", "grok__apos__B", "grok__circuit__B",
             "antigravity__apos__B", "antigravity__review__B", "antigravity__circuit__B",
-            "codex__review__B", "codex__apos__B", "codex__circuit__B",
         ]
         selected = [by_id[case_id] for case_id in lean_ids if case_id in by_id]
     else:

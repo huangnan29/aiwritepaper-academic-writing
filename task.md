@@ -16,9 +16,9 @@
 - [x] Antigravity固定使用`agy`与Gemini 3.8 Flash High，项目级候选Skill已实际发现。
 - [x] 更新Skill入口、README、CHANGELOG和UI元数据。
 - [x] 取消旧版复跑、18次A/B和30次扩展矩阵；Grok复用为标杆。
-- [x] Gemini APOS、Codex综述和Grok综述候选样本已经完成。
-- [ ] 并行完成Gemini电子电路/综述与Codex电子电路/APOS四个新增样本。
-- [ ] 冻结7个精简样本并完成统一审阅。
+- [x] Gemini APOS和Grok综述候选样本已经完成。
+- [ ] 并行完成Gemini电子电路/综述与Grok电子电路/APOS四个新增样本。
+- [ ] 冻结6个精简样本并完成统一审阅。
 - [ ] 将RC升级为正式2.1.0并覆盖各Agent稳定安装。
 
 当前状态：`2.1.0-rc.2`工程候选。评测文件可以正常提交GitHub；稳定版升级只等待4个真实新增样本和独立评分。

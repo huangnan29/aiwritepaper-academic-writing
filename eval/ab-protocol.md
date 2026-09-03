@@ -6,9 +6,7 @@
 
 1. Grok Build / Grok 4.6作为稳定标杆，复用已经完成的综述样本和既有多方向历史结果，不重复消耗生成Token。
 2. Antigravity CLI / Gemini 3.8 Flash High作为弱模型观察组，共三题：已完成APOS，新增电子电路和文献综述。
-3. Codex / GPT-5.6-Sol作为补充对照，共三题：已完成文献综述，新增电子电路和APOS；不承担标杆角色。
-
-新增任务只有4个。四个任务分别写入独立目录、独立日志和独立`case-manifest.json`，允许同时运行；总Manifest只汇总状态。Grok标杆不重跑，故本轮没有Skill版本切换。
+3. Grok新增电子电路和APOS，Gemini新增电子电路和文献综述，共4个任务。四篇分别写入独立目录、独立日志和独立`case-manifest.json`并同时运行；总Manifest只汇总状态。所有任务使用同一候选版本，故本轮没有Skill版本切换。
 
 固定题目：
 

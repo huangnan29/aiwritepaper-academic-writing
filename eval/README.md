@@ -4,19 +4,19 @@
 
 ## 当前精简测试
 
-当前只保留Grok标杆、Gemini 3.8 Flash弱模型观察和Codex补充对照。已完成结果直接复用，只新增Gemini两篇与Codex两篇。四篇使用同一个`v2.1.0-rc.2`快照，但在四个完全独立的项目目录中并行执行，不需要切换仓库版本。
+当前只保留Grok标杆和Gemini 3.8 Flash弱模型观察。已完成结果直接复用，只新增Grok两篇与Gemini两篇。四篇使用同一个`v2.1.0-rc.2`快照，但在四个完全独立的项目目录中并行执行，不需要切换仓库版本。
 
 ```bash
 LAB="/Users/anan/Desktop/paper-test/aiwritepaper-ab-2.1.0-rc.2"
 
 uv run python eval/ab_runner.py --lab "$LAB" run \
-  --agent antigravity --agent codex \
+  --agent antigravity --agent grok \
   --version v2.1.0-rc.2 \
   --topic circuit --topic apos --topic review \
   --parallel 4
 ```
 
-已完成的Gemini APOS和Codex综述会自动跳过，因此实际只启动4篇。每篇独立写`case-manifest.json`与运行日志；总Manifest的写入经过同步保护。任一任务失败不会修改其他任务的论文文件。
+已完成的Gemini APOS和Grok综述会自动跳过，因此实际只启动4篇。每篇独立写`case-manifest.json`与运行日志；总Manifest的写入经过同步保护。任一任务失败不会修改其他任务的论文文件。
 
 动态进度页：
 
@@ -24,11 +24,11 @@ uv run python eval/ab_runner.py --lab "$LAB" run \
 uv run python eval/ab_dashboard.py --lab "$LAB" --port 8766
 ```
 
-浏览器打开`http://127.0.0.1:8766`。页面每2秒从各任务的真实文件和独立状态读取进度，展示7个精简样本；页面只读。
+浏览器打开`http://127.0.0.1:8766`。页面每2秒从各任务的真实文件和独立状态读取进度，展示6个精简样本；页面只读。
 
 ## 控制器边界
 
-`ab_runner.py`仍保留旧实验目录的兼容能力，但当前协议不要求重跑v1.9.1，也不要求完成18/30任务矩阵。Antigravity使用真实`agy`与`gemini-3.8-flash-high`；Codex使用当前账户登录与GPT-5.6-Sol medium。所有命令使用参数数组，不拼接Shell。
+`ab_runner.py`仍保留旧实验目录的兼容能力，但当前协议不要求重跑v1.9.1，也不要求完成18/30任务矩阵。Antigravity使用真实`agy`与`gemini-3.8-flash-high`，Grok Build使用Grok 4.6。所有命令使用参数数组，不拼接Shell。
 
 运行结束后可冻结匿名材料：
 

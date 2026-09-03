@@ -68,8 +68,8 @@ class DashboardTests(unittest.TestCase):
     def test_lean_scope_selects_fixed_benchmark_set(self):
         cases = []
         for case_id in [
-            "grok__review__B", "antigravity__apos__B", "antigravity__review__B",
-            "antigravity__circuit__B", "codex__review__B", "codex__apos__B", "codex__circuit__B",
+            "grok__review__B", "grok__apos__B", "grok__circuit__B",
+            "antigravity__apos__B", "antigravity__review__B", "antigravity__circuit__B",
             "grok__review__A",
         ]:
             directory = self.root / case_id
@@ -81,7 +81,7 @@ class DashboardTests(unittest.TestCase):
             "cases": cases, "randomized_order": [case["case_id"] for case in reversed(cases)]
         }))
         result = MODULE.snapshot(self.root, "lean")
-        self.assertEqual(len(result["cases"]), 7)
+        self.assertEqual(len(result["cases"]), 6)
         self.assertEqual(result["cases"][0]["case_id"], "grok__review__B")
         self.assertNotIn("grok__review__A", {row["case_id"] for row in result["cases"]})
 

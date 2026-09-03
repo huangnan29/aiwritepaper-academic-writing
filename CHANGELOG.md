@@ -2,12 +2,12 @@
 
 ## Unreleased
 
-- 将过度的18次版本A/B和30次扩展矩阵剪枝为7个精简样本：Grok标杆、Gemini 3.8 Flash弱模型观察和Codex补充对照；不重跑旧版。
+- 将过度的18次版本A/B和30次扩展矩阵剪枝为6个精简样本：Grok标杆与Gemini 3.8 Flash弱模型观察；不重跑旧版。
 - `eval/ab_runner.py`新增隔离目录并行执行；每篇拥有独立状态与日志，总Manifest同步汇总，单篇失败不污染其他论文。
-- 当前只新增Gemini两篇与Codex两篇，支持`--parallel 4`同时运行；已完成样本自动复用。
+- 当前只新增Gemini两篇与Grok两篇，支持`--parallel 4`同时运行；已完成样本自动复用。
 - Antigravity固定使用真实`agy` CLI与`gemini-3.8-flash-high`；不再以Gemini CLI代替。
 - Antigravity不启用会阻断`uv`与项目`.venv`的OS终端沙箱；改为独立项目目录、自动权限和Skill输出边界，并记录中断/失败尝试。
-- `eval/ab_dashboard.py`改为7样本精简评测台，每2秒读取各目录真实状态，并显示并行任务数、最长耗时和逐篇进度；页面只读。
+- `eval/ab_dashboard.py`改为6样本精简评测台，每2秒读取各目录真实状态，并显示并行任务数、最长耗时和逐篇进度；页面只读。
 - 修复Codex无交互命令误传`-a`导致立即退出的问题；保留当前用户保存的ChatGPT登录，仅使用官方支持的`codex exec --sandbox workspace-write`。
 - Codex A/B固定为GPT-5.6-Sol、`model_reasoning_effort="medium"`；上一轮`reasoning effort: none`结果标记为无效配置并在重跑前归档。
 
