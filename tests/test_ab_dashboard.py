@@ -51,6 +51,14 @@ class DashboardTests(unittest.TestCase):
         self.assertEqual(result["progress"], 97)
         self.assertEqual(result["phase"], "返修与复验")
 
+    def test_nested_output_updates_progress(self):
+        output = self.root / "paper-output"
+        output.mkdir()
+        (output / "07-paper-full.md").write_text("正文")
+        result = MODULE.infer(self.case)
+        self.assertEqual(result["progress"], 68)
+        self.assertEqual(result["artifact_root"], "paper-output")
+
 
 if __name__ == "__main__":
     unittest.main()

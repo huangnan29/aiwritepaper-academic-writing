@@ -92,6 +92,19 @@ class ABRunnerTests(unittest.TestCase):
         self.assertTrue((directory / "prompt.txt").is_file())
         self.assertTrue((directory / case["skill_file"]).is_file())
 
+    def test_nested_paper_output_is_detected(self):
+        output = self.lab / "paper-output"
+        output.mkdir(parents=True)
+        (output / "07-paper-full.md").write_text("正文")
+        (output / "论文_20260902-120000.docx").write_bytes(b"docx")
+        (output / "论文_20260902-120000.pdf").write_bytes(b"pdf")
+        (output / "14-adjudicated-status.json").write_text(json.dumps({
+            "authoritative_status": {"final_status": "PARTIAL"}
+        }))
+        result = MODULE.inspect_delivery(self.lab)
+        self.assertTrue(result["complete_files"])
+        self.assertEqual(result["artifact_root"], "paper-output")
+
 
 if __name__ == "__main__":
     unittest.main()

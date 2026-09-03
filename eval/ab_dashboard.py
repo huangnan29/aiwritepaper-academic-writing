@@ -73,7 +73,9 @@ def seconds_since(value: object) -> int:
 def infer(case: dict) -> dict:
     root = Path(case["directory"])
     files = [path for path in root.rglob("*") if path.is_file() and ".agents" not in path.parts and ".codex" not in path.parts and ".grok" not in path.parts and ".attempts" not in path.parts]
-    names = {str(path.relative_to(root)) for path in files}
+    output = locate_artifact_root(root)
+    output_files = [path for path in output.rglob("*") if path.is_file()]
+    names = {str(path.relative_to(output)) for path in output_files}
     progress, phase = 0, "等待启动"
     if case.get("status") in {"RUNNING", "FINISHED_INCOMPLETE", "COMPLETE"}:
         progress, phase = 4, "启动Agent"
@@ -88,8 +90,8 @@ def infer(case: dict) -> dict:
     if "figures/figure-manifest.json" in names:
         image_count = sum(Path(name).suffix.lower() in {".png", ".jpg", ".jpeg", ".webp"} for name in names if name.startswith("figures/"))
         progress, phase = min(84, 76 + image_count), "配图与视觉检查"
-    docx = any(path.parent == root and path.suffix.lower() == ".docx" for path in files)
-    pdf = any(path.parent == root and path.suffix.lower() == ".pdf" for path in files)
+    docx = any(path.parent == output and path.suffix.lower() == ".docx" for path in output_files)
+    pdf = any(path.parent == output and path.suffix.lower() == ".pdf" for path in output_files)
     if docx or pdf:
         progress, phase = 90 if docx and pdf else 86, "文档导出"
     if "13-delivery-verification.json" in names:
@@ -98,7 +100,7 @@ def infer(case: dict) -> dict:
     if "14-adjudicated-status.json" in names:
         final_status = None
         try:
-            adjudication = load(root / "14-adjudicated-status.json")
+            adjudication = load(output / "14-adjudicated-status.json")
             final_status = (adjudication.get("authoritative_status") or {}).get("final_status")
         except (OSError, ValueError, json.JSONDecodeError):
             pass
@@ -117,7 +119,25 @@ def infer(case: dict) -> dict:
     last_activity_seconds = max(0, int(datetime.now().timestamp() - latest)) if latest else 0
     return {**case, "progress": progress, "phase": phase, "artifact_count": len(files),
             "elapsed_seconds": seconds_since(case.get("started_at")),
-            "last_activity_seconds": last_activity_seconds, "state_class": state_class}
+            "last_activity_seconds": last_activity_seconds, "state_class": state_class,
+            "artifact_root": str(output.relative_to(root)) if output != root else "."}
+
+
+def locate_artifact_root(root: Path) -> Path:
+    if (root / "07-paper-full.md").is_file() or (root / "14-adjudicated-status.json").is_file():
+        return root
+    candidates = []
+    for name in ("07-paper-full.md", "run-manifest.json", "final-execution-prompt.md"):
+        for path in root.rglob(name):
+            if any(part in {".codex", ".grok", ".agents", ".attempts"} for part in path.parts):
+                continue
+            candidates.append(path.parent)
+    if not candidates:
+        return root
+    return sorted(
+        set(candidates),
+        key=lambda path: (0 if (path / "07-paper-full.md").is_file() else 1, len(path.parts), str(path)),
+    )[0]
 
 
 def snapshot(lab: Path, scope: str) -> dict:

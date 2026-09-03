@@ -256,10 +256,11 @@ def selected_cases(manifest: dict[str, Any], args: argparse.Namespace) -> list[d
 
 
 def inspect_delivery(directory: Path) -> dict[str, Any]:
-    docx = list(directory.glob("*.docx"))
-    pdf = list(directory.glob("*.pdf"))
-    adjudication = directory / "14-adjudicated-status.json"
-    body = directory / "07-paper-full.md"
+    output = locate_artifact_root(directory)
+    docx = list(output.glob("*.docx"))
+    pdf = list(output.glob("*.pdf"))
+    adjudication = output / "14-adjudicated-status.json"
+    body = output / "07-paper-full.md"
     complete = body.is_file() and bool(docx) and bool(pdf) and adjudication.is_file()
     authority = None
     if adjudication.is_file():
@@ -271,7 +272,26 @@ def inspect_delivery(directory: Path) -> dict[str, Any]:
         "complete_files": complete, "body": body.is_file(), "docx": [path.name for path in docx],
         "pdf": [path.name for path in pdf], "adjudication": adjudication.is_file(),
         "authoritative_status": authority,
+        "artifact_root": str(output.relative_to(directory)) if output != directory else ".",
     }
+
+
+def locate_artifact_root(directory: Path) -> Path:
+    """兼容Agent在任务根目录内建立paper-output等单一成果子目录。"""
+    if (directory / "07-paper-full.md").is_file() or (directory / "14-adjudicated-status.json").is_file():
+        return directory
+    candidates = []
+    for name in ("07-paper-full.md", "run-manifest.json", "final-execution-prompt.md"):
+        for path in directory.rglob(name):
+            if any(part in {".codex", ".grok", ".agents", ".attempts"} for part in path.parts):
+                continue
+            candidates.append(path.parent)
+    if not candidates:
+        return directory
+    return sorted(
+        set(candidates),
+        key=lambda path: (0 if (path / "07-paper-full.md").is_file() else 1, len(path.parts), str(path)),
+    )[0]
 
 
 def archive_previous_attempt(directory: Path, attempt: int) -> Path | None:
@@ -384,7 +404,8 @@ def make_blind(lab: Path, seed: int) -> dict[str, Any]:
     if (lab / "blind-map.private.json").exists():
         raise ValueError("匿名映射已存在，拒绝重新随机化")
     for case, review_id in zip(complete, identifiers):
-        source = Path(case["directory"])
+        case_directory = Path(case["directory"])
+        source = locate_artifact_root(case_directory)
         target = blind_root / review_id
         target.mkdir(parents=True, exist_ok=False)
         ignored = {".codex", ".grok", ".agents", ".audit-logs", "case-manifest.json", "prompt.txt",
