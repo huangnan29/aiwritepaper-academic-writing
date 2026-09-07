@@ -11,7 +11,7 @@
 
 </div>
 
-> `2.1.0-rc.2` 是候选版本。工程回归通过不等于论文稳定达到90分；当前只采用Grok标杆和Gemini 3.8 Flash弱模型观察进行精简真实测试。
+> 当前主分支整体版本为 `2.1.0-rc.2`。升级后直接测试当前版本并逐篇评分，不要求旧版A/B。Grok用于标杆测试，Gemini用于适应性观察；Codex由用户自行测试。
 
 ## 一句话使用
 
@@ -196,4 +196,4 @@ uv run python -m unittest discover -s tests -p 'test_*.py'
 node --test tests/test_render_svg_layout.mjs
 ```
 
-完成[实施计划](implementation_plan.md)中的4个新增真实样本、零伪造检查和统一审阅后，再决定是否把RC升级为正式2.1.0并覆盖稳定安装。评测代码与文档可正常提交GitHub，不被旧18/30矩阵阻塞。详细历史见[CHANGELOG](CHANGELOG.md)。
+整体版本正常提交主分支，论文测试和评分随后更新。保留实际版本号，不把工程通过或文件齐全解释为内容达标。Grok于2026-09-06交付的19方向批次正在独立审阅，作者记录的PASS/PARTIAL尚不等于本次评分结论。历史双版本控制器仅作兼容工具，已知的跨进程状态覆盖、旧样本选择和A/B汇总依赖尚待修复，不作为本轮评分入口。详细历史见[CHANGELOG](CHANGELOG.md)。
