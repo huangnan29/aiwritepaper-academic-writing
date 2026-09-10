@@ -49,6 +49,7 @@ DOCX与PDF来自同一份07-paper-full.md和同一图表清单。导出时固定
 <!-- 公共CORE来源：references/common/academic-figures.md -->
 
 每图先写目的、正文位置、事实节点/边、逐字标签、禁止项和精确性。生图能力真实可用时，普通流程、架构、组织和概念图必须用IMAGE_GENERATION，并逐图给出详细Prompt；统计图用DATA_CODE；引脚、电路、化学结构和尺度图用DOMAIN_EXACT；真实影像用EVIDENCE_FILE。只有无生图工具、用户要求矢量或出版限制时才SVG_FALLBACK。成功生图及其中文覆盖PNG必须成为final_embed_file并实际进入Word/PDF，不能被同号SVG替换。
+先从最终图复述关系再对照正文；流程检查正常与异常分支，核对年份、数值及端点。错图局部修复，不以回执或“示意图”免责。
 <!-- /task-module -->
 
 <!-- task-module:statistical-figures-and-trace -->
@@ -60,19 +61,19 @@ DOCX与PDF来自同一份07-paper-full.md和同一图表清单。导出时固定
 <!-- task-module:academic-prose-quality -->
 <!-- 公共CORE来源：references/common/academic-prose-quality.md -->
 
-段落提出具体判断，说明材料如何支持、反例和边界。相邻段落必须增加信息；列表只用于真实并列关系，不能替代论证。避免连续制造“几层、几维、几阶段”框架、无证据强化、过程旁白和摘要—结论机械复述。结论只回答正文已支持的问题，不能靠重复、附录和表格凑字数。
+段落以具体材料支持判断并处理反例。整合时合并重复限制、删除过程旁白；删去后不损失论据或判断的段落不再扩写。结论只回答正文支持的问题，不用框架、重复、附录或表格凑字数。
 <!-- /task-module -->
 
 <!-- task-module:autonomous-completion -->
 <!-- 公共CORE来源：references/common/autonomous-completion.md -->
 
-FULL_BUILD按研究契约、检索、证据、大纲、分章正文、图表、整合、导出、检查和定点修复持续执行；局部模式只做用户指定部分。下一章使用计划、证据和前章摘要，不反复加载全文。缺材料时完成诚实的设计/协议/综述，不编结果补字数。发现错误只返回受影响阶段；RESUME验证旧提示词和摘要后继续，REVISE_ONLY保留原稿并另存。
+FULL_BUILD按契约、检索、分析、分章写作、图表、导出和局部修复持续执行；局部模式不扩围。在原契约核对题目与实际材料，分析后选本题2—3个关键反例核查；设计矛盾不能只写未来验证。下一章用计划、证据和前章摘要。缺材料不编结果凑字数或默改题目。RESUME验证旧提示词后继续，REVISE_ONLY另存修订。
 <!-- /task-module -->
 
 <!-- task-module:final-quality-gates -->
 <!-- 公共CORE来源：references/common/final-quality-gates.md -->
 
-完成专业、图形和页面观察后写qa-observations.json，再运行一次`paper.py check`。入口只执行证据、图片、公式和交付四类机械检查并计算权威状态，不生成论文、语义PASS或数字评分。Critical/Important必须修复；无法修复时明确PARTIAL/FAIL。哈希只绑定文件，检查器成功不证明专业正确。
+核对核心主张、最终图中关系及导出页面后写qa-observations.json，再运行`paper.py check`。入口仅作证据、图片、公式、交付四类机械检查，不给语义PASS或分数。Critical/Important修复后重检，无法修复报PARTIAL/FAIL；哈希不证明专业正确。
 <!-- /task-module -->
 
 <!-- task-module:mathematical-formulas -->
@@ -183,5 +184,5 @@ PROMPT_ID: `geography-environmental-empirical`
 
 ### 数据不足时的题目与主张处理
 
-无法处理原始空间数据时改用明确的已发布统计产品，不手绘面积、坐标和变化率。
+无法处理原始空间数据时可采用已发布统计产品，但核对其空间单元和指标是否仍回答题目；建成表面不自动等于不透水面。实质改题须授权，不手绘数值。
 <!-- /task-module -->

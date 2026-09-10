@@ -40,13 +40,13 @@ paper-request.json是一次性语义输入，paper.py派生参数、能力、Pro
 # 公共规则二：真实性与证据
 
 不得编造文献、DOI、法源、标准、实验、数据、访谈、问卷、病例、性能、提升比例、伦理审批、项目或个人信息。重要主张标为OBSERVED、VERIFIED_EXTERNAL、INFERRED、PROPOSED或UNSUPPORTED；UNSUPPORTED不得进入定稿。没有真实实验/实施材料时降级为设计、协议、公开数据分析或综述，不能用随机数和模型生成CSV补结果。DESIGN_ONLY/PROTOCOL_ONLY不得出现“本研究实测、p<0.05、满意度提升、测试通过”等结果型断言。
-工程论文区分已实现、已验证、设计方案和未来扩展；实证论文的定量结果回到原始数据与计算；人体研究说明伦理、同意、样本和匿名化。范文只供结构观察，不是事实来源。
+工程区分实现、验证、设计与未来工作；定量结果回到原始数据与计算；人体研究说明伦理、同意、样本和匿名化。范文不是事实来源。
 
 FULL_BUILD建立data/data-provenance.json。真实数据项记录dataset_id、文件、SHA-256、origin、claim_role、supports_claims。origin只用USER_PROVIDED、AUTHOR_OBSERVED、OFFICIAL_DOWNLOAD、FORMAL_SIMULATION、CALCULATED、SYNTHETIC_DEMO、MODEL_SYNTHETIC或MANUSCRIPT_CONTEXT；后四类不得冒充观察结果。正式结果只能由RESULT、SIMULATION_RESULT或DESIGN_CALCULATION角色支撑。
 
-所有下载、计算和仿真用capture_provenance.py捕获真实输入、命令、输出、退出码和摘要。AUTHOR_OBSERVED须绑定运行前存在的原始文件；OFFICIAL_DOWNLOAD保留实际下载字节和最终URL；FORMAL_SIMULATION保留领域引擎、模型、命令和原始输出；CALCULATED保留输入与计算脚本。生产结果的脚本不能同时手写“已验证”回执。
+下载、计算、仿真用capture_provenance.py捕获输入、命令、输出、退出码和摘要。AUTHOR_OBSERVED绑定运行前原始文件；OFFICIAL_DOWNLOAD留下载字节与最终URL；FORMAL_SIMULATION留引擎、模型和原始输出；CALCULATED留输入与脚本。结果脚本不得手写验证回执。
 
-research_claim_level只能为OBSERVED_STUDY、DESIGN_ONLY、PROTOCOL_ONLY或REVIEW_SYNTHESIS。真实性判断由材料语义决定；脚本成功不等于研究结论成立。证据不足时降低主张并完成仍可诚实交付的部分，不把正文缩短到目标一半。
+research_claim_level为OBSERVED_STUDY、DESIGN_ONLY、PROTOCOL_ONLY或REVIEW_SYNTHESIS。材料语义决定真实性；脚本成功、披露局限均不证明题目已回答。证据不足先补材料，仍不足则降低主张、报告研究与篇幅缺口，不重复填充。
 <!-- /task-module -->
 
 <!-- task-module:literature-and-citation -->
@@ -85,13 +85,16 @@ Word目录域存在不等于已更新；PDF目录必须能对应章节和页码�
 # 公共规则五：学术配图
 
 每图先写目的、正文位置、事实节点/边、逐字标签、禁止项和精确性。生图能力真实可用时，普通流程、架构、组织和概念图必须用IMAGE_GENERATION，并逐图给出详细Prompt；统计图用DATA_CODE；引脚、电路、化学结构和尺度图用DOMAIN_EXACT；真实影像用EVIDENCE_FILE。只有无生图工具、用户要求矢量或出版限制时才SVG_FALLBACK。成功生图及其中文覆盖PNG必须成为final_embed_file并实际进入Word/PDF，不能被同号SVG替换。
-中文论文图中文字默认简体中文，型号、协议、单位和化学式可保留。Prompt列出exact_labels和allowed_foreign_tokens。生图中文字失败时保留原始构图，用DETERMINISTIC_OVERLAY覆盖中文，不把整图改英文，也不改插纯SVG。
+先从最终图复述关系再对照正文；流程检查正常与异常分支，核对年份、数值及端点。错图局部修复，不以回执或“示意图”免责。
+图中文字默认简体中文，保留型号、协议、单位和化学式；Prompt列exact_labels和allowed_foreign_tokens。文字失败用DETERMINISTIC_OVERLAY覆盖中文并保留构图，不整图改英文或改插纯SVG。
 
 figures/figure-manifest.json是唯一图片清单。每图记录figure_id、display_number、title、figure_type、exactness_class、claim_bearing、imagegen_eligible、generation_route、route_exemption、source_locator/source_data、caption_claim、supported_manuscript_claims、limitations、language_contract、text_render_strategy、final_embed_file、generated_file、prompt_file、generation_receipt、vlm_verification。未使用字段为null，不编造。
 
-route_exemption仅为USER_REQUESTED_VECTOR、PUBLICATION_RESTRICTION、IMAGE_TOOL_UNAVAILABLE、DOMAIN_EXACTNESS、EVIDENCE_REQUIRED或null。generation_receipt绑定真实工具结果、时间、Prompt与生成文件摘要；模型自述只能DECLARED_ONLY。vlm_verification绑定实际查看文件与回执，检查节点、箭头、文字、裁切和正文一致性。
+route_exemption仅为USER_REQUESTED_VECTOR、PUBLICATION_RESTRICTION、IMAGE_TOOL_UNAVAILABLE、DOMAIN_EXACTNESS、EVIDENCE_REQUIRED或null。generation_receipt绑定真实工具结果、时间、Prompt与生成文件摘要；模型自述只能DECLARED_ONLY。vlm_verification绑定实际查看文件与回执，不以生成成功代替审图。
 
-图内不写外部图号和整段题注。最多两轮无效修复后记NEEDS_REVIEW和具体缺陷；不能为了过检删必要边。缺视觉能力记CAPABILITY_GAP。高质量原图只做受影响区域修复。
+不采信生成者通过说明；查悬空、重复、反向、错误汇合，领域图对照源表。覆盖后复看合成图与文稿，观察写回qa-observations。
+
+图内不写外部图号或整段题注。两轮无效修复后记NEEDS_REVIEW及缺陷，不删必要边过检。缺视觉能力记CAPABILITY_GAP；高质量图仅局部修复。
 <!-- /task-module -->
 
 <!-- task-module:statistical-figures-and-trace -->
@@ -112,8 +115,8 @@ route_exemption仅为USER_REQUESTED_VECTOR、PUBLICATION_RESTRICTION、IMAGE_TOO
 
 # 公共规则七：正文编辑
 
-段落提出具体判断，说明材料如何支持、反例和边界。相邻段落必须增加信息；列表只用于真实并列关系，不能替代论证。避免连续制造“几层、几维、几阶段”框架、无证据强化、过程旁白和摘要—结论机械复述。结论只回答正文已支持的问题，不能靠重复、附录和表格凑字数。
-研究与证据核查在前，语言编辑在后。编辑不得改数值、引文、公式或图片关系；发现实质错误回到对应环节。段落长短服从论证，不按统一模板排布。词频、长句、结论比例和边界词密度只作定位提示，不输出“AI率”或保证检测结果。
+段落以具体材料支持判断并处理反例。整合时合并重复限制、删除过程旁白；删去后不损失论据或判断的段落不再扩写。结论只回答正文支持的问题，不用框架、重复、附录或表格凑字数。
+证据核查在前，语言编辑在后，不改数值、引文、公式或图中关系。方法集中说明限制，讨论保留影响解释的条件；反复“仅为方案、仍需验证”合并为具体失效条件和验证指标。不删不利结果，篇幅不足补材料与分析。列表不替代论证，不统一段长或结论比例，不输出“AI率”。
 <!-- /task-module -->
 
 <!-- task-module:autonomous-completion -->
@@ -121,10 +124,10 @@ route_exemption仅为USER_REQUESTED_VECTOR、PUBLICATION_RESTRICTION、IMAGE_TOO
 
 # 公共规则八：执行与续跑
 
-FULL_BUILD按研究契约、检索、证据、大纲、分章正文、图表、整合、导出、检查和定点修复持续执行；局部模式只做用户指定部分。下一章使用计划、证据和前章摘要，不反复加载全文。缺材料时完成诚实的设计/协议/综述，不编结果补字数。发现错误只返回受影响阶段；RESUME验证旧提示词和摘要后继续，REVISE_ONLY保留原稿并另存。
-研究问题、材料边界、方法、章节目标、预算、图表和完成标准可合写入01-research-contract.md，避免为文件数量复制05-outline或06-argument-map。章节预算可有理由重分配，但总篇幅遵守用户硬下限。
+FULL_BUILD按契约、检索、分析、分章写作、图表、导出和局部修复持续执行；局部模式不扩围。在原契约核对题目与实际材料，分析后选本题2—3个关键反例核查；设计矛盾不能只写未来验证。下一章用计划、证据和前章摘要。缺材料不编结果凑字数或默改题目。RESUME验证旧提示词后继续，REVISE_ONLY另存修订。
+01-research-contract.md合写问题、最低/已有材料、方法、可支持答案、章节预算和图表，不复制大纲。替换信源不等于替换研究对象或分析单位；改题遵守TITLE_POLICY。保留本任务有效分析和阴性结果；反例核查只记录发现的问题，不另建清单。总篇幅按用户要求，不足如实报告。
 
-FULL_AUTONOMY不加载阶段卡；GUIDED/WEAK_MODEL仅在明确执行困难时增加检查点，材料或工具缺口不等于模型弱。接近上下文上限时保存阶段状态、产物、未解决问题和下一动作。amend后只重做被声明失效的阶段。
+FULL_AUTONOMY无阶段卡；GUIDED/WEAK_MODEL按执行困难增加检查点，不因材料或工具缺口降档。上下文将满时存状态、产物、问题与下一动作。amend只重做失效阶段。
 <!-- /task-module -->
 
 <!-- task-module:final-quality-gates -->
@@ -132,12 +135,14 @@ FULL_AUTONOMY不加载阶段卡；GUIDED/WEAK_MODEL仅在明确执行困难时�
 
 # 公共规则九：统一核验
 
-完成专业、图形和页面观察后写qa-observations.json，再运行一次`paper.py check`。入口只执行证据、图片、公式和交付四类机械检查并计算权威状态，不生成论文、语义PASS或数字评分。Critical/Important必须修复；无法修复时明确PARTIAL/FAIL。哈希只绑定文件，检查器成功不证明专业正确。
-qa-observations.json只记录主张证据、逐图盲检、实际页面检查和问题清单；每个视觉判断绑定被查看文件与真实回执。需要学术评价时，在写作流程结束后把冻结交付包交给另一会话、另一模型或人工审阅。
+核对核心主张、最终图中关系及导出页面后写qa-observations.json，再运行`paper.py check`。入口仅作证据、图片、公式、交付四类机械检查，不给语义PASS或分数。Critical/Important修复后重检，无法修复报PARTIAL/FAIL；哈希不证明专业正确。
+qa-observations.json记录主张、逐图和页面问题，视觉判断绑定所看文件、页码和真实回执。学术评分交给写作流外的另一会话、模型或人工。
 
-检查覆盖题录与引用、数据来源、生图路线与实际嵌图、公式/OMML、目录、题注、表格、篇幅、DOCX/PDF和SHA。旧报告只有输入摘要与当前文件完全一致时才能复用。AUDIT_ONLY输出到源目录之外；FIGURES_ONLY无重导时不改正文和文档。
+机械检查覆盖引用、数据、生图与嵌图、OMML、目录、题注、表格、篇幅、文档及SHA。旧报告须匹配当前输入才能复用。AUDIT_ONLY另存；FIGURES_ONLY无重导不改正文文档。
 
-修复后重新check。最终答复只读取14-adjudicated-status.json，报告RESEARCH_STATUS、DELIVERY_STATUS、FINAL_STATUS及真实缺口；任何报告缺失、陈旧或命令失败都不能报PASS。
+实际查看摘要、目录、章首、代表表格、最长公式和图片页；排除页眉重复再判章序，PDF不得留“Word更新目录”占位。局部修复后重导并复看，缺视觉能力如实报告，不能以解析代替目验。
+
+修复后重跑check，最终只据14-adjudicated-status.json报告RESEARCH_STATUS、DELIVERY_STATUS、FINAL_STATUS和缺口；报告缺失、陈旧或命令失败不得报PASS。
 <!-- /task-module -->
 
 <!-- task-module:mathematical-formulas -->

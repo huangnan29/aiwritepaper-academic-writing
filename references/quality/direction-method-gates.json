@@ -7,7 +7,7 @@
     },
     "biomedical-experimental-journal": {
       "completion_gates": ["队列原始文件与下载回执真实存在", "特征选择与评价分离并报告乐观偏差", "外部验证缺失时不得称临床标志物已验证"],
-      "retitle_or_downgrade": "只有模拟、随机或内部重用数据时降为方案；无外部队列时标题与结论使用内部再分析。"
+      "retitle_or_downgrade": "模拟、随机数据不能冒充病例结果；真实队列内部再分析可以保留，筛选与评价重用时报告乐观偏差并修订评价，不能据此宣称独立验证。"
     },
     "chemical-materials-experiment": {
       "completion_gates": ["原始谱图或文献数值可定位", "电极构型、电解液、载量和归一化口径分池", "跨论文比较报告不可比项"],
@@ -35,7 +35,7 @@
     },
     "geography-environmental-empirical": {
       "completion_gates": ["保存原始栅格/矢量、版本、许可和下载回执", "空间单元、投影、分辨率和面积口径一致", "地图与统计使用同一处理结果"],
-      "retitle_or_downgrade": "无法处理原始空间数据时改用明确的已发布统计产品，不手绘面积、坐标和变化率。"
+      "retitle_or_downgrade": "无法处理原始空间数据时可采用已发布统计产品，但核对其空间单元和指标是否仍回答题目；建成表面不自动等于不透水面。实质改题须授权，不手绘数值。"
     },
     "legal-normative-analysis": {
       "completion_gates": ["法源版本、效力层级和生效状态可核", "案例主张定位到裁判文书具体理由", "比较法只作说理来源"],
